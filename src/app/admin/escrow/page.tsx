@@ -15,53 +15,95 @@ import {
   Building,
   User as UserIcon
 } from "lucide-react";
-import { Button } from "@/app/components/ui/button";
 import { Escrow } from "@/app/types";
 import { cn } from "@/app/lib/utils";
 
-const mockEscrow: Escrow[] = [
-  { id: "ESC-101", campaign: "Summer Tech Blast", brand: "TechNova", creator: "Alex Rivera", amount: "$12,000", status: "Held", releaseDate: "2026-06-15" },
-  { id: "ESC-102", campaign: "Glow Skin Routine", brand: "Luxe Beauty", creator: "Sarah Chen", amount: "$8,500", status: "Held", releaseDate: "2026-06-20" },
-  { id: "ESC-103", campaign: "Fitness App Launch", brand: "FitStep", creator: "Marcus Thorne", amount: "$15,000", status: "Released", releaseDate: "2026-05-12" },
-  { id: "ESC-104", campaign: "Cyber Gaming Setup", brand: "Razer Edge", creator: "David Kim", amount: "$25,000", status: "Frozen", releaseDate: "2026-05-10" },
-  { id: "ESC-105", campaign: "Energy Drink Promo", brand: "PureFuel", creator: "Elena Gomez", amount: "$5,000", status: "Disputed", releaseDate: "2026-07-01" },
-];
+import { escrowService } from "@/app/services/financialServices";
+import { useToast } from "@/app/hooks/useToast";
 
 export default function EscrowPage() {
+  const { showToast } = useToast();
+  const [localEscrow, setLocalEscrow] = React.useState<Escrow[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const loadEscrow = async () => {
+      try {
+        const data = await escrowService.getEscrowList();
+        setLocalEscrow(data);
+      } catch (error) {
+        console.error("[EscrowPage] Failed to fetch escrow ledger:", error);
+        showToast("Infrastructure synchronization failed.", "error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadEscrow();
+  }, [showToast]);
+
+  const handleRelease = async (id: string) => {
+    try {
+      await escrowService.release(id);
+      showToast(`Escrow ${id} released successfully`, "success");
+      setLocalEscrow(prev => prev.map(e => e.id === id ? { ...e, status: "Released" } : e));
+    } catch {
+      showToast("Release protocol failed", "error");
+    }
+  };
+
+  const handleFreeze = async (id: string) => {
+    try {
+      await escrowService.freeze(id, "Administrative freeze");
+      showToast(`Escrow ${id} frozen`, "warning");
+      setLocalEscrow(prev => prev.map(e => e.id === id ? { ...e, status: "Frozen" } : e));
+    } catch {
+      showToast("Freeze protocol failed", "error");
+    }
+  };
+
   const columns: ColumnDef<Escrow>[] = [
     {
       accessorKey: "id",
-      header: "Escrow ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-soft-white/60 font-mono tracking-tighter">{row.original.id}</span>,
+      header: "Infrastructure ID",
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id}</span>,
+
     },
     {
       accessorKey: "campaign",
-      header: "Campaign",
+      header: "Campaign Initiative",
       cell: ({ row }) => (
-        <div>
-          <p className="text-sm font-bold text-soft-white">{row.original.campaign}</p>
-          <div className="flex items-center space-x-2 mt-0.5">
-             <div className="flex items-center space-x-1 text-[10px] text-soft-white/30 uppercase font-bold">
+        <div className="py-1">
+          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none">{row.original.campaign}</p>
+
+          <div className="flex items-center space-x-3 mt-2">
+             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest">
                 <Building className="w-3 h-3" />
                 <span>{row.original.brand}</span>
              </div>
-             <span className="text-soft-white/20">•</span>
-             <div className="flex items-center space-x-1 text-[10px] text-soft-white/30 uppercase font-bold">
+             <span className="text-[#F0F0FB]/10">•</span>
+             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest">
                 <UserIcon className="w-3 h-3" />
                 <span>{row.original.creator}</span>
              </div>
           </div>
+
         </div>
       ),
     },
     {
       accessorKey: "amount",
-      header: "Amount",
-      cell: ({ row }) => <span className="text-sm font-bold text-soft-white">{row.original.amount}</span>,
+      header: "Fiscal Allocation",
+      cell: ({ row }) => (
+        <div className="flex items-center space-x-1.5">
+          <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
+          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount.replace('$', '')}</span>
+        </div>
+
+      ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Operational State",
       cell: ({ row }) => (
         <StatusBadge 
           status={row.original.status} 
@@ -75,78 +117,95 @@ export default function EscrowPage() {
     },
     {
       accessorKey: "releaseDate",
-      header: "Release Date",
-      cell: ({ row }) => <span className="text-xs text-soft-white/30">{row.original.releaseDate}</span>,
+      header: "Temporal Threshold",
+      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter uppercase">{row.original.releaseDate}</span>,
+
     },
     {
       id: "actions",
       cell: ({ row }) => (
-        <div className="text-right flex items-center justify-end space-x-2">
+        <div className="text-right flex items-center justify-end space-x-3">
           {row.original.status === "Held" && (
-            <Button size="sm" className="bg-success/10 text-success border border-success/20 hover:bg-success hover:text-white h-8 px-3 text-[10px] font-bold uppercase">
-              Release
-            </Button>
+            <button 
+              onClick={() => handleRelease(row.original.id)}
+              className="h-9 px-4 rounded-xl bg-primary-blue text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-lg shadow-primary-blue/20 active:scale-95"
+            >
+              Authorize Release
+            </button>
+
           )}
           {row.original.status === "Held" && (
-            <Button size="sm" className="bg-error/10 text-error border border-error/20 hover:bg-error hover:text-white h-8 px-3 text-[10px] font-bold uppercase">
-              Freeze
-            </Button>
+            <button 
+              onClick={() => handleFreeze(row.original.id)}
+              className="h-9 px-4 rounded-xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm"
+            >
+              Freeze Assets
+            </button>
+
           )}
         </div>
+
       ),
     },
   ];
 
   return (
     <DashboardShell>
-      <PageHeader 
-        title="Escrow Management" 
-        subtitle="Manage secure funds held for campaign completions and dispute resolutions."
-      />
+      <div className="section-spacing">
+        <PageHeader 
+          title="Escrow Infrastructure" 
+          subtitle="Enterprise management of secured fiscal vectors and automated release protocols."
+        />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard label="Total Funds in Escrow" value="$1.2M" icon={Lock} color="blue" />
-        <StatCard label="Scheduled for Release" value="$42,500" icon={Unlock} color="success" />
-        <StatCard label="Frozen Funds" value="$15,000" icon={Snowflake} color="error" />
-        <StatCard label="Pending Disputes" value="8" icon={AlertCircle} color="orange" />
-      </div>
-
-      {/* Escrow Flow Visualization */}
-      <div className="bg-dark-surface/50 border border-white/5 rounded-[32px] p-8 mb-10 overflow-hidden relative">
-        <div className="flex items-center justify-between relative z-10 max-w-4xl mx-auto">
-          {[
-            { label: "Brand Payment", icon: Building, color: "blue" },
-            { label: "Escrow Hold", icon: Lock, color: "orange" },
-            { label: "Campaign Check", icon: ShieldCheck, color: "orange" },
-            { label: "Admin Review", icon: AlertCircle, color: "orange" },
-            { label: "Creator Payout", icon: ArrowRightLeft, color: "success" },
-          ].map((step, i) => (
-            <React.Fragment key={step.label}>
-              <div className="flex flex-col items-center space-y-3">
-                <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center border",
-                  step.color === "blue" ? "bg-primary-blue/10 border-primary-blue/20 text-primary-blue" :
-                  step.color === "orange" ? "bg-accent-orange/10 border-accent-orange/20 text-accent-orange" :
-                  "bg-success/10 border-success/20 text-success"
-                )}>
-                  <step.icon className="w-6 h-6" />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-soft-white/40">{step.label}</span>
-              </div>
-              {i < 4 && (
-                <div className="flex-1 h-[2px] bg-white/5 mx-4 mt-[-20px]" />
-              )}
-            </React.Fragment>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <StatCard label="Aggregate Escrow" value="$1.2M" icon={Lock} color="blue" />
+          <StatCard label="Scheduled Release" value="$42,500" icon={Unlock} color="success" />
+          <StatCard label="Frozen Assets" value="$15,000" icon={Snowflake} color="error" />
+          <StatCard label="Incident Disputes" value="8" icon={AlertCircle} color="orange" />
         </div>
-      </div>
 
-      <DataTable 
-        columns={columns} 
-        data={mockEscrow} 
-        searchKey="campaign"
-        placeholder="Search by campaign name..."
-      />
+        {/* Protocol Lifecycle Visualization */}
+        <div className="bg-[#0F172A] border border-white/[0.08] rounded-[40px] p-10 overflow-hidden relative shadow-premium">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
+          
+          <div className="flex items-center justify-between relative z-10 max-w-5xl mx-auto">
+            {[
+              { label: "Pay In", icon: Building, color: "blue" },
+              { label: "Secure Hold", icon: Lock, color: "orange" },
+              { label: "Validation", icon: ShieldCheck, color: "orange" },
+              { label: "Audit", icon: AlertCircle, color: "orange" },
+              { label: "Release", icon: ArrowRightLeft, color: "success" },
+            ].map((step, i) => (
+              <React.Fragment key={step.label}>
+                <div className="flex flex-col items-center space-y-4">
+                  <div className={cn(
+                    "w-16 h-16 rounded-[22px] flex items-center justify-center border transition-all duration-500 shadow-sm",
+                    step.color === "blue" ? "bg-primary-blue/10 border-primary-blue/15 text-primary-blue shadow-primary-blue/10" :
+                    step.color === "orange" ? "bg-accent-orange/10 border-accent-orange/15 text-accent-orange shadow-accent-orange/10" :
+                    "bg-success-green/10 border-success-green/15 text-success-green shadow-success-green/10"
+                  )}>
+                    <step.icon className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/30">{step.label}</span>
+                </div>
+                {i < 4 && (
+                  <div className="flex-1 h-px bg-white/[0.08] mx-6 mt-[-30px] border-dashed border-b" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+
+        <DataTable 
+          columns={columns} 
+          data={localEscrow} 
+          isLoading={isLoading}
+          searchKey="campaign"
+          placeholder="Query escrow infrastructure by initiative identifier..."
+        />
+
+      </div>
     </DashboardShell>
   );
 }

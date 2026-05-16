@@ -1,22 +1,26 @@
-export type UserStatus = "Approved" | "Pending" | "Restricted" | "Whitelisted" | "Active" | "Suspended" | "Blocked";
+export type UserStatus = "Approved" | "Pending" | "Restricted" | "Whitelisted" | "Active" | "Suspended" | "Blocked" | "pending_review" | "rejected";
 export type RiskLevel = "Low" | "Medium" | "High";
 export type AdminRole = "OWNER" | "SUPER_ADMIN" | "MODERATION_ADMIN" | "FINANCE_ADMIN" | "SUPPORT_ADMIN" | "ANALYST";
 
 export interface Creator {
-  id: number;
+  id: string;
   name: string;
   email: string;
   niche: string;
   followers: string;
   status: UserStatus;
+  approvalStatus: "pending_review" | "approved" | "rejected" | "blocked";
   risk: RiskLevel;
   lastActive: string;
   earnings: string;
   rating: number;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
 }
 
 export interface Brand {
-  id: number;
+  id: string;
   name: string;
   email: string;
   company: string;
@@ -24,13 +28,28 @@ export interface Brand {
   activeCampaigns: number;
   totalSpend: string;
   status: UserStatus;
+  approvalStatus: "pending_review" | "approved" | "rejected" | "blocked";
   risk: RiskLevel;
   lastActive: string;
   disputes: number;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: "Creator" | "Brand" | "Admin";
+  status: UserStatus;
+  verification: "Verified" | "Unverified";
+  lastActive: string;
+  riskLevel: RiskLevel;
 }
 
 export interface ModerationItem {
-  id: number;
+  id: string;
   type: "Video" | "Bio" | "Comment" | "Image";
   title: string;
   creator: string;
@@ -43,14 +62,15 @@ export interface ModerationItem {
 }
 
 export interface Campaign {
-  id: number;
-  name: string;
+  id: string;
+  title: string;
   brand: string;
   budget: string;
   creators: number;
   submissions: number;
   deadline: string;
   status: "Draft" | "Pending" | "Active" | "Paused" | "Completed" | "Rejected" | "Disputed";
+  date?: string;
 }
 
 export interface Payment {
@@ -86,7 +106,7 @@ export interface Dispute {
 }
 
 export interface AdminUser {
-  id: number;
+  id: string;
   name: string;
   email: string;
   role: AdminRole;
@@ -105,3 +125,4 @@ export interface AuditLog {
   timestamp: string;
   severity: "Info" | "Warning" | "Critical";
 }
+

@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Enterprise Operations Platform for UGC FY Marketplace",
 };
 
+import QueryProvider from "./context/QueryProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,10 +21,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased dark`}>
-      <body className="min-h-full flex flex-col bg-black text-soft-white selection:bg-primary-blue/30">
-        {children}
+      <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary-blue/30 selection:text-primary-blue">
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );
 }
-

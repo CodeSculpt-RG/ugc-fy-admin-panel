@@ -5,26 +5,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/app/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030712] disabled:pointer-events-none disabled:opacity-30 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:scale-[0.96] active:duration-75",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "bg-primary-blue text-white shadow-[0_12px_24px_-8px_rgba(37,99,235,0.4)] hover:bg-primary-blue/90 hover:shadow-[0_18px_36px_-8px_rgba(37,99,235,0.5)] hover:-translate-y-0.5 active:translate-y-0",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-accent-orange text-white shadow-[0_12px_24px_-8px_rgba(249,115,22,0.4)] hover:bg-accent-orange/90 hover:shadow-[0_18px_36px_-8px_rgba(249,115,22,0.5)] hover:-translate-y-0.5 active:translate-y-0",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "border border-white/10 bg-white/[0.03] text-[#F0F0FB]/60 hover:bg-white/[0.08] hover:border-white/20 hover:text-[#F0F0FB] hover:shadow-xl active:bg-white/[0.02] transition-all",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-white/[0.05] text-[#F0F0FB] hover:bg-white/[0.1] hover:text-[#F0F0FB] border border-transparent hover:border-white/10",
+        ghost: "text-[#F0F0FB]/40 hover:bg-white/[0.05] hover:text-[#F0F0FB]",
+        link: "text-primary-blue underline-offset-8 hover:underline decoration-2 font-black",
+
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "h-12 px-8 py-3",
+        sm: "h-10 rounded-xl px-5 text-[10px]",
+        lg: "h-16 rounded-[20px] px-12 text-[12px]",
+        icon: "h-12 w-12 rounded-2xl",
       },
     },
     defaultVariants: {
@@ -33,6 +34,7 @@ const buttonVariants = cva(
     },
   }
 )
+
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,

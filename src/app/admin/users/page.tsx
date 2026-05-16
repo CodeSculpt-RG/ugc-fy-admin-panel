@@ -8,91 +8,141 @@ import { DetailDrawer } from "@/app/components/ui/detail-drawer";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
 import { ColumnDef } from "@tanstack/react-table";
 import { 
-  MoreVertical, 
   Eye, 
   ShieldCheck, 
   ShieldAlert, 
   Ban, 
-  History,
   Mail,
   User as UserIcon,
   Smartphone,
   MapPin
 } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu";
-import { Button } from "@/app/components/ui/button";
+import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
 import { cn } from "@/app/lib/utils";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "Creator" | "Brand";
-  status: "Active" | "Pending" | "Suspended" | "Blocked";
-  verification: "Verified" | "Unverified";
-  lastActive: string;
-  riskLevel: "Low" | "Medium" | "High";
-}
 
-const mockUsers: User[] = [
-  { id: "1", name: "Alex Rivera", email: "alex@rivera.com", role: "Creator", status: "Active", verification: "Verified", lastActive: "2m ago", riskLevel: "Low" },
-  { id: "2", name: "Sarah Chen", email: "sarah@chen.co", role: "Creator", status: "Pending", verification: "Unverified", lastActive: "1d ago", riskLevel: "Medium" },
-  { id: "3", name: "Nike Global", email: "admin@nike.com", role: "Brand", status: "Active", verification: "Verified", lastActive: "12m ago", riskLevel: "Low" },
-  { id: "4", name: "Marcus Thorne", email: "marcus@fitness.com", role: "Creator", status: "Suspended", verification: "Verified", lastActive: "5d ago", riskLevel: "High" },
-  { id: "5", name: "Glow Beauty", email: "hello@glow.com", role: "Brand", status: "Active", verification: "Verified", lastActive: "1h ago", riskLevel: "Low" },
-];
+import { useToast } from "@/app/hooks/useToast";
+import { userService } from "@/app/services/userService";
+import { approvalService } from "@/app/services/approvalService";
+import { User } from "@/app/types";
 
 export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState({ title: "", description: "", variant: "danger" as any });
+  const { showToast } = useToast();
+  const [localUsers, setLocalUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  
+  const [modalConfig, setModalConfig] = useState({ 
+    title: "", 
+    description: "", 
+    variant: "danger" as "danger" | "info" | "warning" | "success",
+    showInput: false,
+    confirmText: "Confirm",
+    actionType: "" as "block" | "authorize"
+  });
+
+  const loadUsers = React.useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const data = await userService.getUsers();
+      setLocalUsers(data);
+    } catch (err) {
+      console.error("[UsersPage] Failed to fetch identity protocols:", err);
+      setIsError(true);
+      showToast("Infrastructure desync: unable to sync global identity ledger.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  React.useEffect(() => {
+    const synchronize = async () => {
+      await loadUsers();
+    };
+    synchronize();
+  }, [loadUsers]);
 
   const handleAction = (user: User, action: string) => {
+    setSelectedUser(user);
     if (action === "view") {
-      setSelectedUser(user);
       setIsDrawerOpen(true);
+    } else if (action === "authorize") {
+      setModalConfig({
+        title: "Identity Authorization",
+      description: `Confirm that ${user.name}'s identity has been reviewed and verified. This will grant them "Approved" status across the platform.`,
+        variant: "info",
+        showInput: false,
+        confirmText: "Authorize Identity",
+        actionType: "authorize"
+      });
+      setIsConfirmModalOpen(true);
     } else if (action === "block") {
       setModalConfig({
-        title: "Block User",
-        description: `Are you sure you want to block ${user.name}? This will revoke all access to the platform immediately.`,
-        variant: "danger"
+        title: "Access Restriction",
+      description: `This will restrict ${user.name} from accessing platform features. Please provide a justification for this security protocol.`,
+        variant: "danger",
+        showInput: true,
+        confirmText: "Restrict Access",
+        actionType: "block"
       });
       setIsConfirmModalOpen(true);
     }
   };
 
+  const handleConfirm = async (reason?: string) => {
+    if (!selectedUser) return;
+
+    try {
+      if (modalConfig.actionType === "block") {
+        await approvalService.updateApprovalStatus(selectedUser.id, "blocked", reason || "Administrative access restriction");
+        showToast(`User identity restricted in global ledger.`, "warning");
+      } else if (modalConfig.actionType === "authorize") {
+        await approvalService.updateApprovalStatus(selectedUser.id, "approved", "Manual administrative authorization");
+        showToast(`User identity authorized successfully.`, "success");
+      }
+      setIsConfirmModalOpen(false);
+      loadUsers(); // Refresh the ledger
+    } catch {
+      showToast("Administrative protocol failed: transaction rejected by the API.", "error");
+    }
+  };
+
+
+
   const columns: ColumnDef<User>[] = [
     {
+      accessorKey: "email",
+      header: "Email",
+      enableHiding: true,
+      cell: () => null,
+    },
+    {
       accessorKey: "name",
-      header: "User",
+      header: "User Infrastructure",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-primary-blue/10 flex items-center justify-center border border-primary-blue/20">
-            <UserIcon className="w-5 h-5 text-primary-blue" />
+        <div className="flex items-center space-x-5 py-2">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-primary-blue/10 transition-all duration-500">
+            <UserIcon className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors" />
           </div>
-          <div>
-            <p className="text-sm font-bold text-soft-white">{row.original.name}</p>
-            <p className="text-xs text-soft-white/30">{row.original.email}</p>
+          <div className="space-y-0.5">
+            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.name}</p>
+            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest">{row.original.email}</p>
           </div>
         </div>
       ),
     },
     {
       accessorKey: "role",
-      header: "Role",
-      cell: ({ row }) => <span className="text-xs font-medium text-soft-white/60">{row.original.role}</span>,
+      header: "Classification",
+      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">{row.original.role}</span>,
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Operational State",
       cell: ({ row }) => (
         <StatusBadge 
           status={row.original.status} 
@@ -102,152 +152,174 @@ export default function UsersPage() {
     },
     {
       accessorKey: "verification",
-      header: "Verification",
+      header: "Security Tier",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-1.5 text-xs font-bold text-soft-white/40">
-          {row.original.verification === "Verified" ? (
-            <ShieldCheck className="w-3.5 h-3.5 text-success" />
-          ) : (
-            <ShieldAlert className="w-3.5 h-3.5 text-warning" />
-          )}
-          <span>{row.original.verification}</span>
+        <div className="flex items-center space-x-3">
+          <div className={cn(
+            "w-8 h-8 rounded-xl flex items-center justify-center border transition-all duration-500",
+            row.original.verification === "Verified" 
+              ? "bg-primary-blue/10 border-primary-blue/15 text-primary-blue" 
+              : "bg-accent-orange/10 border-accent-orange/15 text-accent-orange"
+          )}>
+            {row.original.verification === "Verified" ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+          </div>
+          <span className={cn(
+            "text-[10px] font-black uppercase tracking-widest",
+            row.original.verification === "Verified" ? "text-primary-blue" : "text-accent-orange"
+          )}>{row.original.verification}</span>
         </div>
-      ),
-    },
-    {
-      accessorKey: "riskLevel",
-      header: "Risk",
-      cell: ({ row }) => (
-        <span className={cn(
-          "text-[10px] font-black uppercase",
-          row.original.riskLevel === "High" ? "text-error" : 
-          row.original.riskLevel === "Medium" ? "text-warning" : "text-success"
-        )}>
-          {row.original.riskLevel}
-        </span>
       ),
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <div className="text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 text-soft-white/40 hover:text-soft-white">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-dark-surface border-white/10 text-soft-white">
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-soft-white/30">Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => handleAction(row.original, "view")} className="cursor-pointer focus:bg-white/5">
-                <Eye className="mr-2 h-4 w-4" /> View Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer focus:bg-white/5">
-                <ShieldCheck className="mr-2 h-4 w-4" /> Verify User
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/5" />
-              <DropdownMenuItem onClick={() => handleAction(row.original, "block")} className="cursor-pointer text-error focus:bg-error/5 focus:text-error">
-                <Ban className="mr-2 h-4 w-4" /> Block User
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const userActions: ActionItem[] = [
+          {
+            label: "Analyze User Infrastructure",
+            icon: Eye,
+            onClick: () => handleAction(row.original, "view"),
+            sectionLabel: "Operational Directives"
+          },
+          {
+            label: "Authorize Security Identity",
+            icon: ShieldCheck,
+            onClick: () => handleAction(row.original, "authorize"),
+            variant: "blue"
+          },
+          {
+            label: "Restrict System Access",
+            icon: Ban,
+            onClick: () => handleAction(row.original, "block"),
+            variant: "orange",
+            isSeparator: true
+          }
+        ];
+
+        return <ActionDropdown actions={userActions} />;
+      },
     },
   ];
 
   return (
     <DashboardShell>
-      <PageHeader 
-        title="User Management" 
-        subtitle="Manage all platform users, their roles, and security statuses."
-      >
-        <Button className="bg-primary-blue hover:bg-primary-blue/90 text-white rounded-xl">
-          Export Users
-        </Button>
-      </PageHeader>
+      <div className="section-spacing">
+        <PageHeader 
+          title="Identity Protocols" 
+          subtitle="Enterprise-grade management of platform entities and security vectors."
+        >
+          <button 
+            onClick={() => loadUsers()}
+            className="flex items-center space-x-3 px-6 py-3 rounded-2xl bg-primary-blue text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95"
+          >
+            <span>Synchronize Global Ledger</span>
+          </button>
+        </PageHeader>
 
-      <DataTable 
-        columns={columns} 
-        data={mockUsers} 
-        searchKey="name"
-        placeholder="Search by name or email..."
-      />
+        {isError ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-6">
+            <div className="p-6 rounded-[32px] bg-error/10 border border-error/20 text-error">
+               <ShieldAlert className="w-12 h-12" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-lg font-black text-[#F0F0FB]">Ledger Synchronization Failure</p>
+              <p className="text-sm text-[#F0F0FB]/40">Unable to establish a secure handshake with the identity infrastructure.</p>
+            </div>
+            <button 
+              onClick={() => loadUsers()}
+              className="h-12 px-8 rounded-2xl bg-white/[0.03] border border-white/10 text-[#F0F0FB] text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue hover:border-primary-blue transition-all active:scale-95"
+            >
+              Retry Handshake
+            </button>
+          </div>
+        ) : (
+          <DataTable 
+            columns={columns} 
+            data={localUsers} 
+            isLoading={isLoading}
+            searchKey="email"
+            placeholder="Query user infrastructure by email or unique identifier..."
+          />
+        )}
+      </div>
 
       <DetailDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        title={selectedUser?.name || "User Details"}
-        subtitle={selectedUser?.role}
+        title={selectedUser?.name || "Entity Profile"}
+        subtitle={`System ID: ${selectedUser?.id || "N/A"} • ${selectedUser?.role || "ENTITY"}`}
       >
+
         {selectedUser && (
-          <div className="space-y-8">
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-widest text-soft-white/30 font-bold mb-1">Status</p>
-                <StatusBadge status={selectedUser.status} variant="success" />
+          <div className="space-y-12">
+            {/* Aggregate Metrics */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] shadow-sm">
+                <p className="stat-label mb-4">Operational Status</p>
+                <StatusBadge status={selectedUser.status} variant={selectedUser.status === "Active" ? "success" : "warning"} />
               </div>
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                <p className="text-[10px] uppercase tracking-widest text-soft-white/30 font-bold mb-1">Risk Score</p>
-                <p className="text-sm font-bold text-soft-white">{selectedUser.riskLevel}</p>
-              </div>
-            </div>
-
-            {/* Info Section */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold text-soft-white/20 uppercase tracking-[0.2em]">Account Information</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 text-sm">
-                  <Mail className="w-4 h-4 text-primary-blue" />
-                  <span className="text-soft-white">{selectedUser.email}</span>
-                </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <Smartphone className="w-4 h-4 text-primary-blue" />
-                  <span className="text-soft-white">+91 98765 43210</span>
-                </div>
-                <div className="flex items-center space-x-3 text-sm">
-                  <MapPin className="w-4 h-4 text-primary-blue" />
-                  <span className="text-soft-white">Mumbai, India</span>
-                </div>
+              <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] shadow-sm">
+                <p className="stat-label mb-4">Risk Evaluation</p>
+                <p className={cn(
+                  "text-2xl font-black tracking-tighter uppercase",
+                  selectedUser.riskLevel === 'High' ? 'text-error' : 'text-primary-blue'
+                )}>{selectedUser.riskLevel} IMPACT</p>
               </div>
             </div>
 
-            {/* Recent Activity */}
-            <div className="space-y-4">
-               <h4 className="text-xs font-bold text-soft-white/20 uppercase tracking-[0.2em]">Recent Activity</h4>
-               <div className="space-y-4">
+
+            {/* Infrastructure Credentials */}
+            <div className="space-y-8">
+              <h4 className="stat-label">Core Infrastructure</h4>
+              <div className="space-y-4">
+                {[
+                  { icon: Mail, label: "Digital Communications", value: selectedUser.email },
+                  { icon: Smartphone, label: "Network Endpoint", value: "+91 98765 43210" },
+                  { icon: MapPin, label: "Geographic Coordinate", value: "Mumbai, India" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center space-x-6 p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.08] shadow-sm hover:border-primary-blue/20 transition-all cursor-pointer">
+                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-[#F0F0FB]/20">
+                      <item.icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="stat-label leading-none">{item.label}</p>
+                      <p className="text-base font-black text-[#F0F0FB] mt-2 tracking-tight">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+            </div>
+
+            {/* Audit History */}
+            <div className="space-y-8">
+               <h4 className="stat-label">Temporal Audit Log</h4>
+               <div className="space-y-10 border-l-2 border-white/[0.08] ml-6 pl-10 relative">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-start space-x-3">
-                       <div className="mt-1 w-1.5 h-1.5 rounded-full bg-primary-blue" />
+                    <div key={i} className="relative">
+                       <div className="absolute -left-[51px] top-1 w-5 h-5 rounded-full bg-[#030712] border-4 border-primary-blue shadow-lg shadow-primary-blue/20 z-10" />
                        <div>
-                          <p className="text-xs font-bold text-soft-white">Logged in from new device</p>
-                          <p className="text-[10px] text-soft-white/30 mt-0.5">iPhone 15 Pro • 192.168.1.1 • 2h ago</p>
+                          <p className="text-base font-black text-[#F0F0FB] tracking-tighter">System Access Authorized</p>
+                          <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2 leading-relaxed italic">Verified terminal connection established from endpoint 192.168.1.{i} • {i}h ago</p>
                        </div>
                     </div>
                   ))}
                </div>
-               <Button variant="ghost" className="w-full text-xs font-bold text-primary-blue hover:bg-primary-blue/10">
-                  <History className="w-3.5 h-3.5 mr-2" />
-                  View Full Audit Log
-               </Button>
+
             </div>
 
-            {/* Danger Zone */}
-            <div className="pt-8 border-t border-white/5 space-y-4">
-               <h4 className="text-xs font-bold text-error/40 uppercase tracking-[0.2em]">Administrative Actions</h4>
-               <div className="grid grid-cols-1 gap-3">
-                  <Button variant="outline" className="justify-start border-white/10 hover:bg-white/5 text-soft-white font-bold">
-                    Reset User Password
-                  </Button>
-                  <Button variant="outline" className="justify-start border-white/10 hover:bg-white/5 text-soft-white font-bold">
-                    Flag for Review
-                  </Button>
-                  <Button className="justify-start bg-error hover:bg-error/90 text-white font-bold">
-                    Suspend Account
-                  </Button>
+            {/* Security Directives */}
+            <div className="pt-12 border-t border-white/[0.08] space-y-8">
+               <h4 className="text-[10px] font-black text-error/40 uppercase tracking-[0.4em]">Administrative Directives</h4>
+               <div className="grid grid-cols-1 gap-4">
+                  <button className="w-full h-16 rounded-[28px] bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95">
+                    Re-initialize Security Credentials
+                  </button>
+                  <button className="w-full h-16 rounded-[28px] bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm">
+                    Deactivate System Access
+                  </button>
                </div>
             </div>
+
           </div>
         )}
       </DetailDrawer>
@@ -255,10 +327,13 @@ export default function UsersPage() {
       <ConfirmModal
         isOpen={isConfirmModalOpen}
         onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirm}
         title={modalConfig.title}
         description={modalConfig.description}
         variant={modalConfig.variant}
+
+        showInput={modalConfig.showInput}
+        confirmText={modalConfig.confirmText}
       />
     </DashboardShell>
   );

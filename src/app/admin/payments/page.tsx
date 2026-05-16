@@ -1,61 +1,153 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader, StatusBadge, StatCard } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
+import { ConfirmModal } from "@/app/components/ui/confirm-modal";
 import { 
   CreditCard, 
-  ArrowUpRight, 
-  ArrowDownRight, 
   Download,
-  Filter,
   DollarSign,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  RefreshCcw,
+  Flag
 } from "lucide-react";
-import { Button } from "@/app/components/ui/button";
 import { Payment } from "@/app/types";
 
-const mockPayments: Payment[] = [
-  { id: "TXN-84920", brand: "TechNova", creator: "Alex Rivera", campaign: "Summer Tech Blast", amount: "$1,200", commission: "$180", status: "Paid", date: "2026-05-12" },
-  { id: "TXN-84921", brand: "Luxe Beauty", creator: "Sarah Chen", campaign: "Glow Skin Routine", amount: "$850", commission: "$127", status: "Pending", date: "2026-05-12" },
-  { id: "TXN-84922", brand: "FitStep", creator: "Marcus Thorne", campaign: "Fitness App Launch", amount: "$2,500", commission: "$375", status: "Paid", date: "2026-05-11" },
-  { id: "TXN-84923", brand: "PureFuel", creator: "Elena Gomez", campaign: "Energy Drink Promo", amount: "$500", commission: "$75", status: "Failed", date: "2026-05-10" },
-  { id: "TXN-84924", brand: "Razer Edge", creator: "David Kim", campaign: "Cyber Gaming Setup", amount: "$3,200", commission: "$480", status: "Refunded", date: "2026-05-09" },
-];
+import { paymentService } from "@/app/services/financialServices";
+import { useToast } from "@/app/hooks/useToast";
+
 
 export default function PaymentsPage() {
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const { showToast } = useToast();
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
+  const [modalConfig, setModalConfig] = useState({ 
+    title: "", 
+    description: "", 
+    variant: "danger" as "danger" | "info" | "warning" | "success",
+    showInput: false,
+    confirmText: "Confirm",
+    actionType: "" as "refund" | "flag"
+  });
+
+  const [localPayments, setLocalPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+
+  const loadPayments = React.useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const data = await paymentService.getPayments();
+      setLocalPayments(data);
+    } catch (err) {
+      console.error("[PaymentsPage] Fiscal synchronization failure:", err);
+      setIsError(true);
+      showToast("Unable to sync fiscal ledger from the global infrastructure.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  React.useEffect(() => {
+    const synchronize = async () => {
+      await loadPayments();
+    };
+    synchronize();
+  }, [loadPayments]);
+
+  const handleAction = (payment: Payment, action: string) => {
+    setSelectedPayment(payment);
+    if (action === "receipt") {
+      showToast(`Exporting receipt for ${payment.id}`, "info");
+    } else if (action === "refund") {
+      setModalConfig({
+        title: "Transaction Refund Protocol",
+        description: `This will reverse the fiscal allocation of ${payment.amount} for infrastructure ID ${payment.id}. This action is irreversible.`,
+        variant: "danger",
+        showInput: true,
+        confirmText: "Process Refund",
+        actionType: "refund"
+      });
+      setIsConfirmModalOpen(true);
+    } else if (action === "flag") {
+      setModalConfig({
+        title: "Forensic Investigation Escalation",
+        description: `This will escalate transaction ${payment.id} to the security audit unit for a full forensic lifecycle review.`,
+        variant: "warning",
+        showInput: true,
+        confirmText: "Flag Transaction",
+        actionType: "flag"
+      });
+      setIsConfirmModalOpen(true);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!selectedPayment) return;
+    try {
+      if (modalConfig.actionType === "refund") {
+        showToast(`Refund processed for ${selectedPayment.id}`, "success");
+      } else if (modalConfig.actionType === "flag") {
+        showToast(`Transaction ${selectedPayment.id} flagged for review`, "warning");
+      }
+      setIsConfirmModalOpen(false);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Administrative directive failed";
+      showToast(message, "error");
+    }
+  };
+
+
   const columns: ColumnDef<Payment>[] = [
     {
       accessorKey: "id",
-      header: "TXN ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-soft-white/60 font-mono tracking-tighter">{row.original.id}</span>,
+      header: "Infrastructure ID",
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id}</span>,
+
     },
     {
       accessorKey: "brand",
-      header: "Brand",
-      cell: ({ row }) => <span className="text-sm font-bold text-soft-white">{row.original.brand}</span>,
+      header: "Corporate Entity",
+      cell: ({ row }) => <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.brand}</p>,
+
     },
     {
       accessorKey: "creator",
-      header: "Creator",
-      cell: ({ row }) => <span className="text-xs text-soft-white/60">{row.original.creator}</span>,
+      header: "Creator Network",
+      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">{row.original.creator}</span>,
+
     },
     {
       accessorKey: "amount",
-      header: "Amount",
-      cell: ({ row }) => <span className="text-sm font-bold text-soft-white">{row.original.amount}</span>,
+      header: "Transaction Value",
+      cell: ({ row }) => (
+        <div className="flex items-center space-x-1.5">
+          <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
+          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount.replace('$', '')}</span>
+        </div>
+
+      ),
     },
     {
       accessorKey: "commission",
-      header: "Platform Fee",
-      cell: ({ row }) => <span className="text-xs font-bold text-primary-blue">{row.original.commission}</span>,
+      header: "Platform Yield",
+      cell: ({ row }) => (
+        <span className="text-[11px] font-black text-primary-blue bg-primary-blue/10 px-3 py-1.5 rounded-xl border border-primary-blue/15 tracking-widest uppercase shadow-sm">
+          {row.original.commission}
+        </span>
+      ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Operational State",
       cell: ({ row }) => (
         <StatusBadge 
           status={row.original.status} 
@@ -69,50 +161,103 @@ export default function PaymentsPage() {
     },
     {
       accessorKey: "date",
-      header: "Date",
-      cell: ({ row }) => <span className="text-xs text-soft-white/30">{row.original.date}</span>,
+      header: "Temporal Origin",
+      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter">{row.original.date}</span>,
+
     },
     {
       id: "actions",
-      cell: () => (
-        <div className="text-right">
-          <Button variant="ghost" className="h-8 px-2 text-xs font-bold text-primary-blue hover:bg-primary-blue/10">
-            Receipt
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const paymentActions: ActionItem[] = [
+          {
+            label: "Export Verified Receipt",
+            icon: FileText,
+            onClick: () => handleAction(row.original, "receipt"),
+            sectionLabel: "Fiscal Directives"
+          },
+          {
+            label: "Initiate Refund Protocol",
+            icon: RefreshCcw,
+            onClick: () => handleAction(row.original, "refund"),
+            variant: "orange"
+          },
+          {
+            label: "Escalate for Forensic Review",
+            icon: Flag,
+            onClick: () => handleAction(row.original, "flag"),
+            variant: "orange",
+            isSeparator: true
+          }
+        ];
+
+        return <ActionDropdown actions={paymentActions} />;
+      },
     },
   ];
 
   return (
     <DashboardShell>
-      <PageHeader 
-        title="Financial Operations" 
-        subtitle="Manage platform revenue, creator payouts, and brand transactions."
-      >
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" className="bg-white/5 border-white/10 text-soft-white rounded-xl h-12 px-5">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button className="bg-primary-blue hover:bg-primary-blue/90 text-white rounded-xl h-12 px-6 font-bold">
-            Reconcile Payments
-          </Button>
-        </div>
-      </PageHeader>
+      <div className="section-spacing">
+        <PageHeader 
+          title="Fiscal Infrastructure" 
+          subtitle="Enterprise management of platform liquidity, creator payouts, and corporate reconciliation vectors."
+        >
+          <div className="flex items-center space-x-4">
+            <button className="h-12 px-6 rounded-2xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all flex items-center shadow-sm">
+              <Download className="w-4 h-4 mr-3" />
+              Sync Ledger
+            </button>
+            <button className="h-12 px-8 rounded-2xl bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95">
+              Authorize Reconciliation
+            </button>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard label="Total Revenue" value="$428,500" trend="+15%" up icon={DollarSign} color="blue" />
-        <StatCard label="Platform Commission" value="$64,275" trend="+12%" up icon={FileCheck} color="success" />
-        <StatCard label="Pending Payouts" value="$22,400" trend="+8%" up icon={CreditCard} color="orange" />
-        <StatCard label="Failed Payments" value="$1,250" trend="-4%" up={false} icon={AlertCircle} color="error" />
+        </PageHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <StatCard label="Aggregate GMV" value="$428,500" trend="+15.4%" up icon={DollarSign} color="blue" />
+          <StatCard label="Platform Yield" value="$64,275" trend="+12.1%" up icon={FileCheck} color="success" />
+          <StatCard label="Escrow Liquidity" value="$22,400" trend="+8.2%" up icon={CreditCard} color="orange" />
+          <StatCard label="Operational Risk" value="$1,250" trend="-4.5%" up={false} icon={AlertCircle} color="error" />
+        </div>
+
+        {isError ? (
+          <div className="p-20 text-center space-y-6">
+            <div className="w-16 h-16 rounded-3xl bg-error/10 border border-error/20 flex items-center justify-center mx-auto text-error">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xl font-black text-white">Fiscal Ledger Error</p>
+              <p className="text-sm text-white/30 max-w-md mx-auto italic">Inability to establish secure handshake with the financial infrastructure.</p>
+            </div>
+            <button 
+              onClick={() => loadPayments()}
+              className="px-8 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all"
+            >
+              Retry Handshake
+            </button>
+          </div>
+        ) : (
+          <DataTable 
+            columns={columns} 
+            data={localPayments} 
+            isLoading={isLoading}
+            searchKey="id"
+            placeholder="Query fiscal infrastructure by TXN_ID or entity identifier..."
+          />
+        )}
       </div>
 
-      <DataTable 
-        columns={columns} 
-        data={mockPayments} 
-        searchKey="id"
-        placeholder="Search by transaction ID..."
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirm}
+        title={modalConfig.title}
+
+        description={modalConfig.description}
+        variant={modalConfig.variant}
+        showInput={modalConfig.showInput}
+        confirmText={modalConfig.confirmText}
       />
     </DashboardShell>
   );

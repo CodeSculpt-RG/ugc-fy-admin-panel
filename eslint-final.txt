@@ -1,0 +1,80 @@
+(node:17520) ESLintIgnoreWarning: The ".eslintignore" file is no longer supported. Switch to using the "ignores" property in "eslint.config.js": https://eslint.org/docs/latest/use/configure/migration-guide#ignoring-files
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+/Users/rahulg/ugc fy/admin_panel/src/app/admin/analytics/page.tsx
+  24:10  warning  'Button' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/admin/audit-logs/page.tsx
+  18:10  warning  'Button' is defined but never used        @typescript-eslint/no-unused-vars
+  22:10  warning  'adminService' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/admin/login/page.tsx
+  41:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/rahulg/ugc fy/admin_panel/src/app/admin/reports/page.tsx
+  16:10  warning  'Button' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/admin/security/page.tsx
+  12:3   warning  'Zap' is defined but never used     @typescript-eslint/no-unused-vars
+  17:10  warning  'Button' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/admin/settings/page.tsx
+   7:15  warning  'SettingsIcon' is defined but never used  @typescript-eslint/no-unused-vars
+  17:10  warning  'Button' is defined but never used        @typescript-eslint/no-unused-vars
+  18:10  warning  'Input' is defined but never used         @typescript-eslint/no-unused-vars
+  32:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/api/admin/brands/route.ts
+  25:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  38:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/rahulg/ugc fy/admin_panel/src/app/api/admin/creators/route.ts
+  26:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  39:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/rahulg/ugc fy/admin_panel/src/app/api/admin/users/[id]/approval/route.ts
+  30:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/layout/Navbar.tsx
+   5:10  warning  'motion' is defined but never used                  @typescript-eslint/no-unused-vars
+   5:18  warning  'AnimatePresence' is defined but never used         @typescript-eslint/no-unused-vars
+  13:29  warning  'toggleSidebar' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  13:44  warning  'isCollapsed' is assigned a value but never used    @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/layout/NewActionMenu.tsx
+  10:3  warning  'DropdownMenuLabel' is defined but never used      @typescript-eslint/no-unused-vars
+  11:3  warning  'DropdownMenuSeparator' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/layout/NotificationDropdown.tsx
+   5:10  warning  'motion' is defined but never used                 @typescript-eslint/no-unused-vars
+   5:18  warning  'AnimatePresence' is defined but never used        @typescript-eslint/no-unused-vars
+  10:3   warning  'DropdownMenuLabel' is defined but never used      @typescript-eslint/no-unused-vars
+  11:3   warning  'DropdownMenuSeparator' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/layout/SystemStatusPopover.tsx
+  4:15  warning  'CheckCircle2' is defined but never used      @typescript-eslint/no-unused-vars
+  4:29  warning  'AlertCircle' is defined but never used       @typescript-eslint/no-unused-vars
+  8:3   warning  'DropdownMenuItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/ui/action-dropdown.tsx
+  11:3  warning  'DropdownMenuLabel' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/ui/data-table.tsx
+  45:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/ui/data-table.tsx:45:17
+  43 |   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  44 |
+> 45 |   const table = useReactTable({
+     |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  46 |     data,
+  47 |     columns,
+  48 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+/Users/rahulg/ugc fy/admin_panel/src/app/components/ui/detail-drawer.tsx
+  6:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 32 problems (6 errors, 26 warnings)
+

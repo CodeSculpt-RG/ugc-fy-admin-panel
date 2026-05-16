@@ -1,53 +1,88 @@
 "use client";
 
-import React from "react";
-import { Search, Bell, Menu, Plus, Zap } from "lucide-react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { Search, Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSidebar } from "@/app/context/SidebarContext";
+import NotificationDropdown from "./NotificationDropdown";
+import NewActionMenu from "./NewActionMenu";
+import SystemStatusPopover from "./SystemStatusPopover";
+import { cn } from "@/app/lib/utils";
 
 export default function Navbar() {
+  const { toggleMobileMenu, toggleSidebar, isCollapsed } = useSidebar();
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
   return (
-    <nav className="h-20 bg-black/50 backdrop-blur-md border-b border-white/5 px-8 flex items-center justify-between sticky top-0 z-40">
-      <div className="flex items-center space-x-8 flex-1">
-        <button className="lg:hidden text-soft-white/60">
+    <nav className="h-28 bg-[#030712]/80 premium-blur border-b border-white/[0.08] px-8 md:px-12 lg:px-20 flex items-center justify-between sticky top-0 z-50 transition-all duration-700">
+
+      <div className="flex items-center space-x-8 lg:space-x-12 flex-1">
+        {/* Mobile Hamburger (Visible < 1024px) */}
+        <button 
+          onClick={toggleMobileMenu}
+          className="lg:hidden p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-[#F0F0FB]/20 hover:text-[#F0F0FB] hover:bg-white/5 transition-all active:scale-90"
+        >
           <Menu className="w-6 h-6" />
         </button>
-        
+
+
         {/* Search Bar */}
-        <div className="relative w-full max-w-md group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-soft-white/30 group-focus-within:text-primary-blue transition-colors" />
+        <div className={cn(
+          "relative w-full max-w-2xl group transition-all duration-700",
+          isSearchFocused ? "max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[60] max-lg:p-8 max-lg:bg-[#030712] max-lg:h-28 max-lg:max-w-none" : "max-lg:max-w-[52px]"
+        )}>
+          <div className={cn(
+            "absolute left-6 top-1/2 -translate-y-1/2 flex items-center pointer-events-none transition-all duration-500",
+            isSearchFocused ? "text-primary-blue scale-125" : "text-[#F0F0FB]/10"
+          )}>
+            <Search className="w-4.5 h-4.5 stroke-[3]" />
+          </div>
+
           <input 
             type="text" 
-            placeholder="Search campaigns, users, or transactions..." 
-            className="w-full bg-white/5 border border-white/10 rounded-2xl py-2.5 pl-12 pr-4 text-sm text-soft-white placeholder:text-soft-white/20 focus:outline-none focus:ring-2 focus:ring-primary-blue/30 focus:border-primary-blue/30 transition-all"
+            placeholder="Query operational infrastructure..." 
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            className={cn(
+              "w-full bg-[#111827] border border-white/[0.05] rounded-2xl py-4 pl-16 pr-8 text-xs font-black text-[#F0F0FB] placeholder:text-[#F0F0FB]/10 focus:outline-none focus:ring-2 focus:ring-primary-blue/40 focus:ring-offset-2 focus:ring-offset-[#030712] focus:border-primary-blue/10 focus:bg-[#030712] transition-all duration-700 tracking-wider",
+              isSearchFocused ? "max-lg:h-14 max-lg:bg-[#111827] shadow-premium-hover" : "max-lg:w-0 max-lg:p-0 max-lg:border-0 max-lg:bg-transparent"
+            )}
           />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1 px-2 py-1 rounded-md bg-white/5 border border-white/10">
-            <span className="text-[10px] font-bold text-soft-white/40">⌘</span>
-            <span className="text-[10px] font-bold text-soft-white/40">K</span>
-          </div>
+
+          {!isSearchFocused && (
+            <div className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 items-center space-x-2 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 group-hover:border-white/10 transition-all duration-500">
+              <span className="text-[10px] font-black text-[#F0F0FB]/10">⌘</span>
+              <span className="text-[10px] font-black text-[#F0F0FB]/10">K</span>
+            </div>
+
+          )}
+          {isSearchFocused && (
+            <button 
+              className="lg:hidden absolute right-12 top-1/2 -translate-y-1/2 text-[#F0F0FB]/20 p-4"
+              onClick={() => setIsSearchFocused(false)}
+            >
+              <X className="w-7 h-7" />
+            </button>
+
+          )}
         </div>
       </div>
 
-      <div className="flex items-center space-x-6">
+      <div className="flex items-center space-x-6 md:space-x-10 ml-8">
         {/* Quick Action */}
-        <motion.button 
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="hidden md:flex items-center space-x-2 bg-gradient-to-r from-primary-blue to-primary-blue/80 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-primary-blue/20"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Action</span>
-        </motion.button>
+        <div className="relative group">
+          <NewActionMenu />
+        </div>
 
-        {/* Notifications */}
-        <button className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 text-soft-white/60 hover:text-soft-white hover:bg-white/10 transition-all">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-accent-orange rounded-full border-2 border-black" />
-        </button>
+        <div className="h-12 w-px bg-white/[0.03] hidden sm:block mx-2" />
 
-        {/* Status Indicator */}
-        <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
-          <Zap className="w-3 h-3 text-success fill-success" />
-          <span className="text-[10px] font-bold text-success uppercase tracking-wider">System Live</span>
+
+        <div className="flex items-center space-x-4 md:space-x-6">
+          {/* Notifications */}
+          <NotificationDropdown />
+
+          {/* Status Indicator */}
+          <SystemStatusPopover />
         </div>
       </div>
     </nav>

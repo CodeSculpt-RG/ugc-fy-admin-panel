@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
+      "rounded-[40px] border border-white/[0.08] bg-[#0F172A] shadow-2xl overflow-hidden group transition-all duration-500 hover:shadow-primary-blue/5 hover:border-white/20",
       className
     )}
     {...props}
@@ -23,7 +23,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    className={cn("flex flex-col space-y-2 p-10", className)}
     {...props}
   />
 ))
@@ -35,7 +35,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
+    className={cn("text-2xl font-black text-[#F0F0FB] tracking-tighter uppercase tracking-[0.1em]", className)}
     {...props}
   />
 ))
@@ -47,7 +47,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em] mt-1", className)}
     {...props}
   />
 ))
@@ -57,7 +57,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  <div ref={ref} className={cn("p-10 pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -67,10 +67,11 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
+    className={cn("flex items-center p-10 pt-6 border-t border-white/[0.05] mt-2", className)}
     {...props}
   />
 ))
 CardFooter.displayName = "CardFooter"
+
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

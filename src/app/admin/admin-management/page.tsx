@@ -10,71 +10,83 @@ import {
   ShieldCheck, 
   ShieldAlert, 
   Key, 
-  MoreVertical,
   User as UserIcon,
-  Fingerprint
+  Fingerprint,
+  XCircle
 } from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu";
-import { Button } from "@/app/components/ui/button";
+import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
 import { AdminUser } from "@/app/types";
+import { cn } from "@/app/lib/utils";
+import { useToast } from "@/app/hooks/useToast";
 
-const mockAdmins: AdminUser[] = [
-  { id: 1, name: "Rahul S.", email: "rahul@ugc-fy.in", role: "SUPER_ADMIN", lastActive: "Active Now", status: "Active" },
-  { id: 2, name: "Priya K.", email: "priya@ugc-fy.in", role: "FINANCE_ADMIN", lastActive: "2h ago", status: "Active" },
-  { id: 3, name: "Anjali M.", email: "anjali@ugc-fy.in", role: "MODERATION_ADMIN", lastActive: "1d ago", status: "Active" },
-  { id: 4, name: "Vikram R.", email: "vikram@ugc-fy.in", role: "SUPPORT_ADMIN", lastActive: "5d ago", status: "Suspended" },
+const initialAdmins: AdminUser[] = [
+  { id: "1", name: "Rahul S.", email: "rahul@ugc-fy.in", role: "SUPER_ADMIN", lastActive: "Active Now", status: "Active" },
+  { id: "2", name: "Priya K.", email: "priya@ugc-fy.in", role: "FINANCE_ADMIN", lastActive: "2h ago", status: "Active" },
+  { id: "3", name: "Anjali M.", email: "anjali@ugc-fy.in", role: "MODERATION_ADMIN", lastActive: "1d ago", status: "Active" },
+  { id: "4", name: "Vikram R.", email: "vikram@ugc-fy.in", role: "SUPPORT_ADMIN", lastActive: "5d ago", status: "Suspended" },
 ];
 
 export default function AdminManagementPage() {
+  const { showToast } = useToast();
+  const [admins, setAdmins] = React.useState(initialAdmins);
+
+  const handleAction = (admin: AdminUser, action: string) => {
+    if (action === "reset") {
+      showToast(`Security credentials reset for ${admin.name}`, "info");
+    } else if (action === "edit") {
+      showToast(`Permission vectors updated for ${admin.name}`, "success");
+    } else if (action === "terminate") {
+      showToast(`Administrative access terminated for ${admin.name}`, "error");
+      setAdmins(prev => prev.filter(a => a.id !== admin.id));
+    }
+  };
+
   const columns: ColumnDef<AdminUser>[] = [
     {
       accessorKey: "name",
-      header: "Administrator",
+      header: "Administrator Profile",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-primary-blue/20 flex items-center justify-center border border-primary-blue/30">
-            <UserIcon className="w-4 h-4 text-primary-blue" />
+        <div className="flex items-center space-x-4 py-1">
+          <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm">
+            <UserIcon className="w-5 h-5 text-[#F0F0FB]/20" />
           </div>
           <div>
-            <p className="text-sm font-bold text-soft-white">{row.original.name}</p>
-            <p className="text-[10px] text-soft-white/30 uppercase font-black">{row.original.id}</p>
+            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none">{row.original.name}</p>
+            <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-widest mt-2">ID_REF: {row.original.id}</p>
           </div>
         </div>
+
       ),
     },
     {
       accessorKey: "email",
-      header: "Email Address",
-      cell: ({ row }) => <span className="text-xs text-soft-white/60">{row.original.email}</span>,
+      header: "Network Identifier",
+      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/40 uppercase tracking-widest">{row.original.email}</span>,
+
     },
     {
       accessorKey: "role",
-      header: "Role / Permission",
+      header: "Access Vector",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <ShieldCheck className={cn(
-            "w-3.5 h-3.5",
-            row.original.role === "SUPER_ADMIN" ? "text-primary-blue" : "text-soft-white/20"
+            "w-4 h-4",
+            row.original.role === "SUPER_ADMIN" ? "text-primary-blue" : "text-[#F0F0FB]/10"
           )} />
-          <span className="text-xs font-bold text-soft-white/80">{row.original.role.replace('_', ' ')}</span>
+          <span className="text-[11px] font-black text-[#F0F0FB] uppercase tracking-[0.2em]">{row.original.role.replace('_', ' ')}</span>
         </div>
+
       ),
     },
     {
       accessorKey: "lastActive",
-      header: "Last Activity",
-      cell: ({ row }) => <span className="text-xs text-soft-white/30">{row.original.lastActive}</span>,
+      header: "Temporal Presence",
+      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter uppercase">{row.original.lastActive}</span>,
+
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: "Operational State",
       cell: ({ row }) => (
         <StatusBadge 
           status={row.original.status} 
@@ -84,83 +96,95 @@ export default function AdminManagementPage() {
     },
     {
       id: "actions",
-      cell: () => (
-        <div className="text-right">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0 text-soft-white/40 hover:text-soft-white">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-dark-surface border-white/10 text-soft-white">
-              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-soft-white/30">Admin Controls</DropdownMenuLabel>
-              <DropdownMenuItem className="cursor-pointer focus:bg-white/5">
-                <Key className="mr-2 h-4 w-4" /> Reset Credentials
-              </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer focus:bg-white/5">
-                <ShieldAlert className="mr-2 h-4 w-4" /> Edit Permissions
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/5" />
-              <DropdownMenuItem className="cursor-pointer text-error focus:bg-error/5 focus:text-error">
-                Deactivate Access
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const adminActions: ActionItem[] = [
+          {
+            label: "Reset Security Credentials",
+            icon: Key,
+            onClick: () => handleAction(row.original, "reset"),
+            sectionLabel: "Security Protocols"
+          },
+          {
+            label: "Edit Permission Vectors",
+            icon: ShieldAlert,
+            onClick: () => handleAction(row.original, "edit")
+          },
+          {
+            label: "Terminate Access",
+            icon: XCircle,
+            onClick: () => handleAction(row.original, "terminate"),
+            variant: "orange",
+            isSeparator: true
+          }
+        ];
+
+
+        return <ActionDropdown actions={adminActions} />;
+      },
     },
   ];
 
   return (
     <DashboardShell>
-      <PageHeader 
-        title="Internal Access Control" 
-        subtitle="Manage administrative accounts, define roles, and audit access permissions."
-      >
-        <Button className="bg-primary-blue hover:bg-primary-blue/90 text-white rounded-xl h-12 px-6 font-bold">
-          <UserPlus className="w-4 h-4 mr-2" />
-          Add Administrator
-        </Button>
-      </PageHeader>
+      <div className="section-spacing">
+        <PageHeader 
+          title="Administrative Infrastructure" 
+          subtitle="Enterprise management of internal access vectors, role definitions, and operational security protocols."
+        >
+          <button className="h-12 px-8 rounded-2xl bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95">
+            <UserPlus className="w-4 h-4 mr-3" />
+            Provision Admin
+          </button>
+        </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-         <div className="p-6 rounded-[32px] bg-dark-surface border border-white/5 flex items-start space-x-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary-blue/10 flex items-center justify-center border border-primary-blue/20">
-               <Fingerprint className="w-6 h-6 text-primary-blue" />
-            </div>
-            <div>
-               <h4 className="text-sm font-bold text-soft-white">Security Compliance</h4>
-               <p className="text-xs text-soft-white/40 mt-1">100% of admins have enabled 2FA (Mandatory policy).</p>
-            </div>
-         </div>
-         <div className="p-6 rounded-[32px] bg-dark-surface border border-white/5 flex items-start space-x-4">
-            <div className="w-12 h-12 rounded-2xl bg-accent-orange/10 flex items-center justify-center border border-accent-orange/20">
-               <ShieldCheck className="w-6 h-6 text-accent-orange" />
-            </div>
-            <div>
-               <h4 className="text-sm font-bold text-soft-white">Active Sessions</h4>
-               <p className="text-xs text-soft-white/40 mt-1">4 active administrative sessions across 2 locations.</p>
-            </div>
-         </div>
-         <div className="p-6 rounded-[32px] bg-dark-surface border border-white/5 flex items-start space-x-4">
-            <div className="w-12 h-12 rounded-2xl bg-success/10 flex items-center justify-center border border-success/20">
-               <Key className="w-6 h-6 text-success" />
-            </div>
-            <div>
-               <h4 className="text-sm font-bold text-soft-white">Recent Key Rotation</h4>
-               <p className="text-xs text-soft-white/40 mt-1">Last system-wide key rotation was 14 days ago.</p>
-            </div>
-         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+           <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] flex items-start space-x-5 shadow-premium group hover:border-primary-blue/20 transition-all relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-14 h-14 rounded-[20px] bg-primary-blue/10 flex items-center justify-center border border-primary-blue/15 shadow-sm shadow-primary-blue/5 shrink-0">
+                 <Fingerprint className="w-7 h-7 text-primary-blue" />
+              </div>
+              <div>
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/20 mb-2">Protocol Compliance</h4>
+                 <p className="text-sm font-black text-[#F0F0FB] tracking-tight leading-none">Security Enforcement</p>
+                 <p className="text-[12px] font-medium text-[#F0F0FB]/40 mt-3 leading-relaxed">100% of nodes have 2FA enabled (Mandatory platform directive).</p>
+              </div>
+           </div>
+
+           <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] flex items-start space-x-5 shadow-premium group hover:border-accent-orange/20 transition-all relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent-orange/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-14 h-14 rounded-[20px] bg-accent-orange/10 flex items-center justify-center border border-accent-orange/15 shadow-sm shadow-accent-orange/5 shrink-0">
+                 <ShieldCheck className="w-7 h-7 text-accent-orange" />
+              </div>
+              <div>
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/20 mb-2">Operational Presence</h4>
+                 <p className="text-sm font-black text-[#F0F0FB] tracking-tight leading-none">Active Sessions</p>
+                 <p className="text-[12px] font-medium text-[#F0F0FB]/40 mt-3 leading-relaxed">4 active administrative sessions across 2 geographic vectors.</p>
+              </div>
+           </div>
+
+           <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] flex items-start space-x-5 shadow-premium group hover:border-success-green/20 transition-all relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-success-green/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="w-14 h-14 rounded-[20px] bg-success-green/10 flex items-center justify-center border border-success-green/15 shadow-sm shadow-success-green/5 shrink-0">
+                 <Key className="w-7 h-7 text-success-green" />
+              </div>
+              <div>
+                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/20 mb-2">Credential Lifecycle</h4>
+                 <p className="text-sm font-black text-[#F0F0FB] tracking-tight leading-none">Rotation Protocol</p>
+                 <p className="text-[12px] font-medium text-[#F0F0FB]/40 mt-3 leading-relaxed">Last system-wide credential rotation was 14 days ago.</p>
+              </div>
+           </div>
+
+        </div>
+
+        <DataTable 
+          columns={columns} 
+          data={admins} 
+          searchKey="name"
+          placeholder="Query administrative network by name or identifier..."
+        />
+
       </div>
-
-      <DataTable 
-        columns={columns} 
-        data={mockAdmins} 
-        searchKey="name"
-        placeholder="Search admins..."
-      />
     </DashboardShell>
   );
 }
-
-import { cn } from "@/app/lib/utils";

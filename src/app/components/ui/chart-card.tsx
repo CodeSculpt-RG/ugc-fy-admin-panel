@@ -21,22 +21,29 @@ export function ChartCard({
 }: ChartCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
       className={cn(
-        "bg-dark-surface/50 backdrop-blur-sm border border-white/5 rounded-[32px] p-8",
+        "glass-card rounded-[40px] p-8 md:p-12 shadow-2xl relative overflow-hidden group",
         className
       )}
     >
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h3 className="text-lg font-bold text-soft-white">{title}</h3>
-          {subtitle && <p className="text-xs text-soft-white/40">{subtitle}</p>}
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12 relative z-10">
+        <div className="space-y-1.5">
+          <h3 className="text-3xl font-black text-[#F0F0FB] tracking-tighter">{title}</h3>
+          {subtitle && (
+            <p className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em]">
+              {subtitle}
+            </p>
+          )}
         </div>
-        {headerAction && <div>{headerAction}</div>}
+        {headerAction && <div className="flex-shrink-0">{headerAction}</div>}
       </div>
       
-      <div className="w-full">
+      <div className="w-full relative z-10">
         {children}
       </div>
     </motion.div>
