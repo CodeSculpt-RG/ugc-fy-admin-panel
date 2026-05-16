@@ -54,3 +54,7 @@ export function useSidebar() {
   }
   return context;
 }
+
+export function useSidebarOptional() {
+  return useContext(SidebarContext);
+}

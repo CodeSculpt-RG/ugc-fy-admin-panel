@@ -4,7 +4,7 @@ import React from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { motion } from "framer-motion";
-import { SidebarProvider, useSidebar } from "@/app/context/SidebarContext";
+import { SidebarProvider, useSidebar, useSidebarOptional } from "@/app/context/SidebarContext";
 import { cn } from "@/app/lib/utils";
 
 interface DashboardShellProps {
@@ -48,11 +48,12 @@ function DashboardContent({ children }: DashboardShellProps) {
   );
 }
 
-
-
-
-
 export default function DashboardShell({ children }: DashboardShellProps) {
+  const existingContext = useSidebarOptional();
+  if (existingContext !== undefined) {
+    return <>{children}</>;
+  }
+
   return (
     <SidebarProvider>
       <DashboardContent>{children}</DashboardContent>
