@@ -136,6 +136,11 @@ export async function POST(request: Request) {
     let emailWarning: string | null = null;
     const setupRedirectUrl = `${appUrl}/admin/setup-password`;
 
+    console.log("[ADMIN SETUP EMAIL]", {
+      email: normalizedEmail,
+      redirectTo: setupRedirectUrl,
+    });
+
     const { error: setupEmailError } = await supabaseAdmin.auth.resetPasswordForEmail(
       normalizedEmail,
       {
