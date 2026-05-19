@@ -32,15 +32,32 @@ type AdminProfile = {
   updated_at: string;
 };
 
-function getApiErrorMessage(
+function resolveApiErrorMessage(
   response: Response,
   payload: ApiResponse<unknown> | null
 ): string {
   return (
     payload?.error?.message ||
     payload?.error?.details ||
+    payload?.warning ||
     `Failed to provision admin. HTTP ${response.status}`
   );
+}
+
+function logProvisionError(
+  response: Response,
+  payload: ApiResponse<unknown> | null,
+  message: string
+): void {
+  console.error("[AdminManagementService] Provision Admin Error:", {
+    status: response.status,
+    statusText: response.statusText,
+    source: payload?.source ?? "unknown",
+    code: payload?.error?.code ?? "NO_ERROR_CODE",
+    message,
+    details: payload?.error?.details ?? null,
+    hint: payload?.error?.hint ?? null,
+  });
 }
 
 export const adminManagementService = {
@@ -89,20 +106,14 @@ export const adminManagementService = {
       body: JSON.stringify(payload),
     });
 
-    const resData = (await response.json().catch(() => null)) as ApiResponse<AdminProfile> | null;
+    const resData = (await response
+      .json()
+      .catch((): null => null)) as ApiResponse<AdminProfile> | null;
 
     if (!response.ok || !resData?.success) {
-      const message = getApiErrorMessage(response, resData);
+      const message = resolveApiErrorMessage(response, resData);
 
-      console.error("[AdminManagementService] Provision Admin Error:", {
-        status: response.status,
-        statusText: response.statusText,
-        source: resData?.source ?? "unknown",
-        code: resData?.error?.code ?? "NO_ERROR_CODE",
-        message,
-        details: resData?.error?.details ?? null,
-        hint: resData?.error?.hint ?? null,
-      });
+      logProvisionError(response, resData, message);
 
       throw new Error(message);
     }

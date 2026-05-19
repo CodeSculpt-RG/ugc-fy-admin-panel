@@ -26,23 +26,15 @@ export function normalizeError(error: unknown): NormalizedApiError {
 
   if (typeof error === "object") {
     const record = error as Record<string, unknown>;
-
-    let serialized = "Unable to serialize error object";
-    try {
-      serialized = JSON.stringify(error);
-    } catch {
-      serialized = "Unable to serialize error object";
-    }
+    const serialized = JSON.stringify(error);
 
     return {
       message:
         typeof record.message === "string"
           ? record.message
-          : typeof record.error_description === "string"
-            ? record.error_description
-            : typeof record.error === "string"
-              ? record.error
-              : "Unknown object error",
+          : typeof record.error === "string"
+            ? record.error
+            : "Unknown object error",
       code:
         typeof record.code === "string"
           ? record.code

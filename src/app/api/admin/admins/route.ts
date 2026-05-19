@@ -265,11 +265,11 @@ export async function POST(request: Request) {
 
     // 9. If email fails, return warning clearly
     if (emailResult.error) {
-      const emailError = getEmailErrorDetails(emailResult.error);
+      const emailErrorDetails = getEmailErrorDetails(emailResult.error);
 
       console.error("[POST /api/admin/admins] Credential email failed:", {
         email: normalizedEmail,
-        ...emailError,
+        ...emailErrorDetails,
       });
 
       return NextResponse.json(
@@ -278,9 +278,13 @@ export async function POST(request: Request) {
           source: "email_delivery",
           error: {
             message: "Admin was created, but credential email failed to send.",
-            code: emailError.code,
-            details: emailError.details || emailError.message,
-            hint: "Check RESEND_API_KEY, ADMIN_EMAIL_FROM, sender domain verification, and Resend dashboard logs.",
+            code: "EMAIL_SEND_FAILED",
+            details:
+              emailErrorDetails.details ||
+              emailErrorDetails.message ||
+              "Email provider did not return detailed error information.",
+            hint:
+              "Check RESEND_API_KEY, ADMIN_EMAIL_FROM, verified sender domain, and Resend dashboard logs.",
           },
         },
         { status: 502 }
@@ -319,9 +323,15 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
-    console.error("[POST /api/admin/admins] Failed to provision admin:", normalizedError);
+
+    console.error("[POST /api/admin/admins]", normalizedError);
+
     return NextResponse.json(
-      { success: false, source: "real_supabase_database", error: normalizedError },
+      {
+        success: false,
+        source: "real_supabase_database",
+        error: normalizedError,
+      },
       { status: 500 }
     );
   }
