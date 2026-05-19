@@ -39,19 +39,58 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { id, email, full_name, fullName, role, is_active } = body;
-    const resolvedFullName = full_name || fullName || email.split("@")[0];
-    const resolvedRole = (role || "support_admin").toLowerCase();
+
+    if (!email) {
+      return NextResponse.json(
+        { success: false, source: "real_supabase_database", error: { message: "Email is required." } },
+        { status: 400 }
+      );
+    }
+
+    const resolvedFullName = (full_name || fullName || email.split("@")[0]).trim();
+    const resolvedRole = (role || "support_admin").toLowerCase().trim();
+
+    const allowedRoles = [
+      "owner",
+      "super_admin",
+      "moderation_admin",
+      "finance_admin",
+      "support_admin",
+      "analyst",
+    ];
+
+    if (!allowedRoles.includes(resolvedRole)) {
+      return NextResponse.json(
+        { success: false, source: "real_supabase_database", error: { message: `Invalid access role vector: ${resolvedRole}` } },
+        { status: 400 }
+      );
+    }
 
     // OWNER protection: only owner can create another owner
     if (resolvedRole === "owner" && check.admin.role !== "owner") {
       return NextResponse.json(
-        { success: false, error: "Access Denied: Only platform owners can provision new owners." },
+        { success: false, source: "real_supabase_database", error: { message: "Access Denied: Only active platform owners can provision new owners." } },
         { status: 403 }
       );
     }
 
+    // Check if admin profile already exists
+    const { data: existingAdmin } = await supabaseAdmin
+      .from("admin_profiles")
+      .select("*")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingAdmin) {
+      return NextResponse.json({
+        success: true,
+        source: "real_supabase_database",
+        data: existingAdmin,
+        message: "Admin profile already exists in the system.",
+      });
+    }
+
     let userId = id;
-    let message = "Administrator provisioned successfully.";
 
     if (!userId) {
       try {
@@ -60,10 +99,54 @@ export async function POST(request: Request) {
           email,
           email_confirm: true,
           password: tempPassword,
-          user_metadata: { full_name: resolvedFullName, role: resolvedRole },
+          user_metadata: {
+            full_name: resolvedFullName,
+            role: resolvedRole,
+          },
         });
 
         if (authErr) {
+          // If email already exists in Auth, handle with invite fallback
+          if (authErr.code === "email_exists" || authErr.message?.includes("already been registered")) {
+            console.log("[POST /api/admin/admins] Email already exists in authentication. Falling back to admin_invites.");
+
+            const { data: invite, error: inviteError } = await supabaseAdmin
+              .from("admin_invites")
+              .upsert(
+                {
+                  email,
+                  full_name: resolvedFullName,
+                  role: resolvedRole,
+                  invited_by: check.admin.id,
+                  status: "pending",
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: "email" }
+              )
+              .select("*")
+              .single();
+
+            if (inviteError) {
+              throw inviteError;
+            }
+
+            void writeAuditLog({
+              actorAdminId: check.admin.id,
+              actorRole: check.admin.role,
+              action: "admin.invite",
+              targetType: "admin_invite",
+              targetId: invite.id,
+              metadata: { email, role: resolvedRole, fallback: "email_exists" },
+            });
+
+            return NextResponse.json({
+              success: true,
+              source: "real_supabase_database",
+              data: invite,
+              message: "User already exists in authentication. Admin invite has been created/updated for activation.",
+            });
+          }
+
           throw authErr;
         }
 
@@ -73,40 +156,16 @@ export async function POST(request: Request) {
           throw new Error("User creation returned no ID.");
         }
       } catch (authErr: unknown) {
-        console.warn("[POST /api/admin/admins] Direct auth user creation failed or restricted, creating invite.", authErr);
-        message = "Admin invite created successfully.";
-
-        const { data: inviteData, error: inviteErr } = await supabaseAdmin
-          .from("admin_invites")
-          .insert({
-            email,
-            role: resolvedRole.toUpperCase(),
-            invited_by: check.admin.id,
-            status: "Pending",
-          })
-          .select()
-          .single();
-
-        if (inviteErr) throw inviteErr;
-
-        void writeAuditLog({
-          actorAdminId: check.admin.id,
-          actorRole: check.admin.role,
-          action: `admin.invite`,
-          targetType: "admin_invite",
-          targetId: inviteData.id,
-          metadata: { email, role: resolvedRole },
-        });
-
-        return NextResponse.json({
-          success: true,
-          isInvite: true,
-          message,
-          data: inviteData,
-        });
+        const normalizedAuthErr = normalizeError(authErr);
+        console.error("[POST /api/admin/admins] Direct auth user creation failed:", normalizedAuthErr);
+        return NextResponse.json(
+          { success: false, source: "real_supabase_database", error: normalizedAuthErr },
+          { status: 500 }
+        );
       }
     }
 
+    // Insert into admin_profiles since auth user exists and profile was missing
     const { data: newAdmin, error } = await supabaseAdmin
       .from("admin_profiles")
       .insert({
@@ -126,7 +185,7 @@ export async function POST(request: Request) {
     void writeAuditLog({
       actorAdminId: check.admin.id,
       actorRole: check.admin.role,
-      action: `admin.provision`,
+      action: "admin.provision",
       targetType: "admin_profile",
       targetId: userId,
       metadata: { email, role: resolvedRole },
@@ -135,12 +194,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
-      message,
       data: newAdmin,
+      message: "Administrator successfully provisioned.",
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
-    console.error("[POST /api/admin/admins]", normalizedError);
+    console.error("[POST /api/admin/admins] Failed to provision admin:", normalizedError);
     return NextResponse.json(
       { success: false, source: "real_supabase_database", error: normalizedError },
       { status: 500 }

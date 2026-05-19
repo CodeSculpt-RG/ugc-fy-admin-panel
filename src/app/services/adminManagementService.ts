@@ -14,13 +14,25 @@ export const adminManagementService = {
       },
     });
 
-    const payload = await response.json();
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.error?.message || "Failed to fetch administrators.");
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.success) {
+      const message =
+        payload?.error?.message ||
+        payload?.error?.details ||
+        `Failed to fetch administrators. HTTP ${response.status}`;
+      throw new Error(message);
     }
 
-    return payload.data || [];
+    return (payload.data || []).map((adm: Record<string, unknown>) => ({
+      id: String(adm.id || ""),
+      name: String(adm.full_name || (typeof adm.email === "string" ? adm.email.split("@")[0] : "") || "Unknown"),
+      email: String(adm.email || ""),
+      role: String(adm.role || "analyst").toUpperCase(),
+      lastActive: adm.updated_at ? new Date(String(adm.updated_at)).toLocaleString() : "Never",
+      status: adm.is_active ? "Active" : "Suspended",
+    }));
   },
+
   createAdmin: async (payload: { email: string; full_name: string; role: string; is_active: boolean }) => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) throw new Error(`Auth error: ${sessionError.message}`);
@@ -35,9 +47,23 @@ export const adminManagementService = {
       body: JSON.stringify(payload),
     });
 
-    const resData = await response.json();
-    if (!response.ok || !resData.success) {
-      throw new Error(resData.error || resData.error?.message || "Failed to provision administrator.");
+    const resData = await response.json().catch(() => null);
+
+    if (!response.ok || !resData?.success) {
+      const message =
+        resData?.error?.message ||
+        resData?.error?.details ||
+        `Failed to provision admin. HTTP ${response.status}`;
+
+      console.error("[AdminManagementService] Provision Admin Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        message,
+        code: resData?.error?.code ?? null,
+        details: resData?.error?.details ?? null,
+      });
+
+      throw new Error(message);
     }
 
     return resData;

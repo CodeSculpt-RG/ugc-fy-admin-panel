@@ -10,10 +10,33 @@ import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { adminManagementService } from "@/app/services/adminManagementService";
 import { useToast } from "@/app/hooks/useToast";
 
-interface AddAdminModalProps {
+export interface AddAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+
+  if (typeof error === "object" && error !== null) {
+    const record = error as Record<string, unknown>;
+
+    if (typeof record.message === "string") return record.message;
+    if (typeof record.error === "string") return record.error;
+    if (typeof record.details === "string") return record.details;
+
+    try {
+      const serialized = JSON.stringify(error);
+      return serialized && serialized !== "{}"
+        ? serialized
+        : "Unable to provision admin because an unknown error occurred.";
+    } catch {
+      return "Unable to provision admin because the error could not be read.";
+    }
+  }
+
+  return String(error || "Unable to provision admin.");
 }
 
 export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps) {
@@ -26,7 +49,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
   const [role, setRole] = useState("support_admin");
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
@@ -41,7 +64,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
         setEmail("");
         setRole("support_admin");
         setIsActive(true);
-        setErrorMessage("");
+        setErrorMessage(null);
       }, 0);
       return () => clearTimeout(timer);
     } else {
@@ -56,7 +79,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage("");
+    setErrorMessage(null);
 
     if (!email || !email.includes("@")) {
       setErrorMessage("Please enter a valid network email identifier.");
@@ -80,10 +103,13 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
       showToast(res.message || "Administrator successfully provisioned.", "success");
       onSuccess?.();
       onClose();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to provision administrator.";
-      setErrorMessage(msg);
-      showToast(msg, "error");
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      setErrorMessage(message);
+      showToast(message, "error");
+      console.error("[ProvisionAdminModal] Failed to provision admin:", {
+        message,
+      });
     } finally {
       setLoading(false);
     }
@@ -131,12 +157,12 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                 </div>
               </div>
 
-              {errorMessage && (
+              {errorMessage ? (
                 <div className="p-4 rounded-2xl bg-accent-orange/10 border border-accent-orange/20 flex items-center space-x-3 text-accent-orange text-xs font-semibold">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
-              )}
+              ) : null}
 
               <div className="space-y-4 font-medium text-sm">
                 <div>
