@@ -69,7 +69,18 @@ export default function SetupPasswordPage() {
 
       if (updateError) throw updateError;
 
-      // Sign out to clear temporary recovery session
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user?.id) {
+        await supabase
+          .from("admin_profiles")
+          .update({
+            password_setup_completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id);
+      }
+
       await supabase.auth.signOut();
 
       setSuccess(true);

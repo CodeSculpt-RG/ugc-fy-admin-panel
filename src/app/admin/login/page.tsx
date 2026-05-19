@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
           <div className="mb-6 p-4 rounded-2xl bg-success-green/10 border border-success-green/20 flex items-center space-x-3 shadow-md shadow-success-green/5">
             <CheckCircle className="w-5 h-5 text-success-green shrink-0" />
             <p className="text-[11px] font-black text-success-green uppercase tracking-widest leading-normal">
-              Admin Credentials Activated successfully. Please log in below.
+              Admin password created successfully. You can now login to the UGC FY Admin Panel.
             </p>
           </div>
         )}

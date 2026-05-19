@@ -39,18 +39,22 @@ export async function POST(request: Request) {
     if (!check.ok) return check.response;
 
     const body = await request.json();
-    const { email, full_name, fullName, role, is_active } = body;
+    const { email, full_name, fullName, role } = body;
 
-    if (!email) {
+    if (!email || !full_name && !fullName) {
       return NextResponse.json(
-        { success: false, source: "real_supabase_database", error: { message: "Email is required." } },
+        { success: false, source: "real_supabase_database", error: { message: "Email and Full Name are required." } },
         { status: 400 }
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+      throw new Error("Missing NEXT_PUBLIC_APP_URL for admin password setup redirect.");
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
-    const resolvedFullName = (full_name || fullName || email.split("@")[0]).trim();
+    const normalizedFullName = (full_name || fullName || email.split("@")[0]).trim();
     const resolvedRole = (role || "support_admin").toLowerCase().trim();
 
     const allowedRoles = [
@@ -77,83 +81,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if admin profile already exists
-    const { data: existingAdminProfile } = await supabaseAdmin
-      .from("admin_profiles")
-      .select("*")
-      .eq("email", normalizedEmail)
-      .maybeSingle();
-
-    if (existingAdminProfile) {
-      // 1. Promote/update existing admin profile
-      const { data: updatedAdmin, error: updateError } = await supabaseAdmin
-        .from("admin_profiles")
-        .update({
-          full_name: resolvedFullName,
-          role: resolvedRole,
-          is_active: is_active ?? true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existingAdminProfile.id)
-        .select("*")
-        .single();
-
-      if (updateError) throw updateError;
-
-      // 2. Trigger password reset/setup email
-      const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
-        normalizedEmail,
-        {
-          redirectTo: `${appUrl}/admin/setup-password`,
-        }
-      );
-
-      if (resetError) {
-        console.error("[POST /api/admin/admins] Password setup email failed:", {
-          message: resetError.message,
-        });
-      } else {
-        await supabaseAdmin
-          .from("admin_profiles")
-          .update({
-            password_setup_sent_at: new Date().toISOString(),
-            last_invited_at: new Date().toISOString(),
-          })
-          .eq("id", existingAdminProfile.id);
-      }
-
-      // 3. Create real-time notification
-      await supabaseAdmin.from("admin_notifications").insert({
-        admin_id: existingAdminProfile.id,
-        type: "admin",
-        title: "Administrator Access Granted",
-        message: `You have been provisioned as ${resolvedRole.replace("_", " ")} on UGC FY Admin Panel.`,
-        href: "/admin/dashboard",
-        metadata: {
-          role: resolvedRole,
-          provisioned_by: check.admin.id,
-        },
-      });
-
-      // 4. Write audit log
-      void writeAuditLog({
-        actorAdminId: check.admin.id,
-        actorRole: check.admin.role,
-        action: "admin.provisioned",
-        targetType: "admin",
-        targetId: existingAdminProfile.id,
-        metadata: { email: normalizedEmail, role: resolvedRole, action_type: "update" },
-      });
-
-      return NextResponse.json({
-        success: true,
-        source: "real_supabase_database",
-        data: updatedAdmin,
-        message: "Admin access provisioned successfully. Password setup email has been sent.",
-        warning: resetError ? "Admin was provisioned, but password setup email failed to send." : null,
-      });
-    }
-
     // Find existing auth user by email
     const { data: usersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers();
     if (listUsersError) throw listUsersError;
@@ -162,31 +89,10 @@ export async function POST(request: Request) {
       (user) => user.email?.toLowerCase() === normalizedEmail
     );
 
-    let adminProfile;
     let authUserId;
 
     if (existingAuthUser) {
       authUserId = existingAuthUser.id;
-
-      // Promote existing auth user in admin_profiles
-      const { data: upsertedProfile, error: profileError } = await supabaseAdmin
-        .from("admin_profiles")
-        .upsert(
-          {
-            id: authUserId,
-            email: normalizedEmail,
-            full_name: resolvedFullName,
-            role: resolvedRole,
-            is_active: is_active ?? true,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        )
-        .select("*")
-        .single();
-
-      if (profileError) throw profileError;
-      adminProfile = upsertedProfile;
     } else {
       // Create new Supabase Auth user
       const tempPassword = crypto.randomUUID() + "A1!";
@@ -195,60 +101,62 @@ export async function POST(request: Request) {
         email_confirm: true,
         password: tempPassword,
         user_metadata: {
-          full_name: resolvedFullName,
+          full_name: normalizedFullName,
           admin_role: resolvedRole,
         },
       });
 
       if (createUserError) throw createUserError;
       authUserId = authData.user.id;
-
-      // Insert new entry in admin_profiles
-      const { data: insertedProfile, error: profileError } = await supabaseAdmin
-        .from("admin_profiles")
-        .insert({
-          id: authUserId,
-          email: normalizedEmail,
-          full_name: resolvedFullName,
-          role: resolvedRole,
-          is_active: is_active ?? true,
-          invited_by: check.admin.id,
-        })
-        .select("*")
-        .single();
-
-      if (profileError) throw profileError;
-      adminProfile = insertedProfile;
     }
 
-    // Trigger password reset/setup email
-    const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
+    // Upsert admin profile (Step 3: unified single flow)
+    const now = new Date().toISOString();
+    const { data: adminProfile, error: profileError } = await supabaseAdmin
+      .from("admin_profiles")
+      .upsert(
+        {
+          id: authUserId,
+          email: normalizedEmail,
+          full_name: normalizedFullName,
+          role: resolvedRole,
+          is_active: true,
+          invited_by: check.admin.id,
+          last_invited_at: now,
+          password_setup_sent_at: now,
+          updated_at: now,
+        },
+        { onConflict: "id" }
+      )
+      .select("*")
+      .single();
+
+    if (profileError) throw profileError;
+
+    // Send password setup email
+    const { error: setupEmailError } = await supabaseAdmin.auth.resetPasswordForEmail(
       normalizedEmail,
       {
         redirectTo: `${appUrl}/admin/setup-password`,
       }
     );
 
-    if (resetError) {
+    const warning = setupEmailError
+      ? "Admin was provisioned, but password setup email failed to send."
+      : null;
+
+    if (setupEmailError) {
       console.error("[POST /api/admin/admins] Password setup email failed:", {
-        message: resetError.message,
+        message: setupEmailError.message,
       });
-    } else {
-      await supabaseAdmin
-        .from("admin_profiles")
-        .update({
-          password_setup_sent_at: new Date().toISOString(),
-          last_invited_at: new Date().toISOString(),
-        })
-        .eq("id", authUserId);
     }
 
-    // Create real-time notification
+    // Insert real-time notification
     await supabaseAdmin.from("admin_notifications").insert({
       admin_id: authUserId,
       type: "admin",
       title: "Administrator Access Granted",
-      message: `You have been provisioned as ${resolvedRole.replace("_", " ")} on UGC FY Admin Panel.`,
+      message: `You have been appointed as ${resolvedRole.replaceAll("_", " ")} on UGC FY Admin Panel.`,
       href: "/admin/dashboard",
       metadata: {
         role: resolvedRole,
@@ -263,15 +171,15 @@ export async function POST(request: Request) {
       action: "admin.provisioned",
       targetType: "admin",
       targetId: authUserId,
-      metadata: { email: normalizedEmail, role: resolvedRole, action_type: "create" },
+      metadata: { email: normalizedEmail, role: resolvedRole },
     });
 
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
       data: adminProfile,
-      message: "Admin access provisioned successfully. Password setup email has been sent.",
-      warning: resetError ? "Admin was provisioned, but password setup email failed to send." : null,
+      message: "Admin access provisioned successfully. Password setup link has been sent.",
+      warning,
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
