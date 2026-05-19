@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import tls from "tls";
-import net from "net";
+import { Resend } from "resend";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requirePermission } from "@/lib/api/requirePermission";
 import { normalizeError } from "@/lib/api/normalizeError";
@@ -9,78 +8,6 @@ import { writeAuditLog } from "@/lib/api/writeAuditLog";
 
 function generateTemporaryPassword(): string {
   return `${crypto.randomBytes(12).toString("base64url")}A1!`;
-}
-
-function sendSMTPEmail(options: {
-  host: string;
-  port: number;
-  user?: string;
-  pass?: string;
-  from: string;
-  to: string;
-  subject: string;
-  html: string;
-}): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const isSecure = options.port === 465;
-    const socket = isSecure
-      ? tls.connect({ host: options.host, port: options.port, rejectUnauthorized: false })
-      : net.createConnection({ host: options.host, port: options.port });
-
-    let step = 0;
-    const send = (data: string) => {
-      socket.write(data + "\r\n");
-    };
-
-    socket.on("data", () => {
-      
-      if (step === 0) {
-        send(`EHLO localhost`);
-        step++;
-      } else if (step === 1) {
-        if (options.user && options.pass) {
-          send(`AUTH LOGIN`);
-          step++;
-        } else {
-          send(`MAIL FROM:<${options.from}>`);
-          step = 4;
-        }
-      } else if (step === 2) {
-        send(Buffer.from(options.user || "").toString("base64"));
-        step++;
-      } else if (step === 3) {
-        send(Buffer.from(options.pass || "").toString("base64"));
-        step++;
-      } else if (step === 4) {
-        send(`RCPT TO:<${options.to}>`);
-        step++;
-      } else if (step === 5) {
-        send(`DATA`);
-        step++;
-      } else if (step === 6) {
-        const emailContent = [
-          `From: ${options.from}`,
-          `To: ${options.to}`,
-          `Subject: ${options.subject}`,
-          `Content-Type: text/html; charset=utf-8`,
-          `MIME-Version: 1.0`,
-          ``,
-          options.html,
-          `.`
-        ].join("\r\n");
-        send(emailContent);
-        step++;
-      } else if (step === 7) {
-        send(`QUIT`);
-        socket.end();
-        resolve();
-      }
-    });
-
-    socket.on("error", (err) => {
-      reject(err);
-    });
-  });
 }
 
 export async function GET(request: Request) {
@@ -113,12 +40,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // 2. Require admin_management.write permission
     const check = await requirePermission(request, "admin_management.write");
     if (!check.ok) return check.response;
 
     const body = await request.json();
     const { email, full_name, fullName, role } = body;
 
+    // 1. Validate email, full_name, role
     if (!email || !full_name && !fullName) {
       return NextResponse.json(
         { success: false, source: "real_supabase_database", error: { message: "Email and Full Name are required." } },
@@ -154,10 +83,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate strong temporary password
+    // 3. Generate strong temporary password
     const temporaryPassword = generateTemporaryPassword();
 
-    // Find existing auth user by email
+    // 4. Find auth user by email
     const { data: usersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers();
     if (listUsersError) throw listUsersError;
 
@@ -169,7 +98,7 @@ export async function POST(request: Request) {
 
     if (existingAuthUser) {
       authUserId = existingAuthUser.id;
-      // Update their password and set must_change_password metadata
+      // 5. If user exists, update password and user_metadata
       const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
         password: temporaryPassword,
         user_metadata: {
@@ -180,7 +109,7 @@ export async function POST(request: Request) {
       });
       if (updateAuthError) throw updateAuthError;
     } else {
-      // Create new user with temporary password and metadata
+      // 6. If user does not exist, create user
       const { data: authData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
         email_confirm: true,
@@ -196,7 +125,7 @@ export async function POST(request: Request) {
       authUserId = authData.user.id;
     }
 
-    // Upsert admin profile
+    // 7. Upsert admin_profiles with operational variables
     const now = new Date().toISOString();
     const { data: adminProfile, error: profileError } = await supabaseAdmin
       .from("admin_profiles")
@@ -219,51 +148,59 @@ export async function POST(request: Request) {
 
     if (profileError) throw profileError;
 
-    // Send credentials email
-    let emailWarning: string | null = null;
-    let emailSent = false;
+    // 8. Send email using Resend
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://adminpanel-nine-murex.vercel.app"}/admin/login`;
 
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    const smtpFrom = process.env.SMTP_FROM || `UGC FY <no-reply@adminpanel-nine-murex.vercel.app>`;
+    const emailResult = await resend.emails.send({
+      from: process.env.ADMIN_EMAIL_FROM || "UGC FY Admin <onboarding@resend.dev>",
+      to: normalizedEmail,
+      subject: "UGC FY Admin Access Credentials",
+      html: `
+        <div style="font-family:Arial,sans-serif;background:#f3f5f9;padding:40px;">
+          <div style="max-width:560px;margin:auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #e6e9ef;">
+            <div style="padding:28px 32px;background:linear-gradient(135deg,#040720,#111a45);color:#fff;">
+              <h2 style="margin:0;">UGC FY</h2>
+              <p style="margin:6px 0 0;">Admin Access Credentials</p>
+            </div>
+            <div style="padding:32px;">
+              <h2 style="margin:0 0 12px;color:#111827;">You’ve been assigned admin access</h2>
+              <p style="color:#5f6b7a;line-height:1.6;">Hello <strong>${normalizedFullName}</strong>,</p>
+              <p style="color:#5f6b7a;line-height:1.6;">You have been appointed as an administrator for the UGC FY Admin Panel.</p>
 
-    const emailHtml = `
-      <h2>You’ve been assigned admin access to UGC FY</h2>
-      <p>Hello ${normalizedFullName},</p>
-      <p>You have been appointed as an administrator for the UGC FY Admin Panel.</p>
-      <p><strong>Login URL:</strong> https://adminpanel-nine-murex.vercel.app/admin/login</p>
-      <p><strong>Email:</strong> ${normalizedEmail}</p>
-      <p><strong>Temporary Password:</strong> <code>${temporaryPassword}</code></p>
-      <p><strong>Assigned Role:</strong> ${resolvedRole.replaceAll("_", " ")}</p>
-      <p>You will be required to change this password immediately after your first login.</p>
-    `;
+              <div style="background:#f8fafc;border:1px solid #edf1f6;border-radius:14px;padding:18px;margin:24px 0;">
+                <p><strong>Login URL:</strong> <a href="${loginUrl}">${loginUrl}</a></p>
+                <p><strong>Email:</strong> ${normalizedEmail}</p>
+                <p><strong>Temporary Password:</strong> <code style="font-size:16px;background:#fff3e8;padding:6px 10px;border-radius:8px;">${temporaryPassword}</code></p>
+                <p><strong>Assigned Role:</strong> ${resolvedRole.replaceAll("_", " ")}</p>
+              </div>
 
-    if (smtpHost) {
-      try {
-        await sendSMTPEmail({
-          host: smtpHost,
-          port: smtpPort,
-          user: smtpUser,
-          pass: smtpPass,
-          from: smtpFrom,
-          to: normalizedEmail,
-          subject: "UGC FY Admin Access Credentials",
-          html: emailHtml,
-        });
-        emailSent = true;
-      } catch (err: unknown) {
-        const errorRecord = err as Record<string, unknown>;
-        emailWarning = String(errorRecord.message || "Failed to deliver SMTP mail socket conversation.");
-        console.error("[SMTP EMAIL ERROR]", err);
-      }
-    } else {
-      console.log("[ADMIN CREATED WITH TEMP CREDENTIALS]", {
-        email: normalizedEmail,
-        temporaryPassword,
-        role: resolvedRole,
-      });
+              <p style="color:#b45309;font-weight:700;">For security, you must change this password immediately after first login.</p>
+
+              <a href="${loginUrl}" style="display:inline-block;margin-top:16px;padding:14px 22px;background:#2563eb;color:#fff;text-decoration:none;border-radius:12px;font-weight:700;">
+                Login to Admin Panel
+              </a>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+
+    // 9. If email fails, return warning clearly
+    if (emailResult.error) {
+      return NextResponse.json(
+        {
+          success: false,
+          source: "email_delivery",
+          error: {
+            message: "Admin was created, but credential email failed to send.",
+            code: "EMAIL_SEND_FAILED",
+            details: emailResult.error.message,
+            hint: "Check RESEND_API_KEY, sender domain, and Resend dashboard logs.",
+          },
+        },
+        { status: 500 }
+      );
     }
 
     // Insert real-time notification
@@ -289,24 +226,12 @@ export async function POST(request: Request) {
       metadata: { email: normalizedEmail, role: resolvedRole },
     });
 
+    // 10. If email succeeds, return positive response
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
+      message: "Admin created successfully. Temporary credentials were emailed.",
       data: adminProfile,
-      message: emailWarning
-        ? "Admin was provisioned, but SMTP email delivery failed."
-        : "Admin assigned successfully. Temporary credentials have been generated and emailed.",
-      warning: emailWarning,
-      temp_credentials: {
-        email: normalizedEmail,
-        temporaryPassword,
-        role: resolvedRole,
-      },
-      email: {
-        attempted: true,
-        sent: emailSent,
-        error: emailWarning,
-      },
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
