@@ -11,7 +11,11 @@ if (!supabaseAnonKey) {
   throw new Error("Infrastructure Failure: NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined.");
 }
 
-const resolvedSupabaseUrl: string = supabaseUrl;
-const resolvedSupabaseAnonKey: string = supabaseAnonKey;
-
-export const supabase = createClient(resolvedSupabaseUrl, resolvedSupabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: "ugc-fy-admin-auth",
+  },
+});

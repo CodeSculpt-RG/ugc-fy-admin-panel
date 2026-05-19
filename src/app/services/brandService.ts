@@ -1,64 +1,117 @@
 import { supabase } from "@/lib/supabase/client";
-import { Brand, UserStatus, RiskLevel } from "@/app/types";
 
-type BrandInternal = {
+import { Brand, UserStatus } from "@/app/types";
+
+export type ApprovalStatus =
+  | "pending_review"
+  | "approved"
+  | "rejected"
+  | "blocked";
+
+type ApiError = {
+  message?: string;
+  code?: string;
+  details?: string | null;
+  hint?: string | null;
+};
+
+type BrandApiResponseRow = {
   id: string;
-  email: string;
-  full_name: string | null;
-  approval_status: "pending_review" | "approved" | "rejected" | "blocked";
-  rejection_reason: string | null;
-  updated_at: string;
-  brand_profile: {
-    company_name?: string;
-    industry?: string;
-    [key: string]: unknown;
+  email?: string | null;
+  full_name?: string | null;
+  approval_status?: ApprovalStatus | string;
+  rejection_reason?: string | null;
+  updated_at?: string | null;
+  profile?: {
+    id: string;
+    company_name?: string | null;
+    industry?: string | null;
   } | null;
 };
 
 type BrandsApiResponse = {
   success: boolean;
-  source: string;
-  data?: BrandInternal[];
-  error?: {
-    message: string;
-    code: string;
-  };
+  source?: string;
+  data?: BrandApiResponseRow[];
+  error?: ApiError;
 };
 
-export const brandService = {
-  getBrands: async (): Promise<Brand[]> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Administrative session required.");
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
-    const response = await fetch("/api/admin/brands", {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Admin session missing. Please login again.");
+  }
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session.access_token}`,
+  };
+}
+
+function getApiErrorMessage(
+  response: Response,
+  payload: BrandsApiResponse | null
+): string {
+  return (
+    payload?.error?.message ||
+    payload?.error?.details ||
+    `Failed to load brands. HTTP ${response.status}`
+  );
+}
+
+export const brandService = {
+  async getBrands(status?: string): Promise<Brand[]> {
+    const url = status && status !== "all" ? `/api/admin/brands?approval_status=${status}` : "/api/admin/brands";
+    const response = await fetch(url, {
+      method: "GET",
+      headers: await getAuthHeaders(),
       cache: "no-store",
     });
 
-    const payload = await response.json() as BrandsApiResponse;
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.error?.message || "Protocol failure: unable to fetch brands.");
+    const payload = (await response
+      .json()
+      .catch((): null => null)) as BrandsApiResponse | null;
+
+    if (!response.ok || !payload?.success) {
+      const message = getApiErrorMessage(response, payload);
+
+      console.error("[BrandService] API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        source: payload?.source ?? null,
+        apiError: payload?.error ?? null,
+        message,
+      });
+
+      throw new Error(message);
     }
 
     const data = payload.data ?? [];
     
-    return data.map((item) => {
-      const details = item.brand_profile;
+    return data.map((item: BrandApiResponseRow): Brand => {
+      const brandProfile = item.profile;
+      const approvalStatus = (item.approval_status as ApprovalStatus) || "pending_review";
       
       return {
         id: item.id,
-        name: details?.company_name || item.full_name || "Unknown Entity",
-        email: item.email,
-        company: details?.company_name || "Unregistered Corp",
-        industry: details?.industry || "Commercial",
+        name: brandProfile?.company_name || item.full_name || "Unknown Entity",
+        email: item.email || "",
+        company: brandProfile?.company_name || "Unregistered Corp",
+        industry: brandProfile?.industry || "Commercial",
         activeCampaigns: 0,
-        totalSpend: "$0",
-        status: (item.approval_status === 'pending_review' ? 'Pending' : (item.approval_status === 'approved' ? 'Active' : 'Restricted')) as UserStatus,
-        approvalStatus: item.approval_status,
-        risk: "Low" as RiskLevel,
-        lastActive: item.updated_at,
+        totalSpend: "₹0",
+        status: (approvalStatus === 'approved' ? 'Active' : approvalStatus === 'pending_review' ? 'Pending' : 'Restricted') as UserStatus,
+        approvalStatus: approvalStatus,
+        risk: "Low",
+        lastActive: item.updated_at || new Date().toISOString(),
         disputes: 0,
         rejectionReason: item.rejection_reason || undefined
       };

@@ -7,75 +7,38 @@ import {
   Users, 
   Building2, 
   ShieldCheck, 
-  CreditCard, 
-  TrendingUp, 
-  Clock,
   ShieldAlert,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Database,
+  Activity
 } from "lucide-react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
+import {
   BarChart,
-  Bar
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { StatCard, PageHeader, StatusBadge } from "@/app/components/ui/core";
 import { ChartCard } from "@/app/components/ui/chart-card";
-import { DetailDrawer } from "@/app/components/ui/detail-drawer";
+import { ConfirmModal } from "@/app/components/ui/confirm-modal";
 import { cn } from "@/app/lib/utils";
-
-
-
-
-const revenueData = [
-  { name: "Jan", value: 4000 },
-  { name: "Feb", value: 3000 },
-  { name: "Mar", value: 5000 },
-  { name: "Apr", value: 4500 },
-  { name: "May", value: 6000 },
-  { name: "Jun", value: 5500 },
-  { name: "Jul", value: 7000 },
-];
-
-const activityData = [
-  { name: "Mon", count: 120 },
-  { name: "Tue", count: 150 },
-  { name: "Wed", count: 180 },
-  { name: "Thu", count: 140 },
-  { name: "Fri", count: 210 },
-  { name: "Sat", count: 190 },
-  { name: "Sun", count: 160 },
-];
-
-const recentActivity = [
-  { id: 1, type: "Payout", user: "Alex Rivera", action: "Requested a payout of $1,200", time: "12m ago", status: "pending" },
-  { id: 2, type: "Campaign", user: "Nike Global", action: "Launched 'Summer Vibes' campaign", time: "45m ago", status: "active" },
-  { id: 3, type: "Dispute", user: "Marcus Thorne", action: "Opened a dispute for Campaign #402", time: "2h ago", status: "high" },
-  { id: 4, type: "KYC", user: "Elena Gomez", action: "Submitted verification documents", time: "5h ago", status: "info" },
-];
-
-const moderationSnapshot = [
-  { id: 1, type: "Video", title: "Unboxing SuperPhone 15", creator: "Alex Rivera", risk: "Medium" },
-  { id: 2, type: "Comment", title: "Response to Brand", creator: "Sarah Chen", risk: "High" },
-  { id: 3, type: "Bio", title: "Creator Profile Update", creator: "Marcus Thorne", risk: "Low" },
-];
-
-const paymentAlerts = [
-  { id: 1, type: "Escrow Timeout", amount: "$500", brand: "Urban Threads", time: "1h ago" },
-  { id: 2, type: "Failed Payout", amount: "$1,200", creator: "Alex Rivera", time: "3h ago" },
-  { id: 3, type: "Large Transaction", amount: "$5,000", brand: "GymShark", time: "5h ago" },
-];
-
 import { useToast } from "@/app/hooks/useToast";
 import { dashboardService, DashboardStats } from "@/app/services/dashboardService";
+import { approvalService } from "@/app/services/approvalService";
 import { LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import { normalizeError } from "@/lib/api/normalizeError";
 
 interface DynamicStat {
   label: string;
@@ -84,94 +47,239 @@ interface DynamicStat {
   up: boolean;
   icon: LucideIcon;
   color: "blue" | "orange" | "error" | "success";
+  action: () => void;
 }
-
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("24h");
-  const [selectedStat, setSelectedStat] = useState<DynamicStat | null>(null);
   const [statsData, setStatsData] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isError, setIsError] = useState(false);
-  const { showToast } = useToast();
+  const [selectedRejectId, setSelectedRejectId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
+  const { showToast } = useToast();
   const router = useRouter();
 
-  const loadStats = useCallback(async () => {
-    setIsLoading(true);
+  const loadStats = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     setIsError(false);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/admin/login");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        router.push("/admin/login", { scroll: false });
         return;
       }
 
       const data = await dashboardService.getStats();
       setStatsData(data);
-    } catch (err) {
-      console.error("[DashboardPage] Failed to load stats:", err);
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err);
+      console.error("[DashboardPage] Failed to load stats:", normalizedError);
       setIsError(true);
-      showToast("Failed to synchronize operational intelligence.", "error");
+      if (!silent) {
+        showToast(normalizedError.message, "error");
+      }
     } finally {
       setIsLoading(false);
     }
   }, [router, showToast]);
 
   useEffect(() => {
-    const synchronize = async () => {
-      await loadStats();
+    // eslint-disable-next-line
+    loadStats();
+
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+        },
+        () => {
+          loadStats(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    synchronize();
   }, [loadStats]);
 
-  const handleApprove = (id: number) => {
-    showToast(`Moderation asset ${id} approved`, "success");
+  const handleSynchronize = async () => {
+    setIsSyncing(true);
+    showToast("Synchronizing with live database...", "info");
+    await loadStats(true);
+    setIsSyncing(false);
+    showToast("Operational dashboard synchronized successfully.", "success");
   };
 
-  const handleReject = (id: number) => {
-    showToast(`Moderation asset ${id} rejected`, "warning");
+  const handleApproveEntity = async (id: string) => {
+    setActionLoading(true);
+    try {
+      await approvalService.updateApprovalStatus(id, "approved");
+      showToast("Entity approved successfully. Profile activated.", "success");
+      await loadStats(true);
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err);
+      showToast(`Protocol failure: ${normalizedError.message}`, "error");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleExport = () => {
-    showToast("Intelligence export authorized", "success");
+  const handleRejectConfirm = async (reason?: string) => {
+    if (!selectedRejectId) return;
+    setActionLoading(true);
+    try {
+      await approvalService.updateApprovalStatus(selectedRejectId, "rejected", reason);
+      showToast("Entity rejected. Access restricted.", "warning");
+      setSelectedRejectId(null);
+      await loadStats(true);
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err);
+      showToast(`Protocol failure: ${normalizedError.message}`, "error");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const dynamicStats: DynamicStat[] = [
-    { label: "Total Creators", value: statsData?.creators?.toLocaleString() || "0", trend: "+12%", up: true, icon: Users, color: "blue" },
-    { label: "Total Brands", value: statsData?.brands?.toLocaleString() || "0", trend: "+5%", up: true, icon: Building2, color: "blue" },
-    { label: "Pending Approvals", value: statsData?.pending?.toLocaleString() || "0", trend: "NEW", up: true, icon: ShieldCheck, color: "orange" },
-    { label: "Approved Users", value: statsData?.approved?.toLocaleString() || "0", trend: "+18%", up: true, icon: ShieldCheck, color: "blue" },
-    { label: "Rejected Entities", value: statsData?.rejected?.toLocaleString() || "0", trend: "-2%", up: false, icon: AlertCircle, color: "orange" },
-    { label: "Restricted Access", value: statsData?.blocked?.toLocaleString() || "0", trend: "ALERT", up: false, icon: ShieldAlert, color: "orange" },
+    { 
+      label: "Total Users", 
+      value: statsData?.totalUsers?.toLocaleString() || "0", 
+      trend: "LIVE", 
+      up: true, 
+      icon: Users, 
+      color: "blue",
+      action: () => router.push("/admin/users", { scroll: false })
+    },
+    { 
+      label: "Total Creators", 
+      value: statsData?.totalCreators?.toLocaleString() || "0", 
+      trend: "LIVE", 
+      up: true, 
+      icon: Users, 
+      color: "blue",
+      action: () => router.push("/admin/creators", { scroll: false })
+    },
+    { 
+      label: "Total Brands", 
+      value: statsData?.totalBrands?.toLocaleString() || "0", 
+      trend: "LIVE", 
+      up: true, 
+      icon: Building2, 
+      color: "blue",
+      action: () => router.push("/admin/brands", { scroll: false })
+    },
+    { 
+      label: "Pending Approvals", 
+      value: statsData?.pendingUsers?.toLocaleString() || "0", 
+      trend: "QUEUE", 
+      up: true, 
+      icon: ShieldCheck, 
+      color: "orange",
+      action: () => router.push("/admin/users?status=pending_review", { scroll: false })
+    },
+    { 
+      label: "Approved Entities", 
+      value: statsData?.approvedUsers?.toLocaleString() || "0", 
+      trend: "SECURE", 
+      up: true, 
+      icon: ShieldCheck, 
+      color: "success",
+      action: () => router.push("/admin/users?status=approved", { scroll: false })
+    },
+    { 
+      label: "Rejected / Blocked", 
+      value: ((statsData?.rejectedUsers ?? 0) + (statsData?.blockedUsers ?? 0)).toLocaleString(), 
+      trend: "RESTRICTED", 
+      up: false, 
+      icon: ShieldAlert, 
+      color: "error",
+      action: () => router.push("/admin/users?status=rejected", { scroll: false })
+    },
   ];
 
+  const roleData = [
+    { name: "Creators", count: statsData?.roleBreakdown?.creators || 0, color: "#2563EB" },
+    { name: "Brands", count: statsData?.roleBreakdown?.brands || 0, color: "#10B981" },
+    { name: "Admins", count: statsData?.roleBreakdown?.admins || 0, color: "#F97316" },
+  ];
+
+  const approvalData = [
+    { name: "Approved", count: statsData?.approvalBreakdown?.approved || 0, color: "#10B981" },
+    { name: "Pending", count: statsData?.approvalBreakdown?.pending || 0, color: "#F97316" },
+    { name: "Rejected", count: statsData?.approvalBreakdown?.rejected || 0, color: "#EF4444" },
+    { name: "Blocked", count: statsData?.approvalBreakdown?.blocked || 0, color: "#9CA3AF" },
+  ];
 
   return (
     <DashboardShell>
       <div className="section-spacing">
         <PageHeader 
           title="Operational Intel" 
-          subtitle="Enterprise-grade ecosystem monitoring and infrastructure analytics."
+          subtitle="Real-time production infrastructure monitoring and ecosystem analytics."
         >
-          <div className="flex p-1.5 bg-[#111827] border border-white/[0.08] rounded-[22px] overflow-hidden shadow-inner">
-            {['24h', '7d', '30d', '12m'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  tab === activeTab 
-                    ? "bg-primary-blue text-white shadow-lg shadow-primary-blue/20" 
-                    : "text-[#F0F0FB]/20 hover:text-[#F0F0FB]/40"
-                )}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className="flex items-center space-x-4">
+            <div className="flex p-1.5 bg-[#111827] border border-white/[0.08] rounded-[22px] overflow-hidden shadow-inner">
+              {['24h', '7d', '30d', '12m'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={cn(
+                    "px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    tab === activeTab 
+                      ? "bg-primary-blue text-white shadow-lg shadow-primary-blue/20" 
+                      : "text-[#F0F0FB]/20 hover:text-[#F0F0FB]/40"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleSynchronize}
+              disabled={isSyncing}
+              className="flex items-center space-x-2 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white font-black text-[11px] uppercase tracking-widest hover:bg-primary-blue/90 shadow-lg shadow-primary-blue/20 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-4 h-4", isSyncing ? "animate-spin" : "")} />
+              <span className="hidden sm:inline">{isSyncing ? "Synchronizing..." : "Synchronize"}</span>
+            </button>
           </div>
         </PageHeader>
 
+        {/* System Health Banner */}
+        {statsData && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success-green opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-success-green" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-[#F0F0FB] uppercase tracking-widest">Database Infrastructure Connected</p>
+                <p className="text-[10px] text-[#F0F0FB]/40 mt-0.5">Last synchronized: {new Date(statsData.systemHealth.lastSyncedAt).toLocaleTimeString()}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-6 text-[11px] font-black uppercase tracking-widest">
+              <div className="flex items-center space-x-2">
+                <Database className="w-4 h-4 text-primary-blue" />
+                <span className="text-[#F0F0FB]/60">Supabase: <span className="text-success-green">Connected</span></span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-success-green" />
+                <span className="text-[#F0F0FB]/60">API Status: <span className="text-success-green">Healthy</span></span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -204,7 +312,7 @@ export default function DashboardPage() {
                   {...stat}
                   delay={i * 0.1}
                   color={stat.color}
-                  onClick={() => setSelectedStat(stat)}
+                  onClick={stat.action}
                 />
               ))}
             </div>
@@ -212,291 +320,215 @@ export default function DashboardPage() {
         )}
 
         {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <ChartCard 
-            title="Revenue Velocity" 
-            subtitle="Real-time monetization vectors"
-            headerAction={
-              <div className="text-right">
-                <p className="text-4xl font-black text-[#F0F0FB] tracking-tighter">$248,500.00</p>
-                <div className="flex items-center justify-end space-x-2 mt-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-success-green shadow-sm animate-pulse" />
-                  <p className="text-[10px] text-success-green font-black uppercase tracking-widest">+12.4% VELOCITY</p>
-                </div>
+        {statsData && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-10">
+            <ChartCard 
+              title="Ecosystem Role Split" 
+              subtitle="Distribution of registered entities"
+            >
+              <div className="h-[350px] w-full mt-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={roleData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={80}
+                      outerRadius={120}
+                      paddingAngle={5}
+                      dataKey="count"
+                      label={({ name, percent }: { name?: string; percent?: number }) => typeof percent === 'number' && percent > 0 ? `${name} (${(percent * 100).toFixed(0)}%)` : ''}
+                    >
+                      {roleData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#111827', 
+                        border: '1px solid rgba(255,255,255,0.1)', 
+                        borderRadius: '24px',
+                        padding: '16px',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
+                      }} 
+                      itemStyle={{ color: '#F0F0FB' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            }
-          >
+            </ChartCard>
 
-
-
-            <div className="h-[350px] w-full mt-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563EB" stopOpacity={0.15}/>
-                      <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} 
-                    dy={15}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} 
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#111827', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      borderRadius: '24px',
-                      padding: '16px',
-                      boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
-                    }} 
-                    itemStyle={{ color: '#F0F0FB' }}
-                  />
-                  <Area type="monotone" dataKey="value" stroke="#2563EB" strokeWidth={4} fillOpacity={1} fill="url(#colorValue)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </ChartCard>
-
-
-          <ChartCard title="Ecosystem Activity" subtitle="Verified interaction density">
-            <div className="h-[350px] w-full mt-8">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={activityData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} 
-                    dy={15}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} 
-                  />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }} 
-                    contentStyle={{ 
-                      backgroundColor: '#111827', 
-                      border: '1px solid rgba(255,255,255,0.1)', 
-                      borderRadius: '24px',
-                      padding: '16px',
-                    }} 
-                    itemStyle={{ color: '#F0F0FB' }}
-                  />
-                  <Bar dataKey="count" fill="#2563EB" radius={[10, 10, 0, 0]} barSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-          </ChartCard>
-        </div>
+            <ChartCard 
+              title="Approval Breakdown" 
+              subtitle="Moderation status across all accounts"
+            >
+              <div className="h-[350px] w-full mt-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={approvalData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} 
+                      dy={15}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} 
+                    />
+                    <Tooltip 
+                      cursor={{ fill: 'rgba(255,255,255,0.03)' }} 
+                      contentStyle={{ 
+                        backgroundColor: '#111827', 
+                        border: '1px solid rgba(255,255,255,0.1)', 
+                        borderRadius: '24px',
+                        padding: '16px',
+                      }} 
+                      itemStyle={{ color: '#F0F0FB' }}
+                    />
+                    <Bar dataKey="count" radius={[10, 10, 0, 0]} barSize={32}>
+                      {approvalData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          </div>
+        )}
 
         {/* Lower Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-          {/* Activity Feed */}
-          <div className="xl:col-span-2 bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium relative overflow-hidden group interactive-card">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/10 to-transparent" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
-              <div className="space-y-1">
-                <h3 className="text-2xl font-black text-[#F0F0FB] tracking-tighter">Infrastructure Ledger</h3>
-                <p className="stat-label">Verified activity stream</p>
-              </div>
-              <button className="px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[10px] font-black text-[#F0F0FB]/40 hover:bg-white hover:text-black transition-all flex items-center space-x-3 uppercase tracking-widest group/btn shadow-sm">
-                <span>View Full Audit</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center space-x-6 p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.05] hover:border-primary-blue/20 hover:bg-white/[0.04] transition-all duration-500 group/item shadow-sm relative overflow-hidden">
-                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex-shrink-0 group-hover/item:bg-primary-blue/10 transition-colors">
-                    <Clock className="w-5 h-5 text-[#F0F0FB]/15 group-hover/item:text-primary-blue transition-colors" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-base font-black text-[#F0F0FB] tracking-tight">{activity.user}</p>
-                      <span className="text-[10px] font-black text-[#F0F0FB]/10 uppercase tracking-widest">{activity.time}</span>
-                    </div>
-                    <p className="text-sm text-[#F0F0FB]/40 mt-1 font-medium tracking-tight leading-relaxed">{activity.action}</p>
-                  </div>
-                  <StatusBadge 
-                    status={activity.type} 
-                    variant={activity.status === "high" ? "error" : activity.status === "active" ? "success" : activity.status === "info" ? "info" : "warning"} 
-                    className="hidden lg:inline-flex"
-                  />
-                </div>
-              ))}
-            </div>
-
-          </div>
-
-          <div className="space-y-10">
-            {/* Policy Enforcement Section */}
-            <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium interactive-card relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-error/20 to-transparent" />
+        {statsData && (
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 mt-10">
+            {/* Activity Feed / Recent Signups */}
+            <div className="xl:col-span-2 bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium relative overflow-hidden group interactive-card">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/10 to-transparent" />
               
-              <div className="flex items-center justify-between mb-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black text-[#F0F0FB] tracking-tighter">Policy Guard</h3>
-                  <p className="stat-label">High-risk moderation</p>
+                  <h3 className="text-2xl font-black text-[#F0F0FB] tracking-tighter">Recent Registrations</h3>
+                  <p className="stat-label">Live entity onboarding stream</p>
                 </div>
-                <div className="p-3.5 rounded-xl bg-error/10 border border-error/20 shadow-lg shadow-error/10">
-                  <ShieldAlert className="w-5 h-5 text-error stroke-[2.5]" />
-                </div>
-              </div>
-
-              <div className="space-y-8">
-                {moderationSnapshot.map((item) => (
-                  <div key={item.id} className="space-y-5 group/mod p-4 rounded-2xl hover:bg-white/[0.02] transition-colors border border-transparent hover:border-white/5 shadow-inner">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-base font-black text-[#F0F0FB] truncate tracking-tight">{item.title}</p>
-                        <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-widest mt-1">{item.creator}</p>
-                      </div>
-                      <StatusBadge 
-                        status={item.risk} 
-                        variant={item.risk === "High" ? "error" : item.risk === "Medium" ? "warning" : "success"} 
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <button 
-                        onClick={() => handleApprove(item.id)}
-                        className="py-3 rounded-2xl bg-primary-blue text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-lg shadow-primary-blue/20 active:scale-95"
-                      >
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => handleReject(item.id)}
-                        className="py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-[#F0F0FB]/40 text-[10px] font-black uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm"
-                      >
-                        Reject
-                      </button>
-
-                    </div>
-
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Financial Alerts */}
-            <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium interactive-card relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
-              
-              <div className="flex items-center justify-between mb-10">
-                <div className="space-y-1">
-                  <h3 className="text-xl font-black text-[#F0F0FB] tracking-tighter">Treasury Alerts</h3>
-                  <p className="stat-label">Liquidity monitoring</p>
-                </div>
-                <div className="p-3.5 rounded-xl bg-primary-blue/10 border border-primary-blue/20 shadow-lg shadow-primary-blue/10">
-                  <CreditCard className="w-5 h-5 text-primary-blue stroke-[2.5]" />
-                </div>
+                <button 
+                  onClick={() => router.push("/admin/users", { scroll: false })}
+                  className="px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[10px] font-black text-[#F0F0FB]/40 hover:bg-white hover:text-black transition-all flex items-center space-x-3 uppercase tracking-widest group/btn shadow-sm"
+                >
+                  <span>View All Users</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                </button>
               </div>
 
               <div className="space-y-4">
-                {paymentAlerts.map((alert) => (
-                  <div key={alert.id} className="flex items-center justify-between p-5 rounded-[24px] bg-white/[0.02] border border-white/[0.05] group/alert hover:border-primary-blue/20 hover:bg-white/[0.04] transition-all duration-500 cursor-pointer shadow-sm relative overflow-hidden">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-1.5 h-1.5 rounded-full bg-accent-orange animate-pulse" />
-                      <div>
-                        <p className="text-sm font-black text-[#F0F0FB] tracking-tight">{alert.type}</p>
-                        <p className="text-[9px] text-[#F0F0FB]/20 uppercase font-black tracking-widest mt-1">{alert.brand || alert.creator}</p>
+                {statsData.recentUsers.length === 0 ? (
+                  <p className="text-center py-12 text-[#F0F0FB]/20 text-xs font-black uppercase tracking-widest">No recent entities found in ledger.</p>
+                ) : (
+                  statsData.recentUsers.map((user) => (
+                    <div 
+                      key={user.id} 
+                      onClick={() => router.push("/admin/users", { scroll: false })}
+                      className="flex items-center space-x-6 p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.05] hover:border-primary-blue/20 hover:bg-white/[0.04] transition-all duration-500 group/item shadow-sm cursor-pointer relative overflow-hidden"
+                    >
+                      <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex-shrink-0 group-hover/item:bg-primary-blue/10 transition-colors">
+                        <Clock className="w-5 h-5 text-[#F0F0FB]/15 group-hover/item:text-primary-blue transition-colors" />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-base font-black text-[#F0F0FB] tracking-tight">{user.email || user.id}</p>
+                          <span className="text-[10px] font-black text-[#F0F0FB]/20 uppercase tracking-widest">
+                            {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-3 mt-2">
+                          <span className="text-[10px] font-black text-primary-blue uppercase tracking-wider">{user.role}</span>
+                          <span className="text-[#F0F0FB]/20">•</span>
+                          <span className="text-xs text-[#F0F0FB]/40 font-semibold">{user.profile_completed ? "Profile Complete" : "Profile Incomplete"}</span>
+                        </div>
+                      </div>
+                      <StatusBadge 
+                        status={user.approval_status} 
+                        variant={user.approval_status === "approved" ? "success" : user.approval_status === "pending_review" ? "warning" : "error"} 
+                        className="hidden lg:inline-flex"
+                      />
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-[#F0F0FB] tracking-tight">{alert.amount}</p>
-                      <p className="text-[10px] text-[#F0F0FB]/10 uppercase font-black mt-1 tracking-tighter">{alert.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
+            </div>
 
+            <div className="space-y-10">
+              {/* Policy Guard / Pending Queue */}
+              <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium interactive-card relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-warning/20 to-transparent" />
+                
+                <div className="flex items-center justify-between mb-10">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-black text-[#F0F0FB] tracking-tighter">Approval Queue</h3>
+                    <p className="stat-label">Pending verification</p>
+                  </div>
+                  <button 
+                    onClick={() => router.push("/admin/users?status=pending_review", { scroll: false })}
+                    className="p-3.5 rounded-xl bg-accent-orange/10 border border-accent-orange/20 shadow-lg shadow-accent-orange/10 hover:bg-accent-orange/20 transition-all"
+                  >
+                    <ArrowRight className="w-5 h-5 text-accent-orange stroke-[2.5]" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {statsData.pendingApprovalQueue.length === 0 ? (
+                    <p className="text-center py-10 text-[#F0F0FB]/20 text-xs font-black uppercase tracking-widest">Approval queue is empty.</p>
+                  ) : (
+                    statsData.pendingApprovalQueue.map((item) => (
+                      <div key={item.id} className="space-y-4 group/mod p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/15 transition-all shadow-sm">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-black text-[#F0F0FB] truncate tracking-tight">{item.email || item.id}</p>
+                            <p className="text-[10px] text-primary-blue uppercase font-black tracking-widest mt-1">{item.role}</p>
+                          </div>
+                          <StatusBadge status="Pending" variant="warning" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <button 
+                            onClick={() => handleApproveEntity(item.id)}
+                            disabled={actionLoading}
+                            className="py-3 rounded-2xl bg-success-green text-white text-[10px] font-black uppercase tracking-widest hover:bg-success-green/90 transition-all shadow-lg shadow-success-green/20 active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Approve</span>
+                          </button>
+                          <button 
+                            onClick={() => setSelectedRejectId(item.id)}
+                            disabled={actionLoading}
+                            className="py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-[#F0F0FB]/60 text-[10px] font-black uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm disabled:opacity-50 flex items-center justify-center space-x-1"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Detail Drawer */}
-      <DetailDrawer
-        isOpen={!!selectedStat}
-        onClose={() => setSelectedStat(null)}
-        title={selectedStat?.label || ""}
-        subtitle={`System-wide infrastructure analysis for ${selectedStat?.label}`}
-      >
-        <div className="space-y-12">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] shadow-sm">
-              <p className="stat-label mb-2">Cycle Aggregate</p>
-              <p className="text-4xl font-black text-[#F0F0FB] tracking-tighter">{selectedStat?.value}</p>
-            </div>
-            <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] shadow-sm">
-              <p className="stat-label mb-2">Cycle Velocity</p>
-              <p className={cn(
-                "text-4xl font-black tracking-tighter",
-                selectedStat?.up ? 'text-primary-blue' : 'text-error'
-              )}>{selectedStat?.trend}</p>
-            </div>
-          </div>
-
-
-          <div className="space-y-8">
-            <h4 className="stat-label">Comparative Benchmarks</h4>
-            <div className="space-y-4">
-              {[
-                { label: "Prior Quarter", value: "10,240", change: "+8%" },
-                { label: "Prior Semester", value: "28,500", change: "+15%" },
-                { label: "Historical Baseline", value: "85,000", change: "+42%" },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.08] shadow-sm hover:border-primary-blue/20 transition-all cursor-pointer group">
-                  <span className="text-[11px] text-[#F0F0FB]/30 font-black uppercase tracking-widest">{item.label}</span>
-                  <div className="flex items-center space-x-5">
-                    <span className="text-base font-black text-[#F0F0FB] tracking-tighter">{item.value}</span>
-                    <span className="text-[10px] font-black text-primary-blue px-3 py-1.5 rounded-xl bg-primary-blue/10 border border-primary-blue/15 shadow-sm">{item.change}</span>
-                  </div>
-                </div>
-              ))}
-
-            </div>
-          </div>
-
-          <div className="p-10 rounded-[40px] bg-primary-blue/5 border border-primary-blue/15 relative overflow-hidden group shadow-sm">
-            <div className="absolute top-0 right-0 p-8 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity duration-700">
-              <TrendingUp className="w-32 h-32 text-primary-blue" />
-            </div>
-            <div className="relative z-10">
-              <h4 className="text-[10px] font-black text-primary-blue uppercase tracking-[0.4em] mb-4">Strategic Forecasting</h4>
-              <p className="text-[13px] text-[#F0F0FB]/40 leading-[1.8] font-medium">
-                Based on current velocity vectors, {selectedStat?.label.toLowerCase()} are forecasted to expand by an additional <span className="text-primary-blue font-black tracking-tight">15.4%</span> within the current operational cycle.
-              </p>
-            </div>
-
-          </div>
-
-          <button 
-            onClick={handleExport}
-            className="w-full py-6 rounded-[32px] bg-primary-blue text-white font-black text-[11px] uppercase tracking-[0.3em] hover:bg-primary-blue/90 shadow-2xl shadow-primary-blue/30 transition-all active:scale-95"
-          >
-            Authorize Intelligence Export
-          </button>
-
-
-        </div>
-      </DetailDrawer>
+      <ConfirmModal
+        isOpen={!!selectedRejectId}
+        onClose={() => setSelectedRejectId(null)}
+        onConfirm={(reason) => handleRejectConfirm(reason)}
+        title="Restrict Entity Access"
+        description="Are you sure you want to reject this profile? They will be unable to access platform resources."
+        variant="danger"
+        confirmText="Confirm Rejection"
+        showInput={true}
+        loading={actionLoading}
+      />
     </DashboardShell>
   );
 }

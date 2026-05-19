@@ -1,95 +1,78 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeError } from "@/lib/api/normalizeError";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
+import { requirePermission } from "@/lib/api/requirePermission";
+import { writeAuditLog } from "@/lib/api/writeAuditLog";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await verifyAdmin(request);
-    if (!auth.success) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: auth.status }
-      );
-    }
-
     const { id } = await params;
     const body = await request.json();
-    const { status, reason } = body;
+    const { status, reason } = body as { status: string; reason?: string };
 
-    if (!['approved', 'rejected', 'blocked', 'pending_review'].includes(status)) {
+    // Determine required permission based on action
+    const requiredPermission =
+      status === "blocked" ? "users.block" : "users.approve";
+
+    const check = await requirePermission(request, requiredPermission);
+    if (!check.ok) return check.response;
+
+    if (!["approved", "rejected", "blocked", "pending_review"].includes(status)) {
       return NextResponse.json(
         { success: false, error: "Invalid approval status protocol." },
         { status: 400 }
       );
     }
 
-    // Get user role
-    const { data: user, error: userError } = await supabaseAdmin
-      .from("users")
-      .select("role")
+    const updatePayload: Record<string, unknown> = {
+      approval_status: status,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (status === "approved") {
+      updatePayload.approved_at = new Date().toISOString();
+      updatePayload.approved_by = check.admin.id;
+      updatePayload.rejection_reason = null;
+    } else if (status === "rejected") {
+      updatePayload.rejection_reason = reason ?? null;
+      updatePayload.approved_at = null;
+    } else if (status === "blocked") {
+      updatePayload.rejection_reason = reason ?? "Blocked by admin";
+      updatePayload.approved_at = null;
+    }
+
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
+      .from("profiles")
+      .update(updatePayload)
       .eq("id", id)
+      .select()
       .single();
 
-    if (userError || !user) throw userError || new Error("User not found");
+    if (updateError) throw updateError;
 
-    const isBlocked = status === 'blocked';
-    
-    // Update active status
-    const { error: usersUpdateError } = await supabaseAdmin
-      .from("users")
-      .update({ is_active: !isBlocked })
-      .eq("id", id);
-      
-    if (usersUpdateError) throw usersUpdateError;
-
-    // Determine KYC status
-    let kycStatus = 'pending';
-    if (status === 'approved') kycStatus = 'approved';
-    else if (status === 'rejected') kycStatus = 'rejected';
-    
-    let profileData: Record<string, unknown> = {};
-
-    if (!isBlocked && ['approved', 'rejected', 'pending_review'].includes(status)) {
-      const updateData: Record<string, unknown> = {
-        kyc_status: kycStatus,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (status === 'approved') {
-        updateData.kyc_verified_at = new Date().toISOString();
-      }
-
-      const table = user.role === 'creator' ? 'creator_profiles' : 'brand_profiles';
-      
-      const { data, error } = await supabaseAdmin
-        .from(table)
-        .update(updateData)
-        .eq("user_id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      profileData = data;
-    }
+    // Audit log
+    void writeAuditLog({
+      actorAdminId: check.admin.id,
+      actorRole: check.admin.role,
+      action: `user.${status}`,
+      targetType: "user",
+      targetId: id,
+      metadata: { reason, newStatus: status },
+    });
 
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
-      data: profileData,
+      data: updatedUser,
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
     console.error("[PATCH /api/admin/users/[id]/approval]", normalizedError);
     return NextResponse.json(
-      {
-        success: false,
-        source: "real_supabase_database",
-        error: normalizedError,
-      },
+      { success: false, source: "real_supabase_database", error: normalizedError },
       { status: 500 }
     );
   }

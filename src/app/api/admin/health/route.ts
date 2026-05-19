@@ -1,58 +1,83 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeError } from "@/lib/api/normalizeError";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
+import { requirePermission } from "@/lib/api/requirePermission";
 
-async function getCount(table: string) {
-  const { count, error } = await supabaseAdmin
-    .from(table)
-    .select("*", { count: "exact", head: true });
+async function safeCountTable(tableName: string) {
+  try {
+    const { count, error } = await supabaseAdmin
+      .from(tableName)
+      .select("*", { count: "exact", head: true });
 
-  if (error) throw error;
+    if (error) {
+      return {
+        table: tableName,
+        exists: false,
+        count: 0,
+        error: {
+          message: error.message,
+          code: error.code ?? "UNKNOWN",
+          details: error.details ?? null,
+          hint: error.hint ?? null,
+        },
+      };
+    }
 
-  return count ?? 0;
+    return {
+      table: tableName,
+      exists: true,
+      count: count ?? 0,
+      error: null,
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Execution exception";
+    return {
+      table: tableName,
+      exists: false,
+      count: 0,
+      error: {
+        message: errorMsg,
+        code: "UNKNOWN",
+        details: null,
+        hint: null,
+      },
+    };
+  }
 }
 
 export async function GET(request: Request) {
   try {
-    const auth = await verifyAdmin(request);
-    if (!auth.success) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: auth.status }
-      );
-    }
+    const permissionCheck = await requirePermission(request, "infrastructure.read");
+    if (!permissionCheck.ok) return permissionCheck.response;
 
-    const profilesCount = await getCount("users");
-    const creatorProfilesCount = await getCount("creator_profiles");
-    const brandProfilesCount = await getCount("brand_profiles");
+    const tableNames = [
+      "profiles",
+      "creator_profiles",
+      "brand_profiles",
+      "admin_profiles",
+      "admin_role_permissions",
+      "audit_logs",
+      "campaigns",
+      "payments",
+      "escrow_records",
+      "disputes",
+      "moderation_cases",
+      "platform_settings",
+      "security_events",
+      "reports",
+      "admin_invites",
+    ];
 
-    const { count: pendingUsersCount, error: pendingError } = await supabaseAdmin
-      .from("creator_profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("kyc_status", "pending");
-
-    if (pendingError) throw pendingError;
-
-    const { data: latestProfiles, error: latestError } = await supabaseAdmin
-      .from("users")
-      .select("id, email, role, is_active, is_verified, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (latestError) throw latestError;
+    const tables = await Promise.all(tableNames.map((name) => safeCountTable(name)));
 
     return NextResponse.json({
       success: true,
-      supabaseConnected: true,
       source: "real_supabase_database",
-      environment: process.env.NODE_ENV,
-      timestamp: new Date().toISOString(),
-      profilesCount,
-      creatorsCount: creatorProfilesCount,
-      brandsCount: brandProfilesCount,
-      pendingUsersCount: pendingUsersCount ?? 0,
-      latestProfiles: latestProfiles ?? [],
+      data: {
+        supabaseConnected: true,
+        checkedAt: new Date().toISOString(),
+        tables,
+      },
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);

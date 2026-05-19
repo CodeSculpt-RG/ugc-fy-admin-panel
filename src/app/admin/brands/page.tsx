@@ -1,46 +1,51 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader, StatusBadge } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
-import { DetailDrawer } from "@/app/components/ui/detail-drawer";
 import { ColumnDef } from "@tanstack/react-table";
 import { 
   Eye, 
   Building2, 
   CheckCircle2, 
   Briefcase,
-  Globe,
-  Mail,
-  MapPin,
-  Ban
+  Filter,
+  Ban,
+  Zap
 } from "lucide-react";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
+import { UserKycReviewPanel } from "@/app/components/ui/user-kyc-review-panel";
+import { LoadingState, ErrorState } from "@/app/components/ui/shared-states";
 import { Brand } from "@/app/types";
 import { brandService } from "@/app/services/brandService";
 import { approvalService } from "@/app/services/approvalService";
 import { normalizeError } from "@/lib/api/normalizeError";
 import { useToast } from "@/app/hooks/useToast";
-import { Zap, ShieldAlert } from "lucide-react";
 
 export default function BrandsPage() {
-  const [brands, setBrands] = React.useState<Brand[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isError, setIsError] = React.useState(false);
-  const [selectedBrand, setSelectedBrand] = React.useState<Brand | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = React.useState(false);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const { showToast } = useToast();
   
-  const [modalConfig, setModalConfig] = React.useState<{
+  const [selectedIndustry, setSelectedIndustry] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("approved");
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
+
+  const [modalConfig, setModalConfig] = useState<{
     title: string;
     description: string;
     variant: "info" | "danger" | "warning" | "success";
     showInput: boolean;
     confirmText: string;
-    actionType: "approve" | "reject" | "block" | "billing" | "";
+    actionType: "approve" | "reject" | "block" | "";
   }>({ 
     title: "", 
     description: "", 
@@ -50,11 +55,12 @@ export default function BrandsPage() {
     actionType: ""
   });
 
-  const loadBrands = React.useCallback(async () => {
+  const loadBrands = useCallback(async (statusOverride?: string) => {
+    const statusToFetch = statusOverride ?? selectedStatus;
     setIsLoading(true);
     setIsError(false);
     try {
-      const data = await brandService.getBrands();
+      const data = await brandService.getBrands(statusToFetch);
       setBrands(data);
     } catch (err) {
       console.error("[BrandsPage] Failed to load brands:", normalizeError(err));
@@ -63,23 +69,36 @@ export default function BrandsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, selectedStatus]);
 
-  React.useEffect(() => {
-    const synchronize = async () => {
-      await loadBrands();
-    };
-    synchronize();
-  }, [loadBrands]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadBrands(selectedStatus);
+  }, [selectedStatus, loadBrands]);
+
+  const uniqueIndustries = useMemo(() => {
+    const ind = new Set<string>();
+    brands.forEach(b => b.industry && ind.add(b.industry));
+    return Array.from(ind);
+  }, [brands]);
+
+  const filteredBrands = useMemo(() => {
+    return brands.filter(b => {
+      const matchIndustry = selectedIndustry === "all" || b.industry.toLowerCase() === selectedIndustry.toLowerCase();
+      const matchStatus = selectedStatus === "all" || (b.approvalStatus || b.status).toLowerCase() === selectedStatus.toLowerCase();
+      return matchIndustry && matchStatus;
+    });
+  }, [brands, selectedIndustry, selectedStatus]);
 
   const handleAction = (brand: Brand, action: string) => {
     setSelectedBrand(brand);
     if (action === "view") {
-      setIsDrawerOpen(true);
+      setSelectedUserId(brand.id);
+      setReviewPanelOpen(true);
     } else if (action === "approve") {
       setModalConfig({
         title: "Approve Brand",
-        description: `Are you sure you want to approve ${brand.name}? This will grant them authorization to launch campaigns.`,
+        description: `Are you sure you want to approve ${brand.name}? This will grant them authorization to launch campaigns on the platform.`,
         variant: "info",
         showInput: false,
         confirmText: "Approve Authorization",
@@ -88,8 +107,8 @@ export default function BrandsPage() {
       setIsConfirmModalOpen(true);
     } else if (action === "reject") {
       setModalConfig({
-        title: "Reject Brand",
-        description: `Please provide a reason for rejecting ${brand.name}'s business verification.`,
+        title: "Reject Brand Verification",
+        description: `Please provide a detailed reason for rejecting ${brand.name}'s business verification application.`,
         variant: "danger",
         showInput: true,
         confirmText: "Reject Verification",
@@ -99,7 +118,7 @@ export default function BrandsPage() {
     } else if (action === "block") {
       setModalConfig({
         title: "Access Restriction",
-        description: `This will prevent ${brand.name} from launching new campaigns. Please provide a justification for this administrative protocol.`,
+        description: `This will prevent ${brand.name} from launching new campaigns. Please provide a justification for this security protocol.`,
         variant: "danger",
         showInput: true,
         confirmText: "Restrict Access",
@@ -111,12 +130,12 @@ export default function BrandsPage() {
 
   const handleConfirm = async (reason?: string) => {
     if (!selectedBrand) return;
+    setActionLoading(true);
     try {
       const statusMap: Record<string, "approved" | "rejected" | "blocked" | "pending_review"> = {
         approve: "approved",
         reject: "rejected",
         block: "blocked",
-        billing: "approved",
         "": "pending_review"
       };
 
@@ -128,10 +147,12 @@ export default function BrandsPage() {
 
       showToast(`Corporate directive ${modalConfig.actionType} executed successfully`, "success");
       setIsConfirmModalOpen(false);
-      loadBrands();
+      await loadBrands(selectedStatus);
     } catch (err) {
       console.error("[BrandsPage] Administrative action failed:", normalizeError(err));
       showToast("Corporate directive failed to execute.", "error");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -147,15 +168,15 @@ export default function BrandsPage() {
       header: "Corporate Entity",
       cell: ({ row }) => (
         <div className="flex items-center space-x-5 py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-accent-orange/10 transition-all duration-500">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-accent-orange/10 transition-all duration-500 flex-shrink-0">
             <Building2 className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-accent-orange transition-colors" />
           </div>
-          <div className="space-y-0.5">
-            <div className="flex items-center space-x-2">
-               <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.name}</p>
-               {row.original.status === "Active" && <CheckCircle2 className="w-3.5 h-3.5 text-primary-blue" />}
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center space-x-2 min-w-0">
+               <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.name}</p>
+               {(row.original.approvalStatus === "approved" || row.original.status === "Active") && <CheckCircle2 className="w-3.5 h-3.5 text-primary-blue flex-shrink-0" />}
             </div>
-            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest">{row.original.industry}</p>
+            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest truncate">{row.original.industry}</p>
           </div>
         </div>
       ),
@@ -199,14 +220,15 @@ export default function BrandsPage() {
       cell: ({ row }) => {
         const brandActions: ActionItem[] = [
           {
-            label: "Analyze Corporate Portfolio",
+            label: "Review KYC & Dossier",
             icon: Eye,
             onClick: () => handleAction(row.original, "view"),
-            sectionLabel: "Intelligence Vectors"
+            sectionLabel: "Intelligence Vectors",
+            variant: "blue"
           },
           ...(row.original.approvalStatus === 'pending_review' ? [
             {
-              label: "Authorize Entity",
+              label: "Approve Brand",
               icon: CheckCircle2,
               onClick: () => handleAction(row.original, "approve"),
               variant: "blue" as const
@@ -240,128 +262,75 @@ export default function BrandsPage() {
           subtitle="Manage corporate identities, review campaign fiscal vectors, and track brand interaction density."
         >
           <button 
-            onClick={() => loadBrands()}
-            className="flex items-center space-x-3 px-6 py-3 rounded-2xl bg-primary-blue text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95"
+            onClick={() => loadBrands(selectedStatus)}
+            disabled={isLoading}
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
           >
             <Zap className="w-4 h-4 fill-current" />
             <span>Synchronize Corporate Network</span>
           </button>
         </PageHeader>
 
-        {isError ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-6">
-            <div className="p-6 rounded-[32px] bg-error/10 border border-error/20 text-error">
-               <ShieldAlert className="w-12 h-12" />
+        {/* Filters Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
+            <Filter className="w-4 h-4 text-primary-blue" />
+            <span>Brand Filters:</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Industry:</span>
+              <select
+                value={selectedIndustry}
+                onChange={(e) => setSelectedIndustry(e.target.value)}
+                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              >
+                <option value="all" className="bg-[#111827]">All Industries</option>
+                {uniqueIndustries.map(ind => (
+                  <option key={ind} value={ind} className="bg-[#111827]">{ind}</option>
+                ))}
+              </select>
             </div>
-            <div className="text-center space-y-2">
-              <p className="text-lg font-black text-[#F0F0FB]">Corporate Ledger Synchronization Failure</p>
-              <p className="text-sm text-[#F0F0FB]/40">Unable to establish a secure handshake with the brand infrastructure ledger.</p>
+
+            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              >
+                <option value="all" className="bg-[#111827]">All Status</option>
+                <option value="approved" className="bg-[#111827]">Approved</option>
+                <option value="pending_review" className="bg-[#111827]">Pending Review</option>
+                <option value="rejected" className="bg-[#111827]">Rejected</option>
+                <option value="blocked" className="bg-[#111827]">Blocked</option>
+              </select>
             </div>
-            <button 
-              onClick={() => loadBrands()}
-              className="h-12 px-8 rounded-2xl bg-white/[0.03] border border-white/10 text-[#F0F0FB] text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue hover:border-primary-blue transition-all active:scale-95"
-            >
-              Retry Handshake
-            </button>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <LoadingState message="Synchronizing Corporate Records..." />
+        ) : isError ? (
+          <ErrorState onRetry={() => loadBrands(selectedStatus)} />
+        ) : filteredBrands.length === 0 ? (
+          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 bg-[#0F172A] border border-white/[0.08] rounded-[40px] shadow-sm">
+            {selectedStatus === "approved" ? "No approved brands found" : "No brands found"}
           </div>
         ) : (
           <DataTable 
             columns={columns} 
-            data={brands} 
-            isLoading={isLoading}
-            searchKey="email"
-            placeholder="Query corporate infrastructure by identifier..."
+            data={filteredBrands} 
+            searchKey="company"
+            placeholder="Query corporate infrastructure by company name or email..."
+            onRowClick={(row) => {
+              setSelectedUserId(row.id);
+              setReviewPanelOpen(true);
+            }}
           />
         )}
       </div>
-
-      <DetailDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        title={selectedBrand?.name || "Corporate Profile"}
-        subtitle={`${selectedBrand?.industry || "CORPORATE_ENTITY"} • STRATEGIC_PARTNER • VERIFIED_IDENTITY`}
-      >
-        {selectedBrand && (
-          <div className="space-y-12">
-            {/* Investment Intelligence */}
-            <div className="p-10 rounded-[40px] bg-[#111827] border border-white/[0.08] space-y-8 shadow-sm relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
-               
-               <div className="flex justify-between items-end">
-                  <div>
-                    <p className="stat-label mb-2">Aggregate GMV</p>
-                    <span className="text-4xl font-black text-[#F0F0FB] tracking-tighter">{selectedBrand.totalSpend}</span>
-                  </div>
-                  <div className="pb-1">
-                    <span className="text-[10px] font-black text-primary-blue bg-primary-blue/10 px-4 py-2 rounded-xl border border-primary-blue/15 shadow-sm">GROWTH +12%</span>
-                  </div>
-               </div>
-               <div className="h-px bg-white/[0.05] w-full" />
-               <div className="grid grid-cols-2 gap-8">
-                  <div>
-                     <p className="stat-label mb-2">Active Initiatives</p>
-                     <p className="text-2xl font-black text-[#F0F0FB] tracking-tighter">{selectedBrand.activeCampaigns}</p>
-                  </div>
-                  <div>
-                     <p className="stat-label mb-2">Creator Reach</p>
-                     <p className="text-2xl font-black text-[#F0F0FB] tracking-tighter">42 <span className="text-xs text-[#F0F0FB]/20 font-bold ml-1">ENTITIES</span></p>
-                  </div>
-               </div>
-            </div>
-
-
-            {/* Corporate Metadata */}
-            <div className="space-y-8">
-               <h4 className="stat-label">Corporate Metadata</h4>
-               <div className="grid grid-cols-1 gap-4">
-                  {[
-                    { icon: Globe, label: "Digital Infrastructure", value: `www.${selectedBrand.name.toLowerCase().replace(' ', '')}.com` },
-                    { icon: Mail, label: "Administrative Endpoint", value: selectedBrand.email },
-                    { icon: MapPin, label: "Geographic Origin", value: "New York, USA" }
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center space-x-6 p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.08] shadow-sm group cursor-pointer hover:border-primary-blue/20 transition-all">
-                      <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors">
-                        <item.icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="stat-label leading-none">{item.label}</p>
-                        <p className="text-base font-black text-[#F0F0FB] mt-2 tracking-tight">{item.value}</p>
-                      </div>
-                    </div>
-                  ))}
-               </div>
-            </div>
-
-            {/* Performance Ledger */}
-            <div className="space-y-8">
-               <h4 className="stat-label">Temporal Performance Ledger</h4>
-               <div className="space-y-4">
-                  {[
-                    { label: "Contract Fulfillment", value: "98%", trend: "+2.4%" },
-                    { label: "Engagement Velocity", value: "4.2%", trend: "+0.8%" },
-                    { label: "Ecosystem ROI", value: "3.5x", trend: "+1.2x" }
-                  ].map((metric) => (
-                    <div key={metric.label} className="flex items-center justify-between p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.08] shadow-sm hover:border-primary-blue/20 transition-all cursor-pointer">
-                       <span className="text-[11px] text-[#F0F0FB]/30 font-black uppercase tracking-widest">{metric.label}</span>
-                       <div className="flex items-center space-x-5">
-                          <span className="text-base font-black text-[#F0F0FB] tracking-tighter">{metric.value}</span>
-                          <span className="text-[10px] font-black text-primary-blue bg-primary-blue/10 px-3 py-1.5 rounded-xl border border-primary-blue/15 shadow-sm">{metric.trend}</span>
-                       </div>
-                    </div>
-                  ))}
-               </div>
-            </div>
-
-            {/* Administrative Directives */}
-            <div className="pt-12 border-t border-white/[0.08] space-y-8">
-               <button className="w-full h-16 rounded-[28px] bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95">
-                 Synthesize Strategic Intelligence
-               </button>
-            </div>
-
-          </div>
-        )}
-      </DetailDrawer>
 
       <ConfirmModal
         isOpen={isConfirmModalOpen}
@@ -372,6 +341,14 @@ export default function BrandsPage() {
         variant={modalConfig.variant}
         showInput={modalConfig.showInput}
         confirmText={modalConfig.confirmText}
+        loading={actionLoading}
+      />
+
+      <UserKycReviewPanel
+        isOpen={reviewPanelOpen}
+        onClose={() => setReviewPanelOpen(false)}
+        userId={selectedUserId}
+        onUpdate={() => loadBrands(selectedStatus)}
       />
     </DashboardShell>
   );

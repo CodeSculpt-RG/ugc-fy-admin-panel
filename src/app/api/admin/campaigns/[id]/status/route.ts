@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { verifyAdmin } from "@/lib/api/verifyAdmin";
 import { normalizeError } from "@/lib/api/normalizeError";
 
-export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const auth = await verifyAdmin(request);
     if (!auth.success) {
@@ -12,19 +16,42 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
       );
     }
 
-    const params = await props.params;
+    const { id } = await params;
     const body = await request.json();
 
-    // Placeholder: Campaigns table doesn't exist yet, so we just mock a success response.
+    const allowedStatuses = ["Draft", "Pending", "Active", "Paused", "Completed", "Rejected", "Disputed"];
+    if (!allowedStatuses.includes(body.status)) {
+      return NextResponse.json(
+        { success: false, error: { message: "Invalid campaign status requested." } },
+        { status: 400 }
+      );
+    }
+
+    const { data: campaign, error } = await supabaseAdmin
+      .from("campaigns")
+      .update({ status: body.status, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error || !campaign) {
+      throw error || new Error("Failed to update campaign status.");
+    }
+
     return NextResponse.json({
       success: true,
-      data: { id: params.id, status: body.status, updated: true }
+      source: "real_supabase_database",
+      data: campaign,
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
     console.error(`[PATCH /api/admin/campaigns/[id]/status]`, normalizedError);
     return NextResponse.json(
-      { success: false, error: normalizedError },
+      {
+        success: false,
+        source: "real_supabase_database",
+        error: normalizedError,
+      },
       { status: 500 }
     );
   }

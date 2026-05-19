@@ -24,6 +24,7 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { ChevronLeft, ChevronRight, Search, Loader2 } from "lucide-react";
+import { cn } from "@/app/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -31,6 +32,7 @@ interface DataTableProps<TData, TValue> {
   searchKey?: string;
   placeholder?: string;
   isLoading?: boolean;
+  onRowClick?: (row: TData) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -39,6 +41,7 @@ export function DataTable<TData, TValue>({
   searchKey,
   placeholder = "Search operational ledger...",
   isLoading = false,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -77,7 +80,7 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      <div className="relative group">
+      <div className="relative group overflow-x-auto custom-scrollbar">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20" />
         <Table className="min-w-full">
           <TableHeader>
@@ -111,7 +114,11 @@ export function DataTable<TData, TValue>({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="group hover:bg-white/[0.02] transition-all duration-300 border-white/[0.04] last:border-0"
+                  onClick={() => onRowClick && onRowClick(row.original)}
+                  className={cn(
+                    "group hover:bg-white/[0.02] transition-all duration-300 border-white/[0.04] last:border-0",
+                    onRowClick && "cursor-pointer"
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="px-8 py-6 text-[#F0F0FB]/80 font-medium">

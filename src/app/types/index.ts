@@ -54,12 +54,20 @@ export interface ModerationItem {
   title: string;
   creator: string;
   campaign: string;
-  status: "AI Flagged" | "User Reported" | "Pending Review" | "Restricted";
+  status: "AI Flagged" | "User Reported" | "Pending Review" | "Restricted" | "Resolved" | "Dismissed";
   risk: RiskLevel;
   thumbnail?: string;
   content?: string;
   timestamp: string;
 }
+
+export type CampaignProfile = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  avatar_url: string | null;
+};
 
 export interface Campaign {
   id: string;
@@ -71,7 +79,25 @@ export interface Campaign {
   deadline: string;
   status: "Draft" | "Pending" | "Active" | "Paused" | "Completed" | "Rejected" | "Disputed";
   date?: string;
+  brand_profile?: CampaignProfile | null;
+  creator_profile?: CampaignProfile | null;
 }
+
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "refunded"
+  | "cancelled"
+  | "processing";
+
+export type PaymentProfile = {
+  id: string;
+  email: string | null;
+  role: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
 export interface Payment {
   id: string;
@@ -80,8 +106,13 @@ export interface Payment {
   campaign: string;
   amount: string;
   commission: string;
-  status: "Paid" | "Pending" | "Failed" | "Refunded";
+  status: PaymentStatus;
   date: string;
+  payer_profile?: PaymentProfile | null;
+  payee_profile?: PaymentProfile | null;
+  creator_profile?: PaymentProfile | null;
+  brand_profile?: PaymentProfile | null;
+  user_profile?: PaymentProfile | null;
 }
 
 export interface Escrow {
@@ -98,6 +129,8 @@ export interface Dispute {
   id: string;
   creator: string;
   brand: string;
+  creatorId?: string;
+  brandId?: string;
   campaign: string;
   type: "Payment" | "Content" | "Refund" | "Fraud" | "Deadline";
   priority: "Low" | "Medium" | "High" | "Critical";

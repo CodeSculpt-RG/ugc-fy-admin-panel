@@ -1,82 +1,142 @@
 import { supabase } from "@/lib/supabase/client";
-import { Creator, UserStatus, RiskLevel } from "@/app/types";
+import { Creator, UserStatus } from "@/app/types";
 
-type CreatorInternal = {
+export type ApprovalStatus =
+  | "pending_review"
+  | "approved"
+  | "rejected"
+  | "blocked";
+
+export type CreatorApiResponseRow = {
   id: string;
-  email: string;
+  email: string | null;
+  role: "creator" | string;
   full_name: string | null;
-  approval_status: "pending_review" | "approved" | "rejected" | "blocked";
+  avatar_url: string | null;
+  approval_status: ApprovalStatus | string;
+  profile_completed: boolean | null;
   rejection_reason: string | null;
   approved_at: string | null;
   approved_by: string | null;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   creator_profile: {
-    niche?: string;
-    niches?: string[];
-    follower_count?: number;
-    followers_count?: number;
-    [key: string]: unknown;
+    id: string;
+    creator_name: string | null;
+    phone: string | null;
+    instagram_url: string | null;
+    youtube_url: string | null;
+    niche: string | null;
+    location: string | null;
+    bio: string | null;
+    followers?: string;
+    rating?: number;
+    earnings?: string;
   } | null;
+};
+
+type ApiError = {
+  message?: string;
+  code?: string;
+  details?: string | null;
+  hint?: string | null;
 };
 
 type CreatorsApiResponse = {
   success: boolean;
-  source: string;
-  data?: CreatorInternal[];
-  error?: {
-    message: string;
-    code: string;
-  };
+  source?: string;
+  data?: CreatorApiResponseRow[];
+  count?: number;
+  error?: ApiError;
 };
 
-export const creatorService = {
-  getCreators: async (): Promise<Creator[]> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Administrative session required.");
+function safeApiErrorMessage(
+  response: Response,
+  payload: CreatorsApiResponse | null
+): string {
+  return (
+    payload?.error?.message ||
+    payload?.error?.details ||
+    `Failed to load creators. HTTP ${response.status}`
+  );
+}
 
-    const response = await fetch("/api/admin/creators", {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Admin session missing. Please login again.");
+  }
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${session.access_token}`,
+  };
+}
+
+export const creatorService = {
+  async getCreators(approvalStatus = "approved"): Promise<Creator[]> {
+    const params = new URLSearchParams();
+
+    if (approvalStatus && approvalStatus !== "all") {
+      params.set("approval_status", approvalStatus);
+    }
+
+    const url = `/api/admin/creators${params.toString() ? `?${params.toString()}` : ""}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: await getAuthHeaders(),
       cache: "no-store",
     });
 
-    const payload = await response.json() as CreatorsApiResponse;
-    const errorMessage = typeof payload.error === 'string' 
-      ? payload.error 
-      : payload.error?.message || "Protocol failure: unable to fetch creators.";
+    const payload = (await response
+      .json()
+      .catch((): null => null)) as CreatorsApiResponse | null;
 
-    if (!response.ok || !payload.success) {
-      throw new Error(errorMessage);
+    if (!response.ok || !payload?.success) {
+      const message = safeApiErrorMessage(response, payload);
+
+      console.error("[CreatorService] API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        source: payload?.source ?? "unknown",
+        code: payload?.error?.code ?? "NO_ERROR_CODE",
+        message,
+        details: payload?.error?.details ?? null,
+        hint: payload?.error?.hint ?? null,
+      });
+
+      throw new Error(message);
     }
 
-    const data = payload.data ?? [];
-    
-    return data.map((item) => {
-      const details = item.creator_profile;
-      
-      let nicheStr = "General";
-      if (details?.niches && Array.isArray(details.niches) && details.niches.length > 0) {
-        nicheStr = String(details.niches[0]);
-      } else if (typeof details?.niche === 'string') {
-        nicheStr = details.niche;
-      }
+    return (payload.data ?? []).map((row: CreatorApiResponseRow): Creator => {
+      const niche = row.creator_profile?.niche || "General";
+      const appStatus = (row.approval_status as ApprovalStatus) || "pending_review";
       
       return {
-        ...item,
-        name: item.full_name || "Unknown Entity",
-        niche: nicheStr,
-        followers: (details?.follower_count ?? details?.followers_count ?? 0).toLocaleString(),
-        status: (item.approval_status === 'pending_review' ? 'Pending' : (item.approval_status === 'approved' ? 'Active' : 'Restricted')) as UserStatus,
-        approvalStatus: item.approval_status,
-        risk: "Verified" as RiskLevel,
-        lastActive: item.updated_at,
-        earnings: "₹0",
-        rating: 5.0,
-        approvedAt: item.approved_at || undefined,
-        approvedBy: item.approved_by || undefined,
-        rejectionReason: item.rejection_reason || undefined
-      } as Creator;
+        id: row.id,
+        name: row.creator_profile?.creator_name || row.full_name || "New Creator",
+        email: row.email || "",
+        niche: niche,
+        followers: row.creator_profile?.followers || "0",
+        status: (appStatus === 'approved' ? 'Active' : appStatus === 'pending_review' ? 'Pending' : 'Restricted') as UserStatus,
+        approvalStatus: appStatus,
+        risk: "Low",
+        lastActive: row.updated_at || row.created_at || new Date().toISOString(),
+        earnings: row.creator_profile?.earnings || "₹0",
+        rating: row.creator_profile?.rating || 5.0,
+        approvedAt: row.approved_at || undefined,
+        approvedBy: row.approved_by || undefined,
+        rejectionReason: row.rejection_reason || undefined
+      };
     });
-  }
+  },
 };

@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
+import React from "react";
 
 export const metadata: Metadata = {
   title: "UGC FY | Admin Console",
@@ -13,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 import QueryProvider from "./context/QueryProvider";
+import { AdminAuthProvider } from "./context/AdminAuthContext";
 
 export default function RootLayout({
   children,
@@ -20,10 +16,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased dark`}>
+    <html lang="en" className="h-full antialiased dark">
       <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary-blue/30 selection:text-primary-blue">
         <QueryProvider>
-          {children}
+          <AdminAuthProvider>
+            {children}
+          </AdminAuthProvider>
         </QueryProvider>
       </body>
     </html>

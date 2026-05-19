@@ -1,62 +1,100 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeError } from "@/lib/api/normalizeError";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
+import { requirePermission } from "@/lib/api/requirePermission";
 
-export async function GET(request: Request) {
+type BrandProfileRow = {
+  id: string;
+  user_id: string;
+  company_name: string | null;
+  brand_name: string | null;
+  website_url: string | null;
+  industry: string | null;
+  phone: string | null;
+  location: string | null;
+  business_description: string | null;
+  documents: unknown;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export async function GET(request: NextRequest) {
   try {
-    const auth = await verifyAdmin(request);
-    if (!auth.success) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: auth.status }
-      );
+    const permissionCheck = await requirePermission(request, "brands.read");
+
+    if (!permissionCheck.ok) {
+      return permissionCheck.response;
     }
 
-    const { data: users, error: usersError } = await supabaseAdmin
-      .from("users")
-      .select("*")
+    const url = new URL(request.url);
+    const statusFilter = url.searchParams.get("approval_status");
+
+    let query = supabaseAdmin
+      .from("profiles")
+      .select(`
+        id,
+        email,
+        role,
+        full_name,
+        avatar_url,
+        approval_status,
+        profile_completed,
+        rejection_reason,
+        approved_at,
+        approved_by,
+        created_at,
+        updated_at
+      `)
       .eq("role", "brand")
       .order("created_at", { ascending: false });
 
-    if (usersError) throw usersError;
+    if (statusFilter && statusFilter !== "all") {
+      query = query.eq("approval_status", statusFilter);
+    }
 
-    const brandIds = users?.map((p) => p.id) ?? [];
-    let brandProfilesMap: Record<string, Record<string, unknown>> = {};
+    const { data: profiles, error: profilesError } = await query;
+
+    if (profilesError) throw profilesError;
+
+    const brandIds = profiles?.map((profile) => profile.id) ?? [];
+
+    let brandProfiles: BrandProfileRow[] = [];
 
     if (brandIds.length > 0) {
-      const { data: bProfiles, error: bProfilesError } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from("brand_profiles")
         .select("*")
         .in("user_id", brandIds);
 
-      if (bProfilesError) throw bProfilesError;
+      if (error) throw error;
 
-      brandProfilesMap = (bProfiles ?? []).reduce((acc, curr) => {
-        acc[curr.user_id] = curr;
-        return acc;
-      }, {} as Record<string, Record<string, unknown>>);
+      brandProfiles = data ?? [];
     }
 
-    const data = users?.map((user) => {
-      const bp = brandProfilesMap[user.id];
-      return {
-        ...user,
-        full_name: user.name,
-        approval_status: bp?.kyc_status === 'approved' ? 'approved' : bp?.kyc_status === 'rejected' ? 'rejected' : 'pending_review',
-        brand_profile: bp ?? null,
-      };
-    }) ?? [];
+    const brandProfileMap = new Map(
+      brandProfiles.map((brandProfile) => [
+        brandProfile.user_id,
+        brandProfile,
+      ])
+    );
+
+    const brands =
+      profiles?.map((profile) => ({
+        ...profile,
+        profile: brandProfileMap.get(profile.id) ?? null,
+      })) ?? [];
 
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
-      data,
-      count: data.length,
+      data: brands,
+      count: brands.length,
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
+
     console.error("[GET /api/admin/brands]", normalizedError);
+
     return NextResponse.json(
       {
         success: false,

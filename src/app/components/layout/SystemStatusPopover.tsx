@@ -1,25 +1,71 @@
 "use client";
 
-import React from "react";
-import { Zap } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Zap, Activity } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { cn } from "@/app/lib/utils";
+import { supabase } from "@/lib/supabase/client";
+
+interface HealthData {
+  success: boolean;
+  supabaseConnected: boolean;
+  source: string;
+  timestamp: string;
+  profilesCount: number;
+  creatorsCount: number;
+  brandsCount: number;
+}
 
 export default function SystemStatusPopover() {
+  const [healthData, setHealthData] = useState<HealthData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const res = await fetch("/api/admin/health", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setHealthData(data);
+        }
+      } catch (err) {
+        console.error("Failed to sync system status:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHealth();
+  }, []);
+
+  const isConnected = healthData?.supabaseConnected ?? true;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center space-x-2 px-3 py-2 rounded-xl bg-success-green/5 border border-success-green/10 hover:bg-success-green/10 hover:border-success-green/20 transition-all cursor-pointer group outline-none">
+        <button className={cn(
+          "flex items-center space-x-2 px-3 py-2 rounded-xl border transition-all cursor-pointer group outline-none",
+          isConnected ? "bg-success-green/5 border-success-green/10 hover:bg-success-green/10 hover:border-success-green/20" : "bg-accent-orange/5 border-accent-orange/10 hover:bg-accent-orange/10 hover:border-accent-orange/20"
+        )}>
           <div className="relative flex items-center justify-center">
-            <Zap className="w-3.5 h-3.5 text-success-green fill-success-green group-hover:scale-110 transition-transform" />
-            <span className="absolute inset-0 bg-success-green blur-sm opacity-20 group-hover:opacity-40 transition-opacity" />
+            <Zap className={cn("w-3.5 h-3.5 group-hover:scale-110 transition-transform", isConnected ? "text-success-green fill-success-green" : "text-accent-orange fill-accent-orange")} />
+            <span className={cn("absolute inset-0 blur-sm opacity-20 group-hover:opacity-40 transition-opacity", isConnected ? "bg-success-green" : "bg-accent-orange")} />
           </div>
-          <span className="text-[10px] font-black text-success-green uppercase tracking-[0.1em] hidden sm:inline">System Live</span>
-          <span className="w-2 h-2 bg-success-green rounded-full animate-pulse sm:hidden shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+          <span className={cn("text-[10px] font-black uppercase tracking-[0.1em] hidden sm:inline", isConnected ? "text-success-green" : "text-accent-orange")}>
+            {loading ? "CHECKING..." : isConnected ? "SYSTEM LIVE" : "SYSTEM DEGRADED"}
+          </span>
+          <span className={cn("w-2 h-2 rounded-full animate-pulse sm:hidden", isConnected ? "bg-success-green shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-accent-orange shadow-[0_0_8px_rgba(249,115,22,0.5)]")} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
@@ -29,19 +75,21 @@ export default function SystemStatusPopover() {
       >
         <div className="space-y-5">
           <div className="flex items-center justify-between border-b border-white/[0.05] pb-3">
-            <h4 className="text-[10px] font-black text-[#F0F0FB] uppercase tracking-[0.2em]">System Infrastructure</h4>
+            <h4 className="text-[10px] font-black text-[#F0F0FB] uppercase tracking-[0.2em]">System Health</h4>
             <div className="flex items-center space-x-2">
-               <span className="text-[10px] font-bold text-success-green uppercase">99.9% Up</span>
-               <span className="flex h-2 w-2 rounded-full bg-success-green shadow-[0_0_10px_rgba(16,185,129,0.4)] animate-pulse" />
+               <span className={cn("text-[10px] font-bold uppercase", isConnected ? "text-success-green" : "text-accent-orange")}>
+                 {isConnected ? "Operational" : "Degraded"}
+               </span>
+               <span className={cn("flex h-2 w-2 rounded-full animate-pulse", isConnected ? "bg-success-green shadow-[0_0_10px_rgba(16,185,129,0.4)]" : "bg-accent-orange shadow-[0_0_10px_rgba(249,115,22,0.4)]")} />
             </div>
           </div>
           
           <div className="space-y-4">
             {[
-              { name: "API Gateway", status: "Operational", color: "green" },
-              { name: "User Auth", status: "Operational", color: "green" },
-              { name: "Payment Processor", status: "Slight Delay", color: "orange" },
-              { name: "Media Assets", status: "Operational", color: "green" },
+              { name: "Database Endpoint", status: isConnected ? "Connected" : "Unreachable", color: isConnected ? "green" : "orange" },
+              { name: "Profiles Ledger", status: `${healthData?.profilesCount ?? 0} Records`, color: "green" },
+              { name: "Creator Profiles", status: `${healthData?.creatorsCount ?? 0} Records`, color: "green" },
+              { name: "Brand Profiles", status: `${healthData?.brandsCount ?? 0} Records`, color: "green" },
             ].map((service) => (
               <div key={service.name} className="flex items-center justify-between group/item">
                 <span className="text-xs text-[#F0F0FB]/40 group-hover/item:text-[#F0F0FB]/60 transition-colors font-medium">{service.name}</span>
@@ -64,10 +112,11 @@ export default function SystemStatusPopover() {
           </div>
         </div>
         
-        <div className="mt-6 pt-4 border-t border-white/[0.05] flex justify-center">
-          <button className="text-[10px] font-black text-[#F0F0FB]/20 hover:text-primary-blue transition-all uppercase tracking-[0.2em] hover:tracking-[0.25em]">
-            Detailed Analytics
-          </button>
+        <div className="mt-6 pt-4 border-t border-white/[0.05] flex justify-center items-center">
+          <Activity className="w-3 h-3 text-[#F0F0FB]/20 mr-1.5" />
+          <span className="text-[9px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">
+            Sync: {healthData?.timestamp ? new Date(healthData.timestamp).toLocaleTimeString() : 'N/A'}
+          </span>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

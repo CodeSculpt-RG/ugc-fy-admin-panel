@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Search, Menu, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useSidebar } from "@/app/context/SidebarContext";
 import NotificationDropdown from "./NotificationDropdown";
 import NewActionMenu from "./NewActionMenu";
@@ -10,7 +9,7 @@ import SystemStatusPopover from "./SystemStatusPopover";
 import { cn } from "@/app/lib/utils";
 
 export default function Navbar() {
-  const { toggleMobileMenu, toggleSidebar, isCollapsed } = useSidebar();
+  const { toggleMobileMenu } = useSidebar();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +26,8 @@ import {
 import { cn } from "@/app/lib/utils";
 import { useSidebar } from "@/app/context/SidebarContext";
 import { useAuthStore } from "@/app/store/authStore";
+import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { ROUTE_PERMISSIONS } from "@/lib/api/adminPermissions";
 import { deleteCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 
@@ -48,6 +50,7 @@ const menuItems = [
   },
   {
     group: "Infrastructure", items: [
+      { name: "Cluster Health", href: "/admin/infrastructure", icon: LayoutDashboard },
       { name: "Admin Management", href: "/admin/admin-management", icon: UserSquare2 },
       { name: "Audit Logs", href: "/admin/audit-logs", icon: History },
       { name: "Security", href: "/admin/security", icon: ShieldAlert },
@@ -63,13 +66,28 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isCollapsed, isMobileOpen, setIsMobileOpen } = useSidebar();
-  const { user, logout } = useAuthStore();
+  const { logout } = useAuthStore();
+  const { admin, hasPermission } = useAdminAuth();
 
   const handleLogout = () => {
     deleteCookie("admin-token");
     logout();
     router.push("/admin/login");
   };
+
+  // Filter menu items based on permissions
+  const filteredMenuItems = useMemo(() => {
+    if (!admin) return [];
+
+    return menuItems.map(group => ({
+      ...group,
+      items: group.items.filter(item => {
+        const requiredPermission = ROUTE_PERMISSIONS[item.href];
+        if (!requiredPermission) return true; // Allow if no permission defined (e.g. Dashboard if it's open)
+        return hasPermission(requiredPermission);
+      })
+    })).filter(group => group.items.length > 0);
+  }, [admin, hasPermission]);
 
 
   const sidebarVariants = {
@@ -83,10 +101,10 @@ export default function Sidebar() {
   };
 
   const SidebarContent = (
-    <>
+    <div className="flex h-full flex-col w-full min-w-0 min-h-0">
       {/* Logo Section */}
-      <div className={cn("p-12 mb-6 flex items-center justify-between", isCollapsed && !isMobileOpen ? "px-6" : "p-12")}>
-        <Link href="/admin/dashboard" className="flex items-center space-x-5 group">
+      <div className={cn("shrink-0 p-12 mb-6 flex items-center justify-between", isCollapsed && !isMobileOpen ? "px-6" : "p-12")}>
+        <Link href="/admin/dashboard" scroll={false} className="flex items-center space-x-5 group">
           <div className="w-14 h-14 bg-primary-blue rounded-[20px] flex items-center justify-center shadow-blue-glow group-hover:scale-110 transition-all duration-700 flex-shrink-0 relative overflow-hidden">
             <Lock className="text-white w-6 h-6 relative z-10" />
             <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
@@ -113,8 +131,8 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-8 py-4 space-y-14 scrollbar-hide custom-scrollbar">
-        {menuItems.map((group) => (
+      <nav className="flex-1 overflow-y-auto px-8 py-4 space-y-14 scrollbar-hide custom-scrollbar min-h-0">
+        {filteredMenuItems.map((group) => (
           <div key={group.group} className="space-y-8">
             {(!isCollapsed || isMobileOpen) && (
               <h3 className="px-5 text-[10px] font-black text-[#F0F0FB]/10 uppercase tracking-[0.5em]">
@@ -128,6 +146,7 @@ export default function Sidebar() {
                   <Link
                     key={item.name}
                     href={item.href}
+                    scroll={false}
                     onClick={() => setIsMobileOpen(false)}
                     className={cn(
                       "group flex items-center justify-between px-6 py-4.5 rounded-[24px] transition-all relative overflow-hidden",
@@ -171,21 +190,21 @@ export default function Sidebar() {
             </div>
           </div>
         ))}
-      </div>
+      </nav>
 
       {/* Bottom Profile Section */}
-      <div className="p-8 border-t border-white/[0.08]">
+      <div className="shrink-0 p-8 border-t border-white/[0.08]">
         <div className={cn(
           "bg-[#0F172A] rounded-[32px] p-6 flex items-center space-x-5 border border-white/10 group hover:border-white/20 hover:bg-white/[0.04] transition-all relative overflow-hidden",
           isCollapsed && !isMobileOpen ? "flex-col space-x-0 space-y-5 px-4" : "flex-row"
         )}>
           <div className="w-14 h-14 rounded-[20px] bg-primary-blue/10 border border-primary-blue/20 flex items-center justify-center text-[12px] font-black text-primary-blue flex-shrink-0 group-hover:scale-110 transition-all duration-500 uppercase">
-            {user?.name?.slice(0, 2) || "AD"}
+            {admin?.name?.slice(0, 2) || "AD"}
           </div>
           {(!isCollapsed || isMobileOpen) && (
             <div className="flex-1 min-w-0">
-              <p className="text-base font-black text-[#F0F0FB] truncate tracking-tighter capitalize">{user?.name || "Admin"}</p>
-              <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-[0.3em] mt-1">{user?.role?.replace("_", " ") || "Administrator"}</p>
+              <p className="text-base font-black text-[#F0F0FB] truncate tracking-tighter capitalize">{admin?.name || "Admin"}</p>
+              <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-[0.3em] mt-1">{admin?.role?.replace("_", " ") || "Administrator"}</p>
             </div>
           )}
           <button 
@@ -199,7 +218,7 @@ export default function Sidebar() {
 
 
 
-    </>
+    </div>
   );
 
   return (
@@ -209,7 +228,7 @@ export default function Sidebar() {
         initial={false}
         animate={isCollapsed ? "collapsed" : "expanded"}
         variants={sidebarVariants}
-        className="hidden lg:flex flex-col h-screen bg-[#020617] border-r border-white/[0.08] fixed left-0 top-0 z-50 overflow-hidden shadow-2xl shadow-black"
+        className="hidden lg:flex flex-col h-screen shrink-0 sticky top-0 bg-[#020617] border-r border-white/[0.08] z-50 shadow-2xl shadow-black"
       >
         {SidebarContent}
       </motion.aside>

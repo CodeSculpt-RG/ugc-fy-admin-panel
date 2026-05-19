@@ -13,49 +13,23 @@ export async function GET(request: Request) {
       );
     }
 
-    const { data: creatorPending, error: cError } = await supabaseAdmin
-      .from("creator_profiles")
-      .select("user_id")
-      .eq("kyc_status", "pending");
-      
-    if (cError) throw cError;
+    const { data: profiles, error, count } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, full_name, avatar_url, role, approval_status, profile_completed, created_at, updated_at", { count: "exact" })
+      .eq("approval_status", "pending_review")
+      .order("created_at", { ascending: false });
 
-    const { data: brandPending, error: bError } = await supabaseAdmin
-      .from("brand_profiles")
-      .select("user_id")
-      .eq("kyc_status", "pending");
-      
-    if (bError) throw bError;
+    if (error) throw error;
 
-    const pendingIds = [
-      ...(creatorPending?.map(p => p.user_id) || []),
-      ...(brandPending?.map(p => p.user_id) || [])
-    ];
-
-    let users: any[] = [];
-    if (pendingIds.length > 0) {
-      const { data, error } = await supabaseAdmin
-        .from("users")
-        .select("*")
-        .in("id", pendingIds)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      
-      // Map to expected frontend format
-      users = (data || []).map(u => ({
-        ...u,
-        full_name: u.name,
-        approval_status: 'pending_review'
-      }));
-    }
-
-    const count = users.length;
+    const mappedUsers = (profiles ?? []).map(u => ({
+      ...u,
+      is_verified: false
+    }));
 
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
-      data: users ?? [],
+      data: mappedUsers,
       count: count ?? 0,
     });
   } catch (error: unknown) {

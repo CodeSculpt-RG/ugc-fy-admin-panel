@@ -1,39 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader, StatusBadge } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
-import { DetailDrawer } from "@/app/components/ui/detail-drawer";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
+import { LoadingState, ErrorState } from "@/app/components/ui/shared-states";
 import { ColumnDef } from "@tanstack/react-table";
 import { 
   Eye, 
   ShieldCheck, 
   ShieldAlert, 
   Ban, 
-  Mail,
   User as UserIcon,
-  Smartphone,
-  MapPin
+  Filter
 } from "lucide-react";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
+import { UserKycReviewPanel } from "@/app/components/ui/user-kyc-review-panel";
+import { ProtectedRoute } from "@/app/components/auth/ProtectedRoute";
+import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { cn } from "@/app/lib/utils";
-
-
 import { useToast } from "@/app/hooks/useToast";
 import { userService } from "@/app/services/userService";
 import { approvalService } from "@/app/services/approvalService";
 import { User } from "@/app/types";
+import { normalizeError } from "@/lib/api/normalizeError";
 
 export default function UsersPage() {
+  const { hasPermission } = useAdminAuth();
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const { showToast } = useToast();
   const [localUsers, setLocalUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
+  
+  const [selectedRole, setSelectedRole] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [actionLoading, setActionLoading] = useState(false);
   
   const [modalConfig, setModalConfig] = useState({ 
     title: "", 
@@ -41,49 +50,69 @@ export default function UsersPage() {
     variant: "danger" as "danger" | "info" | "warning" | "success",
     showInput: false,
     confirmText: "Confirm",
-    actionType: "" as "block" | "authorize"
+    actionType: "" as "block" | "authorize" | "reject"
   });
 
-  const loadUsers = React.useCallback(async () => {
+  const loadUsers = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
+    setErrorMsg(null);
     try {
       const data = await userService.getUsers();
       setLocalUsers(data);
-    } catch (err) {
-      console.error("[UsersPage] Failed to fetch identity protocols:", err);
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err);
+      console.error("[UsersPage] Failed to fetch identity protocols:", normalizedError);
       setIsError(true);
-      showToast("Infrastructure desync: unable to sync global identity ledger.", "error");
+      setErrorMsg(normalizedError.message);
+      showToast(normalizedError.message, "error");
     } finally {
       setIsLoading(false);
     }
   }, [showToast]);
 
-  React.useEffect(() => {
-    const synchronize = async () => {
-      await loadUsers();
-    };
-    synchronize();
+  useEffect(() => {
+    // eslint-disable-next-line
+    loadUsers();
   }, [loadUsers]);
+
+  const filteredUsers = useMemo(() => {
+    return localUsers.filter(u => {
+      const matchRole = selectedRole === "all" || u.role.toLowerCase() === selectedRole.toLowerCase();
+      const matchStatus = selectedStatus === "all" || u.status.toLowerCase() === selectedStatus.toLowerCase();
+      return matchRole && matchStatus;
+    });
+  }, [localUsers, selectedRole, selectedStatus]);
 
   const handleAction = (user: User, action: string) => {
     setSelectedUser(user);
     if (action === "view") {
-      setIsDrawerOpen(true);
+      setSelectedUserId(user.id);
+      setReviewPanelOpen(true);
     } else if (action === "authorize") {
       setModalConfig({
         title: "Identity Authorization",
-      description: `Confirm that ${user.name}'s identity has been reviewed and verified. This will grant them "Approved" status across the platform.`,
+        description: `Confirm that ${user.name}'s identity has been reviewed and verified. This will grant them "Approved" status across the platform.`,
         variant: "info",
         showInput: false,
         confirmText: "Authorize Identity",
         actionType: "authorize"
       });
       setIsConfirmModalOpen(true);
+    } else if (action === "reject") {
+      setModalConfig({
+        title: "Profile Rejection",
+        description: `Please provide a detailed reason for rejecting ${user.name}'s profile application.`,
+        variant: "warning",
+        showInput: true,
+        confirmText: "Reject Profile",
+        actionType: "reject"
+      });
+      setIsConfirmModalOpen(true);
     } else if (action === "block") {
       setModalConfig({
         title: "Access Restriction",
-      description: `This will restrict ${user.name} from accessing platform features. Please provide a justification for this security protocol.`,
+        description: `This will restrict ${user.name} from accessing platform features. Please provide a justification for this security protocol.`,
         variant: "danger",
         showInput: true,
         confirmText: "Restrict Access",
@@ -95,23 +124,27 @@ export default function UsersPage() {
 
   const handleConfirm = async (reason?: string) => {
     if (!selectedUser) return;
-
+    setActionLoading(true);
     try {
       if (modalConfig.actionType === "block") {
         await approvalService.updateApprovalStatus(selectedUser.id, "blocked", reason || "Administrative access restriction");
         showToast(`User identity restricted in global ledger.`, "warning");
+      } else if (modalConfig.actionType === "reject") {
+        await approvalService.updateApprovalStatus(selectedUser.id, "rejected", reason || "Profile requirements not met");
+        showToast(`User identity rejected.`, "warning");
       } else if (modalConfig.actionType === "authorize") {
         await approvalService.updateApprovalStatus(selectedUser.id, "approved", "Manual administrative authorization");
         showToast(`User identity authorized successfully.`, "success");
       }
       setIsConfirmModalOpen(false);
-      loadUsers(); // Refresh the ledger
-    } catch {
-      showToast("Administrative protocol failed: transaction rejected by the API.", "error");
+      await loadUsers(); // Refresh the ledger
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(`Administrative protocol failed: ${msg}`, "error");
+    } finally {
+      setActionLoading(false);
     }
   };
-
-
 
   const columns: ColumnDef<User>[] = [
     {
@@ -125,12 +158,12 @@ export default function UsersPage() {
       header: "User Infrastructure",
       cell: ({ row }) => (
         <div className="flex items-center space-x-5 py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-primary-blue/10 transition-all duration-500">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-primary-blue/10 transition-all duration-500 flex-shrink-0">
             <UserIcon className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors" />
           </div>
-          <div className="space-y-0.5">
-            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.name}</p>
-            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest">{row.original.email}</p>
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.name}</p>
+            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest truncate">{row.original.email}</p>
           </div>
         </div>
       ),
@@ -175,23 +208,33 @@ export default function UsersPage() {
       cell: ({ row }) => {
         const userActions: ActionItem[] = [
           {
-            label: "Analyze User Infrastructure",
+            label: "Review KYC & Dossier",
             icon: Eye,
             onClick: () => handleAction(row.original, "view"),
-            sectionLabel: "Operational Directives"
+            sectionLabel: "Operational Directives",
+            variant: "blue"
           },
           {
             label: "Authorize Security Identity",
             icon: ShieldCheck,
             onClick: () => handleAction(row.original, "authorize"),
-            variant: "blue"
+            variant: "blue",
+            hidden: !hasPermission("users.approve")
+          },
+          {
+            label: "Reject Profile",
+            icon: ShieldAlert,
+            onClick: () => handleAction(row.original, "reject"),
+            variant: "orange",
+            hidden: !hasPermission("users.approve")
           },
           {
             label: "Restrict System Access",
             icon: Ban,
             onClick: () => handleAction(row.original, "block"),
             variant: "orange",
-            isSeparator: true
+            isSeparator: true,
+            hidden: !hasPermission("users.block")
           }
         ];
 
@@ -201,7 +244,8 @@ export default function UsersPage() {
   ];
 
   return (
-    <DashboardShell>
+    <ProtectedRoute permission="users.read">
+      <DashboardShell>
       <div className="section-spacing">
         <PageHeader 
           title="Identity Protocols" 
@@ -209,120 +253,68 @@ export default function UsersPage() {
         >
           <button 
             onClick={() => loadUsers()}
-            className="flex items-center space-x-3 px-6 py-3 rounded-2xl bg-primary-blue text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95"
+            disabled={isLoading}
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
           >
             <span>Synchronize Global Ledger</span>
           </button>
         </PageHeader>
 
-        {isError ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-6">
-            <div className="p-6 rounded-[32px] bg-error/10 border border-error/20 text-error">
-               <ShieldAlert className="w-12 h-12" />
-            </div>
-            <div className="text-center space-y-2">
-              <p className="text-lg font-black text-[#F0F0FB]">Ledger Synchronization Failure</p>
-              <p className="text-sm text-[#F0F0FB]/40">Unable to establish a secure handshake with the identity infrastructure.</p>
-            </div>
-            <button 
-              onClick={() => loadUsers()}
-              className="h-12 px-8 rounded-2xl bg-white/[0.03] border border-white/10 text-[#F0F0FB] text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue hover:border-primary-blue transition-all active:scale-95"
-            >
-              Retry Handshake
-            </button>
+        {/* Filters Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
+            <Filter className="w-4 h-4 text-primary-blue" />
+            <span>Ledger Filters:</span>
           </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Role:</span>
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              >
+                <option value="all" className="bg-[#111827]">All Roles</option>
+                <option value="creator" className="bg-[#111827]">Creator</option>
+                <option value="brand" className="bg-[#111827]">Brand</option>
+                <option value="admin" className="bg-[#111827]">Admin</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              >
+                <option value="all" className="bg-[#111827]">All Status</option>
+                <option value="active" className="bg-[#111827]">Active</option>
+                <option value="pending" className="bg-[#111827]">Pending</option>
+                <option value="restricted" className="bg-[#111827]">Restricted</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <LoadingState message="Synchronizing Identity Records..." />
+        ) : isError ? (
+          <ErrorState message={errorMsg || undefined} onRetry={loadUsers} />
         ) : (
           <DataTable 
             columns={columns} 
-            data={localUsers} 
-            isLoading={isLoading}
+            data={filteredUsers} 
             searchKey="email"
-            placeholder="Query user infrastructure by email or unique identifier..."
+            placeholder="Query user infrastructure by email..."
+            onRowClick={(row) => {
+              setSelectedUserId(row.id);
+              setReviewPanelOpen(true);
+            }}
           />
         )}
       </div>
-
-      <DetailDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        title={selectedUser?.name || "Entity Profile"}
-        subtitle={`System ID: ${selectedUser?.id || "N/A"} • ${selectedUser?.role || "ENTITY"}`}
-      >
-
-        {selectedUser && (
-          <div className="space-y-12">
-            {/* Aggregate Metrics */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] shadow-sm">
-                <p className="stat-label mb-4">Operational Status</p>
-                <StatusBadge status={selectedUser.status} variant={selectedUser.status === "Active" ? "success" : "warning"} />
-              </div>
-              <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] shadow-sm">
-                <p className="stat-label mb-4">Risk Evaluation</p>
-                <p className={cn(
-                  "text-2xl font-black tracking-tighter uppercase",
-                  selectedUser.riskLevel === 'High' ? 'text-error' : 'text-primary-blue'
-                )}>{selectedUser.riskLevel} IMPACT</p>
-              </div>
-            </div>
-
-
-            {/* Infrastructure Credentials */}
-            <div className="space-y-8">
-              <h4 className="stat-label">Core Infrastructure</h4>
-              <div className="space-y-4">
-                {[
-                  { icon: Mail, label: "Digital Communications", value: selectedUser.email },
-                  { icon: Smartphone, label: "Network Endpoint", value: "+91 98765 43210" },
-                  { icon: MapPin, label: "Geographic Coordinate", value: "Mumbai, India" },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center space-x-6 p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.08] shadow-sm hover:border-primary-blue/20 transition-all cursor-pointer">
-                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-[#F0F0FB]/20">
-                      <item.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="stat-label leading-none">{item.label}</p>
-                      <p className="text-base font-black text-[#F0F0FB] mt-2 tracking-tight">{item.value}</p>
-                    </div>
-                  </div>
-                ))}
-
-              </div>
-            </div>
-
-            {/* Audit History */}
-            <div className="space-y-8">
-               <h4 className="stat-label">Temporal Audit Log</h4>
-               <div className="space-y-10 border-l-2 border-white/[0.08] ml-6 pl-10 relative">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="relative">
-                       <div className="absolute -left-[51px] top-1 w-5 h-5 rounded-full bg-[#030712] border-4 border-primary-blue shadow-lg shadow-primary-blue/20 z-10" />
-                       <div>
-                          <p className="text-base font-black text-[#F0F0FB] tracking-tighter">System Access Authorized</p>
-                          <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2 leading-relaxed italic">Verified terminal connection established from endpoint 192.168.1.{i} • {i}h ago</p>
-                       </div>
-                    </div>
-                  ))}
-               </div>
-
-            </div>
-
-            {/* Security Directives */}
-            <div className="pt-12 border-t border-white/[0.08] space-y-8">
-               <h4 className="text-[10px] font-black text-error/40 uppercase tracking-[0.4em]">Administrative Directives</h4>
-               <div className="grid grid-cols-1 gap-4">
-                  <button className="w-full h-16 rounded-[28px] bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95">
-                    Re-initialize Security Credentials
-                  </button>
-                  <button className="w-full h-16 rounded-[28px] bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm">
-                    Deactivate System Access
-                  </button>
-               </div>
-            </div>
-
-          </div>
-        )}
-      </DetailDrawer>
 
       <ConfirmModal
         isOpen={isConfirmModalOpen}
@@ -331,10 +323,18 @@ export default function UsersPage() {
         title={modalConfig.title}
         description={modalConfig.description}
         variant={modalConfig.variant}
-
         showInput={modalConfig.showInput}
         confirmText={modalConfig.confirmText}
+        loading={actionLoading}
       />
-    </DashboardShell>
+
+      <UserKycReviewPanel
+        isOpen={reviewPanelOpen}
+        onClose={() => setReviewPanelOpen(false)}
+        userId={selectedUserId}
+        onUpdate={loadUsers}
+      />
+      </DashboardShell>
+    </ProtectedRoute>
   );
 }

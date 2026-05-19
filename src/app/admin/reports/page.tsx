@@ -1,186 +1,545 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader } from "@/app/components/ui/core";
-import { 
-  FileText, 
-  Download, 
-  Trash2, 
-  Mail, 
+import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
+import {
+  FileText,
+  Download,
+  Mail,
   Filter,
   CheckCircle2,
-  Clock,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  AlertCircle,
+  X,
+  Lock,
+  Settings2,
 } from "lucide-react";
-import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils";
-
-
-const reports = [
-  { id: "REP-001", name: "Monthly Financial Audit", type: "Financial", period: "May 2026", status: "Generated", date: "May 1, 2026" },
-  { id: "REP-002", name: "Creator Performance Index", type: "Analytics", period: "Q2 2026", status: "In Progress", date: "Scheduled" },
-  { id: "REP-003", name: "Campaign Fulfillment Log", type: "Operations", period: "Apr 2026", status: "Generated", date: "Apr 30, 2026" },
-  { id: "REP-004", name: "User Safety & Security Audit", type: "Security", period: "Weekly", status: "Generated", date: "May 12, 2026" },
-  { id: "REP-005", name: "Brand Retention Metrics", type: "Growth", period: "Yearly", status: "Archived", date: "Jan 15, 2026" },
-];
-
+import { reportService, ReportItem } from "@/app/services/reportService";
 import { useToast } from "@/app/hooks/useToast";
+import { CreateReportModal } from "@/app/components/modals/CreateReportModal";
+import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ReportsPage() {
   const { showToast } = useToast();
+  const { hasPermission, loading: authLoading } = useAdminAuth();
 
-  const handleProtocol = () => {
-    showToast("Custom intelligence protocol initialized", "success");
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [automationSettings, setAutomationSettings] = useState<Record<string, unknown> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isTestingLink, setIsTestingLink] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNodesModalOpen, setIsNodesModalOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [missingTableInfo, setMissingTableInfo] = useState<{ isMissing: boolean; name: string; sql: string }>({
+    isMissing: false,
+    name: "",
+    sql: "",
+  });
+
+  // Filter states
+  const [selectedType, setSelectedType] = useState<string>("All");
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
+
+  const canRead = hasPermission("reports.read");
+  const canWrite = hasPermission("reports.write");
+
+  const loadReports = useCallback(async (showNotification = false) => {
+    if (authLoading) return;
+    if (!canRead) {
+      setIsUnauthorized(true);
+      setIsLoading(false);
+      return;
+    }
+
+    if (showNotification) setIsSyncing(true);
+    else setIsLoading(true);
+
+    setIsError(false);
+    setIsUnauthorized(false);
+    setMissingTableInfo({ isMissing: false, name: "", sql: "" });
+
+    try {
+      const data = await reportService.getReports();
+      if (data.isMissingTable && data.tableName && data.migrationSql) {
+        setMissingTableInfo({ isMissing: true, name: data.tableName, sql: data.migrationSql });
+      } else {
+        setReports(data.data);
+        setAutomationSettings(data.automationSettings || null);
+        if (showNotification) showToast("Intelligence repository synchronized successfully.", "success");
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to fetch reports";
+      console.error("[ReportsPage] Failed to fetch reports:", msg);
+      if (msg.includes("permission") || msg.includes("unauthorized") || msg.includes("DENIED")) {
+        setIsUnauthorized(true);
+      } else {
+        setIsError(true);
+        showToast("Infrastructure synchronization failed.", "error");
+      }
+    } finally {
+      setIsLoading(false);
+      setIsSyncing(false);
+    }
+  }, [authLoading, canRead, showToast]);
+
+  useEffect(() => {
+    // eslint-disable-next-line
+    loadReports();
+  }, [loadReports]);
+
+  const handleTestLink = async () => {
+    setIsTestingLink(true);
+    try {
+      const res = await reportService.testLink();
+      showToast(res.message, "success");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Transmission link verification failed.";
+      showToast(msg, "error");
+    } finally {
+      setIsTestingLink(false);
+    }
   };
 
-  const handleDownload = (id: string) => {
-    showToast(`Downloading intelligence report ${id}`, "info");
+  const handleBrowseColdStorage = () => {
+    setSelectedStatus("Ready");
+    document.getElementById("reports-ledger")?.scrollIntoView({ behavior: "smooth" });
+    showToast("Filtered ledger to Ready/Archived compliance packages.", "info");
   };
 
-  const handleView = (id: string) => {
-    showToast(`Opening report ${id} in secure viewer`, "info");
+  const handleDownload = (id: string, url?: string) => {
+    if (url && url !== "#") {
+      window.open(url, "_blank");
+    }
+    showToast(`Downloading verified intelligence package ID_${id.slice(0, 8)}`, "info");
   };
+
+  const handleView = (id: string, url?: string) => {
+    if (url && url !== "#") {
+      window.open(url, "_blank");
+    } else {
+      showToast(`Opening report ID_${id.slice(0, 8)} in secure compliance viewer`, "info");
+    }
+  };
+
+  const filteredReports = useMemo(() => {
+    return reports.filter((r) => {
+      const matchType = selectedType === "All" || r.type.toLowerCase() === selectedType.toLowerCase();
+      const matchStatus = selectedStatus === "All" || r.status.toLowerCase() === selectedStatus.toLowerCase();
+      return matchType && matchStatus;
+    });
+  }, [reports, selectedType, selectedStatus]);
+
+  if (isUnauthorized) {
+    return (
+      <DashboardShell>
+        <div className="section-spacing">
+          <PageHeader
+            title="Intelligence Repository"
+            subtitle="Access automated business compliance, operational audits, and forensic platform reports."
+          />
+          <div className="p-16 rounded-[40px] bg-[#0F172A] border border-white/[0.08] text-center space-y-6">
+            <div className="w-20 h-20 rounded-full bg-error/10 border border-error/20 flex items-center justify-center mx-auto shadow-lg">
+              <Lock className="w-8 h-8 text-error" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-[#F0F0FB] tracking-tight">Access Restricted</h2>
+              <p className="text-sm font-medium text-[#F0F0FB]/40 max-w-md mx-auto">
+                You lack the required administrative clearance (reports.read) to view the intelligence ledger.
+              </p>
+            </div>
+          </div>
+        </div>
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell>
       <div className="section-spacing">
-        <PageHeader 
-          title="Intelligence Repository" 
-          subtitle="Access automated business intelligence, operational audits, and forensic platform reports."
+        <PageHeader
+          title="Intelligence Repository"
+          subtitle="Access automated business compliance, operational audits, and forensic platform reports."
         >
-          <button 
-            onClick={handleProtocol}
-            className="h-12 px-8 rounded-2xl bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95"
-          >
-            Initialize Custom Protocol
-          </button>
-
-        </PageHeader>
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-           <div className="p-10 rounded-[40px] bg-[#111827] border border-white/[0.08] relative overflow-hidden group shadow-sm">
-              <div className="relative z-10">
-                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-blue mb-4">Automated Dispatch</p>
-                 <h3 className="text-2xl font-black text-[#F0F0FB] mb-4 tracking-tight leading-none">Transmission Configuration</h3>
-                 <p className="text-[13px] text-[#F0F0FB]/40 mb-8 max-w-sm leading-relaxed font-medium">
-                    Configure high-priority dispatch protocols for automated fiscal and performance intelligence directly to executive stakeholders.
-                 </p>
-                 <div className="flex items-center space-x-4">
-                    <button className="h-11 px-6 rounded-xl bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-lg shadow-primary-blue/20">
-                      Manage Nodes
-                    </button>
-                    <button className="h-11 px-6 rounded-xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all flex items-center">
-                      <Mail className="w-3.5 h-3.5 mr-2.5" />
-                      Test Link
-                    </button>
-                 </div>
-              </div>
-              <FileText className="absolute right-[-40px] bottom-[-40px] w-56 h-56 text-primary-blue opacity-[0.03] group-hover:scale-110 transition-transform duration-700" />
-           </div>
-
-           <div className="p-10 rounded-[40px] bg-[#111827] border border-white/[0.08] relative overflow-hidden group shadow-sm">
-              <div className="relative z-10">
-                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/40 mb-4">Lifecycle Retention</p>
-                 <h3 className="text-2xl font-black text-[#F0F0FB] mb-4 tracking-tight leading-none">Historical Archives</h3>
-                 <p className="text-[13px] text-[#F0F0FB]/40 mb-8 max-w-sm leading-relaxed font-medium">
-                    Access and restore platform intelligence reports from previous fiscal periods. All platform data is secured via daily cold storage.
-                 </p>
-                 <div className="flex items-center space-x-4">
-                    <button className="h-11 px-8 rounded-xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-sm">
-                      Browse Cold Storage
-                    </button>
-                 </div>
-              </div>
-              <Download className="absolute right-[-40px] bottom-[-40px] w-56 h-56 text-white opacity-[0.02] group-hover:scale-110 transition-transform duration-700" />
-           </div>
-        </div>
-
-
-        <div className="bg-[#0F172A] border border-white/[0.08] rounded-[40px] overflow-hidden shadow-premium relative">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent" />
-          
-          <div className="px-10 py-8 border-b border-white/[0.05] flex items-center justify-between bg-white/[0.01]">
-            <h4 className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em]">Generated Intelligence Ledger</h4>
-            <button className="flex items-center space-x-2.5 text-[10px] font-black text-[#F0F0FB]/40 hover:text-[#F0F0FB] uppercase tracking-widest transition-colors">
-              <Filter className="w-4 h-4" />
-              <span>Configure Filter</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <button
+              onClick={() => loadReports(true)}
+              disabled={isLoading || isSyncing}
+              className="flex items-center justify-center space-x-3 h-12 px-6 rounded-[22px] bg-white/[0.03] border border-white/10 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/[0.08] transition-all active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+              <span>{isSyncing ? "Syncing..." : "Sync Repository"}</span>
+            </button>
+            <button
+              onClick={() => {
+                if (!canWrite) {
+                  showToast("Permission Denied: Required permission reports.write", "error");
+                  return;
+                }
+                setIsModalOpen(true);
+              }}
+              disabled={!canWrite}
+              title={!canWrite ? "Required permission: reports.write" : "Generate Report"}
+              className={cn(
+                "h-12 px-8 rounded-[22px] font-black text-[11px] uppercase tracking-widest transition-all shadow-xl active:scale-95 flex items-center justify-center",
+                canWrite
+                  ? "bg-primary-blue text-white shadow-primary-blue/20 hover:bg-primary-blue/90"
+                  : "bg-white/5 border border-white/10 text-white/30 cursor-not-allowed"
+              )}
+            >
+              Generate Report
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                  <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20">Report Identifier</th>
-                  <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20">Vector</th>
-                  <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20">Protocol State</th>
-                  <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20">Temporal Timestamp</th>
+        </PageHeader>
 
-                  <th className="px-10 py-6 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.05]">
-                {reports.map((report) => (
-                  <tr key={report.id} className="group hover:bg-white/[0.02] transition-colors duration-300">
-                    <td className="px-10 py-6">
-                      <div className="flex items-center space-x-5">
-                        <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center group-hover:border-primary-blue/20 group-hover:bg-primary-blue/5 transition-all duration-500 shadow-sm">
-                          <FileText className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors" />
-                        </div>
-                        <div>
-                          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none">{report.name}</p>
-                          <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-widest mt-2">{report.id} <span className="mx-1.5 opacity-50">•</span> {report.period}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-10 py-6">
-                      <span className="text-[11px] font-black text-[#F0F0FB]/40 uppercase tracking-widest bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/[0.05]">{report.type}</span>
-                    </td>
-                    <td className="px-10 py-6">
-                      <div className="flex items-center space-x-3">
-                         {report.status === "Generated" ? (
-                           <CheckCircle2 className="w-4 h-4 text-success-green" />
-                         ) : report.status === "In Progress" ? (
-                           <Clock className="w-4 h-4 text-warning animate-pulse" />
-                         ) : (
-                           <Trash2 className="w-4 h-4 text-[#F0F0FB]/10" />
-                         )}
-                         <span className={cn(
-                           "text-[10px] font-black uppercase tracking-widest",
-                           report.status === "Generated" ? "text-success-green" : 
-                           report.status === "In Progress" ? "text-warning" : "text-[#F0F0FB]/30"
-                         )}>{report.status}</span>
-                      </div>
-                    </td>
+        {/* 2-Column Cards Grid */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 mb-10">
+          <div className="p-8 sm:p-10 rounded-[40px] bg-[#111827] border border-white/[0.08] relative overflow-hidden group shadow-sm flex flex-col justify-between">
+            <div className="relative z-10 space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-blue">Automated Dispatch</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#F0F0FB] tracking-tight leading-none">
+                Transmission Configuration
+              </h3>
+              <p className="text-[13px] text-[#F0F0FB]/40 max-w-sm leading-relaxed font-medium">
+                Configure high-priority dispatch protocols for automated fiscal and compliance intelligence directly to executive stakeholders.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-8 relative z-10">
+              <button
+                onClick={() => setIsNodesModalOpen(true)}
+                className="h-11 px-6 rounded-xl bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-lg shadow-primary-blue/20 flex items-center justify-center space-x-2"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+                <span>Manage Nodes</span>
+              </button>
+              <button
+                onClick={handleTestLink}
+                disabled={isTestingLink}
+                className="h-11 px-6 rounded-xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all flex items-center justify-center space-x-2.5 disabled:opacity-50"
+              >
+                <Mail className="w-3.5 h-3.5 text-primary-blue" />
+                <span>{isTestingLink ? "Testing..." : "Test Link"}</span>
+              </button>
+            </div>
+            <FileText className="absolute right-[-40px] bottom-[-40px] w-56 h-56 text-primary-blue opacity-[0.03] group-hover:scale-110 transition-transform duration-700 pointer-events-none" />
+          </div>
 
-                    <td className="px-10 py-6">
-                      <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter uppercase">{report.date}</span>
-                    </td>
-                    <td className="px-10 py-6 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button 
-                          onClick={() => handleDownload(report.id)}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB]/20 hover:bg-white hover:text-black hover:border-white transition-all shadow-sm"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleView(report.id)}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB]/20 hover:bg-white hover:text-black hover:border-white transition-all shadow-sm"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-
-
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-8 sm:p-10 rounded-[40px] bg-[#111827] border border-white/[0.08] relative overflow-hidden group shadow-sm flex flex-col justify-between">
+            <div className="relative z-10 space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/40">Lifecycle Retention</p>
+              <h3 className="text-2xl sm:text-3xl font-black text-[#F0F0FB] tracking-tight leading-none">
+                Historical Archives
+              </h3>
+              <p className="text-[13px] text-[#F0F0FB]/40 max-w-sm leading-relaxed font-medium">
+                Access and restore platform compliance reports from previous fiscal periods. All platform data is secured via daily cold storage.
+              </p>
+            </div>
+            <div className="flex items-center mt-8 relative z-10">
+              <button
+                onClick={handleBrowseColdStorage}
+                className="w-full sm:w-auto h-11 px-8 rounded-xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-sm flex items-center justify-center space-x-2"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Browse Cold Storage</span>
+              </button>
+            </div>
+            <Download className="absolute right-[-40px] bottom-[-40px] w-56 h-56 text-white opacity-[0.02] group-hover:scale-110 transition-transform duration-700 pointer-events-none" />
           </div>
         </div>
+
+        {/* Ledger Section */}
+        <div id="reports-ledger" className="bg-[#0F172A] border border-white/[0.08] rounded-[40px] overflow-hidden shadow-premium relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent" />
+
+          <div className="px-6 sm:px-10 py-8 border-b border-white/[0.05] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/[0.01]">
+            <div>
+              <h4 className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em]">
+                Generated Intelligence Ledger
+              </h4>
+              <p className="text-xs text-[#F0F0FB]/40 font-semibold mt-1">
+                Showing {filteredReports.length} of {reports.length} compliance packages
+              </p>
+            </div>
+            <button
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              className={cn(
+                "flex items-center justify-center space-x-2.5 px-5 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all",
+                isFilterOpen
+                  ? "bg-primary-blue border-primary-blue text-white shadow-lg shadow-primary-blue/20"
+                  : "bg-white/[0.03] border-white/10 text-[#F0F0FB]/60 hover:text-[#F0F0FB] hover:bg-white/5"
+              )}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>{isFilterOpen ? "Hide Filters" : "Configure Filter"}</span>
+            </button>
+          </div>
+
+          {/* Filter Drawer */}
+          <AnimatePresence>
+            {isFilterOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="border-b border-white/[0.05] bg-white/[0.01] px-6 sm:px-10 py-6 overflow-hidden"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.3em] block mb-2">
+                      Report Vector Type
+                    </label>
+                    <select
+                      value={selectedType}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                      className="w-full h-11 rounded-xl bg-[#111827] border border-white/10 px-3 text-xs text-[#F0F0FB] font-semibold uppercase tracking-wider focus:outline-none focus:border-primary-blue"
+                    >
+                      <option value="All">All Vectors</option>
+                      <option value="Financial">Financial</option>
+                      <option value="User">User</option>
+                      <option value="Campaign">Campaign</option>
+                      <option value="Security">Security</option>
+                      <option value="Dispute">Dispute</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.3em] block mb-2">
+                      Protocol Status
+                    </label>
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      className="w-full h-11 rounded-xl bg-[#111827] border border-white/10 px-3 text-xs text-[#F0F0FB] font-semibold uppercase tracking-wider focus:outline-none focus:border-primary-blue"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Ready">Ready</option>
+                      <option value="Generating">Generating</option>
+                      <option value="Failed">Failed</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-end">
+                    {(selectedType !== "All" || selectedStatus !== "All") && (
+                      <button
+                        onClick={() => {
+                          setSelectedType("All");
+                          setSelectedStatus("All");
+                        }}
+                        className="w-full h-11 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white font-black text-xs uppercase tracking-widest transition-colors flex items-center justify-center space-x-2"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Reset Filters</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {isLoading ? (
+            <div className="p-12">
+              <LoadingState message="Synchronizing Compliance Packages..." />
+            </div>
+          ) : missingTableInfo.isMissing ? (
+            <div className="p-12">
+              <MissingTableState tableName={missingTableInfo.name} migrationSql={missingTableInfo.sql} />
+            </div>
+          ) : isError ? (
+            <div className="p-12">
+              <ErrorState onRetry={() => loadReports(false)} />
+            </div>
+          ) : filteredReports.length === 0 ? (
+            <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30">
+              No compliance reports matching active criteria.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/[0.05] bg-white/[0.02]">
+                    <th className="px-6 sm:px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20">
+                      Report Identifier
+                    </th>
+                    <th className="px-6 sm:px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20 whitespace-nowrap">
+                      Vector
+                    </th>
+                    <th className="px-6 sm:px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20 whitespace-nowrap">
+                      Protocol State
+                    </th>
+                    <th className="px-6 sm:px-10 py-6 text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20 whitespace-nowrap">
+                      Temporal Origin
+                    </th>
+                    <th className="px-6 sm:px-10 py-6 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {filteredReports.map((report) => (
+                    <tr key={report.id} className="group hover:bg-white/[0.02] transition-colors duration-300">
+                      <td className="px-6 sm:px-10 py-6 min-w-0">
+                        <div className="flex items-center space-x-4 sm:space-x-5 min-w-0">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center group-hover:border-primary-blue/20 group-hover:bg-primary-blue/5 transition-all duration-500 shadow-sm flex-shrink-0">
+                            <FileText className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm sm:text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none truncate">
+                              {report.name}
+                            </p>
+                            <p className="text-[10px] text-[#F0F0FB]/40 mt-1 truncate font-medium">
+                              {report.description}
+                            </p>
+                            <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-widest mt-2 truncate">
+                              ID_{report.id.slice(0, 8)} <span className="mx-1.5 opacity-50">•</span> {report.reporter}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 sm:px-10 py-6 whitespace-nowrap">
+                        <span className="text-[10px] font-black text-[#F0F0FB]/60 uppercase tracking-widest bg-white/[0.03] px-3 py-1.5 rounded-lg border border-white/[0.05]">
+                          {report.type}
+                        </span>
+                      </td>
+                      <td className="px-6 sm:px-10 py-6 whitespace-nowrap">
+                        <div className="flex items-center space-x-2">
+                          {report.status.toLowerCase() === "ready" ? (
+                            <CheckCircle2 className="w-4 h-4 text-success-green flex-shrink-0" />
+                          ) : report.status.toLowerCase() === "generating" ? (
+                            <RefreshCw className="w-4 h-4 text-warning animate-spin flex-shrink-0" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
+                          )}
+                          <span
+                            className={cn(
+                              "text-[10px] font-black uppercase tracking-widest",
+                              report.status.toLowerCase() === "ready"
+                                ? "text-success-green"
+                                : report.status.toLowerCase() === "generating"
+                                ? "text-warning"
+                                : "text-error"
+                            )}
+                          >
+                            {report.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 sm:px-10 py-6 whitespace-nowrap">
+                        <span className="text-[11px] font-black text-[#F0F0FB]/40 uppercase tracking-wider">
+                          {report.date}
+                        </span>
+                      </td>
+                      <td className="px-6 sm:px-10 py-6 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleDownload(report.id, report.fileUrl)}
+                            disabled={report.status.toLowerCase() !== "ready"}
+                            className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB]/40 hover:bg-white hover:text-black hover:border-white transition-all shadow-sm disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-white/[0.02] disabled:hover:text-[#F0F0FB]/40 disabled:hover:border-white/[0.05]"
+                            title={report.status.toLowerCase() === "ready" ? "Download Package" : "Package Generating"}
+                          >
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleView(report.id, report.fileUrl)}
+                            disabled={report.status.toLowerCase() !== "ready"}
+                            className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB]/40 hover:bg-white hover:text-black hover:border-white transition-all shadow-sm disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-white/[0.02] disabled:hover:text-[#F0F0FB]/40 disabled:hover:border-white/[0.05]"
+                            title={report.status.toLowerCase() === "ready" ? "View Secure Package" : "Package Generating"}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Generate Report Modal */}
+        <CreateReportModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={() => loadReports(true)}
+        />
+
+        {/* Manage Nodes Modal */}
+        <AnimatePresence>
+          {isNodesModalOpen && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 pointer-events-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsNodesModalOpen(false)}
+                className="absolute inset-0 bg-black/70 backdrop-blur-md z-[200]"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="relative z-[201] w-full max-w-[500px] bg-[#0F172A] border border-white/10 rounded-[32px] sm:rounded-[40px] shadow-2xl p-8 overflow-hidden space-y-6 text-center"
+              >
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/50 to-transparent" />
+
+                <button
+                  onClick={() => setIsNodesModalOpen(false)}
+                  className="absolute right-6 top-6 p-2 rounded-2xl bg-white/[0.03] border border-white/5 text-[#F0F0FB]/40 hover:text-white hover:bg-white/10 transition-all outline-none"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="w-16 h-16 rounded-full bg-primary-blue/10 border border-primary-blue/20 flex items-center justify-center mx-auto shadow-inner">
+                  <Settings2 className="w-8 h-8 text-primary-blue" />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xl font-black text-[#F0F0FB] uppercase tracking-tight">Transmission Dispatch Nodes</h3>
+                  <p className="text-xs font-medium text-[#F0F0FB]/40">
+                    Configuration settings for automated compliance dispatch nodes across executive communication vectors.
+                  </p>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-left space-y-4">
+                  {automationSettings ? (
+                    <div className="space-y-3 text-xs font-mono text-[#F0F0FB]/70">
+                      <div>
+                        <span className="text-[#F0F0FB]/30 uppercase font-black text-[10px] block">Dispatch Protocol</span>
+                        <span>{String(automationSettings.protocol || "Secure SMTP & Webhook Vector")}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#F0F0FB]/30 uppercase font-black text-[10px] block">Cron Frequency</span>
+                        <span>{String(automationSettings.cron || "0 0 * * 0 (Weekly Fiscal Summary)")}</span>
+                      </div>
+                      <div>
+                        <span className="text-[#F0F0FB]/30 uppercase font-black text-[10px] block">Encryption Standard</span>
+                        <span>{String(automationSettings.encryption || "AES-GCM-256 (FIPS 140-2)")}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-xs font-black uppercase tracking-widest text-[#F0F0FB]/40">
+                      Automation settings not configured
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setIsNodesModalOpen(false)}
+                  className="w-full h-12 rounded-2xl bg-white/5 border border-white/10 font-black text-xs uppercase tracking-widest text-white hover:bg-white/10 transition-all"
+                >
+                  Close Panel
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardShell>
   );

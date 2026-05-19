@@ -1,10 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader, StatusBadge, StatCard } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
+import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
+import { ConfirmModal } from "@/app/components/ui/confirm-modal";
+import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
 import { 
   Lock, 
   Unlock, 
@@ -13,51 +16,155 @@ import {
   ArrowRightLeft,
   ShieldCheck,
   Building,
-  User as UserIcon
+  User as UserIcon,
+  CheckCircle2,
+  RefreshCcw,
+  Filter,
+  RefreshCw
 } from "lucide-react";
 import { Escrow } from "@/app/types";
 import { cn } from "@/app/lib/utils";
-
 import { escrowService } from "@/app/services/financialServices";
 import { useToast } from "@/app/hooks/useToast";
 
 export default function EscrowPage() {
   const { showToast } = useToast();
-  const [localEscrow, setLocalEscrow] = React.useState<Escrow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [localEscrow, setLocalEscrow] = useState<Escrow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [missingTableInfo, setMissingTableInfo] = useState<{ isMissing: boolean; name: string; sql: string }>({ isMissing: false, name: "", sql: "" });
 
-  React.useEffect(() => {
-    const loadEscrow = async () => {
-      try {
-        const data = await escrowService.getEscrowList();
-        setLocalEscrow(data);
-      } catch (error) {
-        console.error("[EscrowPage] Failed to fetch escrow ledger:", error);
-        showToast("Infrastructure synchronization failed.", "error");
-      } finally {
-        setIsLoading(false);
+  const [selectedEscrow, setSelectedEscrow] = useState<Escrow | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+
+  const [modalConfig, setModalConfig] = useState<{
+    title: string;
+    description: string;
+    variant: "danger" | "info" | "warning" | "success";
+    showInput: boolean;
+    confirmText: string;
+    actionType: "release" | "freeze" | "refund" | "";
+  }>({ 
+    title: "", 
+    description: "", 
+    variant: "danger",
+    showInput: false,
+    confirmText: "Confirm",
+    actionType: ""
+  });
+
+  const loadEscrow = useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+    setMissingTableInfo({ isMissing: false, name: "", sql: "" });
+    try {
+      const data = await escrowService.getEscrowList();
+      if (data.isMissingTable && data.tableName && data.migrationSql) {
+        setMissingTableInfo({ isMissing: true, name: data.tableName, sql: data.migrationSql });
+      } else {
+        setLocalEscrow(data.data);
       }
-    };
-    loadEscrow();
+    } catch (error) {
+      console.error("[EscrowPage] Failed to fetch escrow ledger:", error);
+      setIsError(true);
+      showToast("Infrastructure synchronization failed.", "error");
+    } finally {
+      setIsLoading(false);
+    }
   }, [showToast]);
 
-  const handleRelease = async (id: string) => {
-    try {
-      await escrowService.release(id);
-      showToast(`Escrow ${id} released successfully`, "success");
-      setLocalEscrow(prev => prev.map(e => e.id === id ? { ...e, status: "Released" } : e));
-    } catch {
-      showToast("Release protocol failed", "error");
+  useEffect(() => {
+    // eslint-disable-next-line
+    loadEscrow();
+  }, [loadEscrow]);
+
+  const stats = useMemo(() => {
+    let totalHeld = 0;
+    let totalReleased = 0;
+    let totalFrozen = 0;
+    let totalDisputes = 0;
+
+    localEscrow.forEach(e => {
+      const amt = Number(e.amount.replace(/[^0-9.]/g, '')) || 0;
+      if (e.status === "Held") totalHeld += amt;
+      else if (e.status === "Released") totalReleased += amt;
+      else if (e.status === "Frozen") totalFrozen += amt;
+      else if (e.status === "Disputed") totalDisputes += 1;
+    });
+
+    return {
+      held: `$${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      released: `$${totalReleased.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      frozen: `$${totalFrozen.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      disputes: totalDisputes.toString()
+    };
+  }, [localEscrow]);
+
+  const filteredEscrow = useMemo(() => {
+    return localEscrow.filter(e => {
+      if (selectedStatus === "all") return true;
+      return e.status.toLowerCase() === selectedStatus.toLowerCase();
+    });
+  }, [localEscrow, selectedStatus]);
+
+  const handleAction = (item: Escrow, action: string) => {
+    setSelectedEscrow(item);
+    if (action === "release") {
+      setModalConfig({
+        title: "Release Escrow Funds",
+        description: `Authorize instant transfer of ${item.amount} from escrow vault to creator settlement account for ${item.creator}.`,
+        variant: "success",
+        showInput: false,
+        confirmText: "Authorize Release",
+        actionType: "release"
+      });
+      setIsConfirmModalOpen(true);
+    } else if (action === "freeze") {
+      setModalConfig({
+        title: "Freeze Escrow Assets",
+        description: `This will freeze ${item.amount} currently held in escrow. Please provide an administrative justification for this security protocol.`,
+        variant: "warning",
+        showInput: true,
+        confirmText: "Freeze Assets",
+        actionType: "freeze"
+      });
+      setIsConfirmModalOpen(true);
+    } else if (action === "refund") {
+      setModalConfig({
+        title: "Escrow Refund Protocol",
+        description: `Return ${item.amount} held in escrow back to corporate brand ${item.brand}. This will terminate creator claim to these funds.`,
+        variant: "danger",
+        showInput: false,
+        confirmText: "Process Refund",
+        actionType: "refund"
+      });
+      setIsConfirmModalOpen(true);
     }
   };
 
-  const handleFreeze = async (id: string) => {
+  const handleConfirm = async (reason?: string) => {
+    if (!selectedEscrow) return;
+    setActionLoading(true);
     try {
-      await escrowService.freeze(id, "Administrative freeze");
-      showToast(`Escrow ${id} frozen`, "warning");
-      setLocalEscrow(prev => prev.map(e => e.id === id ? { ...e, status: "Frozen" } : e));
-    } catch {
-      showToast("Freeze protocol failed", "error");
+      if (modalConfig.actionType === "release") {
+        await escrowService.release(selectedEscrow.id);
+        showToast(`Escrow released successfully for ${selectedEscrow.id.slice(0, 8)}`, "success");
+      } else if (modalConfig.actionType === "freeze") {
+        await escrowService.freeze(selectedEscrow.id, reason || "Administrative security freeze");
+        showToast(`Escrow frozen for ${selectedEscrow.id.slice(0, 8)}`, "warning");
+      } else if (modalConfig.actionType === "refund") {
+        await escrowService.refund(selectedEscrow.id);
+        showToast(`Escrow refunded successfully to brand for ${selectedEscrow.id.slice(0, 8)}`, "success");
+      }
+      setIsConfirmModalOpen(false);
+      await loadEscrow();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Escrow directive failed";
+      showToast(message, "error");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -65,28 +172,25 @@ export default function EscrowPage() {
     {
       accessorKey: "id",
       header: "Infrastructure ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id}</span>,
-
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
     },
     {
       accessorKey: "campaign",
       header: "Campaign Initiative",
       cell: ({ row }) => (
-        <div className="py-1">
-          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none">{row.original.campaign}</p>
-
-          <div className="flex items-center space-x-3 mt-2">
-             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest">
-                <Building className="w-3 h-3" />
-                <span>{row.original.brand}</span>
+        <div className="py-1 min-w-0">
+          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none truncate">{row.original.campaign}</p>
+          <div className="flex items-center space-x-3 mt-2 min-w-0">
+             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest min-w-0">
+                <Building className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{row.original.brand}</span>
              </div>
-             <span className="text-[#F0F0FB]/10">•</span>
-             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest">
-                <UserIcon className="w-3 h-3" />
-                <span>{row.original.creator}</span>
+             <span className="text-[#F0F0FB]/10 flex-shrink-0">•</span>
+             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest min-w-0">
+                <UserIcon className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{row.original.creator}</span>
              </div>
           </div>
-
         </div>
       ),
     },
@@ -98,7 +202,6 @@ export default function EscrowPage() {
           <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
           <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount.replace('$', '')}</span>
         </div>
-
       ),
     },
     {
@@ -119,33 +222,37 @@ export default function EscrowPage() {
       accessorKey: "releaseDate",
       header: "Temporal Threshold",
       cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter uppercase">{row.original.releaseDate}</span>,
-
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <div className="text-right flex items-center justify-end space-x-3">
-          {row.original.status === "Held" && (
-            <button 
-              onClick={() => handleRelease(row.original.id)}
-              className="h-9 px-4 rounded-xl bg-primary-blue text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-lg shadow-primary-blue/20 active:scale-95"
-            >
-              Authorize Release
-            </button>
+      cell: ({ row }) => {
+        const escrowActions: ActionItem[] = [
+          ...(row.original.status === 'Held' ? [
+            {
+              label: "Authorize Release",
+              icon: CheckCircle2,
+              onClick: () => handleAction(row.original, "release"),
+              variant: "blue" as const,
+              sectionLabel: "Escrow Directives"
+            },
+            {
+              label: "Freeze Assets",
+              icon: Snowflake,
+              onClick: () => handleAction(row.original, "freeze"),
+              variant: "orange" as const
+            },
+            {
+              label: "Refund to Brand",
+              icon: RefreshCcw,
+              onClick: () => handleAction(row.original, "refund"),
+              variant: "orange" as const,
+              isSeparator: true
+            }
+          ] : [])
+        ];
 
-          )}
-          {row.original.status === "Held" && (
-            <button 
-              onClick={() => handleFreeze(row.original.id)}
-              className="h-9 px-4 rounded-xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm"
-            >
-              Freeze Assets
-            </button>
-
-          )}
-        </div>
-
-      ),
+        return escrowActions.length > 0 ? <ActionDropdown actions={escrowActions} /> : <span className="text-xs text-white/20 italic">No actions</span>;
+      },
     },
   ];
 
@@ -155,17 +262,26 @@ export default function EscrowPage() {
         <PageHeader 
           title="Escrow Infrastructure" 
           subtitle="Enterprise management of secured fiscal vectors and automated release protocols."
-        />
+        >
+          <button 
+            onClick={() => loadEscrow()}
+            disabled={isLoading}
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Sync Vault</span>
+          </button>
+        </PageHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <StatCard label="Aggregate Escrow" value="$1.2M" icon={Lock} color="blue" />
-          <StatCard label="Scheduled Release" value="$42,500" icon={Unlock} color="success" />
-          <StatCard label="Frozen Assets" value="$15,000" icon={Snowflake} color="error" />
-          <StatCard label="Incident Disputes" value="8" icon={AlertCircle} color="orange" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+          <StatCard label="Aggregate Escrow" value={stats.held} icon={Lock} color="blue" />
+          <StatCard label="Released Yield" value={stats.released} icon={Unlock} color="success" />
+          <StatCard label="Frozen Assets" value={stats.frozen} icon={Snowflake} color="error" />
+          <StatCard label="Incident Disputes" value={stats.disputes} icon={AlertCircle} color="orange" />
         </div>
 
         {/* Protocol Lifecycle Visualization */}
-        <div className="bg-[#0F172A] border border-white/[0.08] rounded-[40px] p-10 overflow-hidden relative shadow-premium">
+        <div className="bg-[#0F172A] border border-white/[0.08] rounded-[40px] p-10 overflow-hidden relative shadow-premium mb-10">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
           
           <div className="flex items-center justify-between relative z-10 max-w-5xl mx-auto">
@@ -196,16 +312,56 @@ export default function EscrowPage() {
           </div>
         </div>
 
+        {/* Filters Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
+            <Filter className="w-4 h-4 text-primary-blue" />
+            <span>Escrow Filters:</span>
+          </div>
 
-        <DataTable 
-          columns={columns} 
-          data={localEscrow} 
-          isLoading={isLoading}
-          searchKey="campaign"
-          placeholder="Query escrow infrastructure by initiative identifier..."
-        />
+          <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
+            <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+            >
+              <option value="all" className="bg-[#111827]">All Records</option>
+              <option value="Held" className="bg-[#111827]">Held in Vault</option>
+              <option value="Released" className="bg-[#111827]">Released</option>
+              <option value="Frozen" className="bg-[#111827]">Frozen</option>
+              <option value="Disputed" className="bg-[#111827]">Disputed</option>
+            </select>
+          </div>
+        </div>
 
+        {isLoading ? (
+          <LoadingState message="Synchronizing Escrow Ledger..." />
+        ) : missingTableInfo.isMissing ? (
+          <MissingTableState tableName={missingTableInfo.name} migrationSql={missingTableInfo.sql} />
+        ) : isError ? (
+          <ErrorState onRetry={loadEscrow} />
+        ) : (
+          <DataTable 
+            columns={columns} 
+            data={filteredEscrow} 
+            searchKey="campaign"
+            placeholder="Query escrow infrastructure by campaign identifier..."
+          />
+        )}
       </div>
+
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirm}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        variant={modalConfig.variant}
+        showInput={modalConfig.showInput}
+        confirmText={modalConfig.confirmText}
+        loading={actionLoading}
+      />
     </DashboardShell>
   );
 }

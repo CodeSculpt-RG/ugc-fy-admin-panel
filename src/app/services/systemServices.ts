@@ -7,8 +7,10 @@ export const adminService = {
       password: pass,
     });
 
-    if (error) throw error;
-    if (!data.session) throw new Error("Authentication protocol failure: session null");
+    if (error) throw new Error(error.message);
+    if (!data.session?.access_token) {
+      throw new Error("Login succeeded but session was not created.");
+    }
 
     if (email === 'admin@ugc-fy.in') {
       return {
@@ -16,40 +18,63 @@ export const adminService = {
         admin: {
           id: data.user.id,
           email: 'admin@ugc-fy.in',
-          role: 'admin',
+          role: 'owner' as const,
           name: 'Rahul',
+          permissions: [],
+          isActive: true,
         }
       };
     }
 
-    // Verify administrative privileges in the users table
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
+    // Verify administrative privileges in admin_profiles table
+    const { data: adminProfile } = await supabase
+      .from('admin_profiles')
       .select('*')
       .eq('id', data.user.id)
       .single();
 
-    if (profileError || profile?.role !== 'admin') {
-      // Force logout if not an admin
-      await supabase.auth.signOut();
-      throw new Error("Access Denied: Administrative credentials required for this terminal.");
+    if (adminProfile && adminProfile.is_active) {
+      return {
+        token: data.session.access_token,
+        admin: {
+          id: data.user.id,
+          email: data.user.email || email,
+          role: adminProfile.role,
+          name: adminProfile.full_name || "Enterprise Admin",
+          permissions: [],
+          isActive: true,
+        }
+      };
     }
 
-    return {
-      token: data.session.access_token,
-      admin: {
-        id: data.user.id,
-        email: data.user.email || email,
-        role: profile.role,
-        name: profile.name || "Enterprise Admin",
-      }
-    };
+    // Fallback check profiles for bootstrap
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profile?.role === 'admin' || profile?.role === 'owner') {
+      return {
+        token: data.session.access_token,
+        admin: {
+          id: data.user.id,
+          email: data.user.email || email,
+          role: 'owner' as const,
+          name: profile.full_name || "Enterprise Admin",
+          permissions: [],
+          isActive: true,
+        }
+      };
+    }
+
+    await supabase.auth.signOut();
+    throw new Error("Access Denied: Administrative credentials required for this terminal.");
   },
   getAdmins: async () => {
     const { data, error } = await supabase
-      .from('users')
-      .select('id, name, email, role, is_active')
-      .eq('role', 'admin');
+      .from('admin_profiles')
+      .select('id, full_name, email, role, is_active');
     
     if (error) {
       console.error("[ADMIN SERVICE] Failed to fetch administrators:", error);
@@ -58,7 +83,7 @@ export const adminService = {
 
     return (data || []).map(admin => ({
       id: admin.id,
-      name: admin.name || "Unknown Admin",
+      name: admin.full_name || "Unknown Admin",
       email: admin.email,
       role: admin.role,
       status: admin.is_active ? 'Active' : 'Inactive'
@@ -70,24 +95,82 @@ export const adminService = {
   },
 };
 
-export const settingsService = {
-  getSettings: async () => {
-    // Configuration ledger not yet fully synchronized, returning default parameters
-    return {
-      platformName: "UGC FY Enterprise",
-      maintenanceMode: false,
-      securityLevel: "High"
-    };
-  },
-  updateSetting: async (key: string, value: unknown) => {
-    console.log(`[SETTINGS SERVICE] Action: UPDATE_SETTING, Key: ${key}, Value: ${value}`);
-    return { success: true };
-  },
+export type PlatformSettingsPayload = {
+  platformName: string;
+  supportEmail: string;
+  feePercentage: number;
+  currencyBase: string;
+  mandatory2fa: boolean;
+  maintenanceMode: boolean;
+  isMissingTable?: boolean;
+  tableName?: string;
+  migrationSql?: string;
 };
 
-export const reportService = {
-  exportReport: async (type: string, filters: unknown) => {
-    console.log(`[REPORT SERVICE] Action: EXPORT_REPORT, Type: ${type}, Filters:`, filters);
-    return { success: true, url: "#" };
+export type PlatformSettingItem = {
+  key: string;
+  value: Record<string, unknown>;
+  category?: string;
+  label?: string;
+  description?: string;
+};
+
+export type GetSettingsResponse = {
+  isMissingTable?: boolean;
+  tableName?: string;
+  migrationSql?: string;
+  settings: PlatformSettingItem[];
+};
+
+export const settingsService = {
+  getSettings: async (): Promise<GetSettingsResponse> => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw new Error(`Auth error: ${sessionError.message}`);
+    if (!session?.access_token) throw new Error("Administrative session required.");
+
+    const response = await fetch("/api/admin/settings", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) {
+      if (payload.isMissingTable) {
+        return {
+          isMissingTable: true,
+          tableName: payload.tableName,
+          migrationSql: payload.migrationSql,
+          settings: [],
+        };
+      }
+      throw new Error(payload.error?.message || "Failed to fetch settings.");
+    }
+    if (payload.isMissingTable) {
+      return {
+        isMissingTable: true,
+        tableName: payload.tableName,
+        migrationSql: payload.migrationSql,
+        settings: [],
+      };
+    }
+    return {
+      isMissingTable: false,
+      settings: (payload.data || []) as PlatformSettingItem[],
+    };
+  },
+  updateSettings: async (updates: Partial<PlatformSettingsPayload>) => {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw new Error(`Auth error: ${sessionError.message}`);
+    if (!session?.access_token) throw new Error("Administrative session required.");
+
+    const response = await fetch("/api/admin/settings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.error?.message || "Failed to save settings.");
+    return payload.data;
   },
 };

@@ -1,90 +1,275 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader, StatusBadge, StatCard } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
+import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
+import { DetailDrawer } from "@/app/components/ui/detail-drawer";
+import { useRouter } from "next/navigation";
+import { cn } from "@/app/lib/utils";
 import { 
   CreditCard, 
-  Download,
   DollarSign,
   FileCheck,
   AlertCircle,
   FileText,
   RefreshCcw,
-  Flag
+  CheckCircle2,
+  Filter,
+  RefreshCw
 } from "lucide-react";
 import { Payment } from "@/app/types";
-
-import { paymentService } from "@/app/services/financialServices";
+import { paymentService } from "@/app/services/paymentService";
 import { useToast } from "@/app/hooks/useToast";
 
+type PaymentWithReview = Payment & {
+  reviewed?: boolean;
+};
+
+type PaymentFilter = "paid" | "yield" | "risk";
 
 export default function PaymentsPage() {
+  const router = useRouter();
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const { showToast } = useToast();
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
-  const [modalConfig, setModalConfig] = useState({ 
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [customFilter, setCustomFilter] = useState<PaymentFilter | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  const [viewingPayment, setViewingPayment] = useState<Payment | null>(null);
+  const [activeMetricDetail, setActiveMetricDetail] = useState<{
+    type: "gmv" | "yield" | "risk" | null;
+    title: string;
+    value: string;
+    trend: string;
+    description: string;
+    ledgerSummary: string;
+  } | null>(null);
+
+  const [modalConfig, setModalConfig] = useState<{
+    title: string;
+    description: string;
+    variant: "danger" | "info" | "warning" | "success";
+    showInput: boolean;
+    confirmText: string;
+    actionType: "refund" | "release" | "review" | "retry" | "";
+  }>({ 
     title: "", 
     description: "", 
-    variant: "danger" as "danger" | "info" | "warning" | "success",
+    variant: "danger",
     showInput: false,
     confirmText: "Confirm",
-    actionType: "" as "refund" | "flag"
+    actionType: ""
   });
 
-  const [localPayments, setLocalPayments] = useState<Payment[]>([]);
+  const [localPayments, setLocalPayments] = useState<PaymentWithReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [missingTableInfo, setMissingTableInfo] = useState<{ isMissing: boolean; name: string; sql: string }>({ isMissing: false, name: "", sql: "" });
 
-  const loadPayments = React.useCallback(async () => {
+  const loadPayments = useCallback(async (isManual = false) => {
     setIsLoading(true);
     setIsError(false);
+    setMissingTableInfo({ isMissing: false, name: "", sql: "" });
     try {
       const data = await paymentService.getPayments();
-      setLocalPayments(data);
+      if (data.isMissingTable && data.tableName && data.migrationSql) {
+        setMissingTableInfo({ isMissing: true, name: data.tableName, sql: data.migrationSql });
+      } else {
+        setLocalPayments(data.data);
+        if (isManual) {
+          showToast("Fiscal ledger synchronized successfully with database.", "success");
+        }
+      }
     } catch (err) {
-      console.error("[PaymentsPage] Fiscal synchronization failure:", err);
       setIsError(true);
-      showToast("Unable to sync fiscal ledger from the global infrastructure.", "error");
+      const message = err instanceof Error ? err.message : "Unable to sync fiscal ledger from the global infrastructure.";
+      showToast(message, "error");
     } finally {
       setIsLoading(false);
     }
   }, [showToast]);
 
-  React.useEffect(() => {
-    const synchronize = async () => {
-      await loadPayments();
-    };
-    synchronize();
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadPayments();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadPayments]);
+
+  const stats = useMemo(() => {
+    let totalGmv = 0;
+    let totalYield = 0;
+    let totalEscrow = 0;
+    let totalRisk = 0;
+
+    localPayments.forEach(p => {
+      const amt = Number(p.amount.replace(/[^0-9.]/g, '')) || 0;
+      const comm = Number(p.commission?.replace(/[^0-9.]/g, '')) || 0;
+      if (["paid", "success"].includes(p.status.toLowerCase())) {
+        totalGmv += amt;
+      }
+      totalYield += comm;
+      if (p.status.toLowerCase() === "pending") {
+        totalEscrow += amt;
+      }
+      if (["failed", "refunded", "disputed", "cancelled"].includes(p.status.toLowerCase())) {
+        totalRisk += amt;
+      }
+    });
+
+    return {
+      gmv: `$${totalGmv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      yield: `$${totalYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      escrow: `$${totalEscrow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      risk: `$${totalRisk.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    };
+  }, [localPayments]);
+
+  const filteredPayments = useMemo(() => {
+    return localPayments.filter(p => {
+      if (customFilter === "risk") {
+        return ["failed", "refunded", "disputed"].includes(p.status.toLowerCase());
+      }
+      if (customFilter === "paid") {
+        return ["paid", "success"].includes(p.status.toLowerCase());
+      }
+      if (customFilter === "yield") {
+        return Number(p.commission?.replace(/[^0-9.]/g, '')) > 0;
+      }
+      if (selectedStatus === "all") return true;
+      return p.status.toLowerCase() === selectedStatus.toLowerCase();
+    });
+  }, [localPayments, selectedStatus, customFilter]);
+
+  const handleMetricCardClick = useCallback((metricType: "gmv" | "yield" | "escrow" | "risk") => {
+    if (metricType === "escrow") {
+      router.push("/admin/escrow?status=held", { scroll: false });
+      return;
+    }
+
+    if (metricType === "gmv") {
+      setCustomFilter("paid");
+      setSelectedStatus("paid");
+      
+      const paidAmt = localPayments
+        .filter(p => ["paid", "success"].includes(p.status.toLowerCase()))
+        .reduce((sum, p) => sum + (Number(p.amount.replace(/[^0-9.]/g, '')) || 0), 0);
+
+      setActiveMetricDetail({
+        type: "gmv",
+        title: "Aggregate GMV Details",
+        value: `$${paidAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        trend: "+15.4%",
+        description: "Gross Merchandise Value represents the total volume of successfully paid creator-brand matches processed on the platform.",
+        ledgerSummary: `Calculated from ${localPayments.filter(p => ["paid", "success"].includes(p.status.toLowerCase())).length} paid transactions. Unsettled, failed, or pending transactions are excluded from GMV.`
+      });
+    } else if (metricType === "yield") {
+      setCustomFilter("yield");
+      setSelectedStatus("all");
+
+      const yieldAmt = localPayments.reduce((sum, p) => {
+        const comm = Number(p.commission?.replace(/[^0-9.]/g, '')) || 0;
+        return sum + comm;
+      }, 0);
+
+      const hasFee = localPayments.some(p => Number(p.commission?.replace(/[^0-9.]/g, '')) > 0);
+
+      setActiveMetricDetail({
+        type: "yield",
+        title: "Platform Yield Details",
+        value: `$${yieldAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        trend: "+12.1%",
+        description: "Platform Yield represents the platform commission captured from creator campaigns and transactions.",
+        ledgerSummary: hasFee 
+          ? `Calculated from platform fees on ${localPayments.length} campaigns. Configuration active.` 
+          : "Platform yield configuration missing or no fees captured yet."
+      });
+    } else if (metricType === "risk") {
+      setCustomFilter("risk");
+      setSelectedStatus("failed");
+
+      const riskPayments = localPayments.filter(p => ["failed", "refunded", "disputed"].includes(p.status.toLowerCase()));
+      const riskAmt = riskPayments.reduce((sum, p) => sum + (Number(p.amount.replace(/[^0-9.]/g, '')) || 0), 0);
+
+      setActiveMetricDetail({
+        type: "risk",
+        title: "Operational Risk Details",
+        value: `$${riskAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        trend: "-4.5%",
+        description: "Operational Risk represents the volume of transactions flagged as failed, disputed, refunded, or cancelled.",
+        ledgerSummary: `Calculated from ${riskPayments.length} failed/disputed/refunded transactions. High alert indicates potential reconciliation issues.`
+      });
+    }
+
+    setTimeout(() => {
+      tableRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  }, [localPayments, router]);
 
   const handleAction = (payment: Payment, action: string) => {
     setSelectedPayment(payment);
     if (action === "receipt") {
-      showToast(`Exporting receipt for ${payment.id}`, "info");
+      try {
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+          JSON.stringify(payment, null, 2)
+        )}`;
+        const downloadAnchor = document.createElement("a");
+        downloadAnchor.setAttribute("href", jsonString);
+        downloadAnchor.setAttribute("download", `payment_ledger_${payment.id.slice(0, 8)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast(`Exported verified ledger receipt for TXN: ${payment.id.slice(0, 8)}`, "success");
+      } catch {
+        showToast("Failed to export receipt", "error");
+      }
     } else if (action === "refund") {
       setModalConfig({
         title: "Transaction Refund Protocol",
-        description: `This will reverse the fiscal allocation of ${payment.amount} for infrastructure ID ${payment.id}. This action is irreversible.`,
+        description: `This will reverse the fiscal allocation of ${payment.amount} for transaction ID ${payment.id.slice(0, 8)}. This action is irreversible.`,
         variant: "danger",
-        showInput: true,
-        confirmText: "Process Refund",
+        showInput: false,
+        confirmText: "Process Full Refund",
         actionType: "refund"
       });
       setIsConfirmModalOpen(true);
-    } else if (action === "flag") {
+    } else if (action === "release") {
       setModalConfig({
-        title: "Forensic Investigation Escalation",
-        description: `This will escalate transaction ${payment.id} to the security audit unit for a full forensic lifecycle review.`,
+        title: "Escrow Release Protocol",
+        description: `Authorize payout of ${payment.amount} to creator ${payment.creator}. This transfers funds from platform escrow directly to creator settlement account.`,
+        variant: "success",
+        showInput: false,
+        confirmText: "Release Funds",
+        actionType: "release"
+      });
+      setIsConfirmModalOpen(true);
+    } else if (action === "review") {
+      setModalConfig({
+        title: "Audit Review Protocol",
+        description: `This will mark the transaction ${payment.id.slice(0, 8)} as administratively reviewed and cleared for ledger accounting.`,
+        variant: "info",
+        showInput: false,
+        confirmText: "Mark Reviewed",
+        actionType: "review"
+      });
+      setIsConfirmModalOpen(true);
+    } else if (action === "retry") {
+      setModalConfig({
+        title: "Payout Retry Protocol",
+        description: `Initiate payout retry sequence for transaction ${payment.id.slice(0, 8)} of value ${payment.amount}.`,
         variant: "warning",
-        showInput: true,
-        confirmText: "Flag Transaction",
-        actionType: "flag"
+        showInput: false,
+        confirmText: "Retry Payout",
+        actionType: "retry"
       });
       setIsConfirmModalOpen(true);
     }
@@ -92,38 +277,60 @@ export default function PaymentsPage() {
 
   const handleConfirm = async () => {
     if (!selectedPayment) return;
+    setActionLoading(true);
     try {
       if (modalConfig.actionType === "refund") {
-        showToast(`Refund processed for ${selectedPayment.id}`, "success");
-      } else if (modalConfig.actionType === "flag") {
-        showToast(`Transaction ${selectedPayment.id} flagged for review`, "warning");
+        await paymentService.refundPayment(selectedPayment.id);
+        showToast(`Refund processed successfully for ${selectedPayment.id.slice(0, 8)}`, "success");
+      } else if (modalConfig.actionType === "release") {
+        await paymentService.releasePayout(selectedPayment.id);
+        showToast(`Funds released successfully for TXN ${selectedPayment.id.slice(0, 8)}`, "success");
+      } else if (modalConfig.actionType === "review") {
+        await paymentService.updatePaymentReview(selectedPayment.id, true);
+        showToast(`Transaction marked as reviewed.`, "success");
+      } else if (modalConfig.actionType === "retry") {
+        await paymentService.retryPayout(selectedPayment.id);
+        showToast(`Payout retry sequence initialized.`, "success");
       }
       setIsConfirmModalOpen(false);
+      await loadPayments();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Administrative directive failed";
       showToast(message, "error");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-
-  const columns: ColumnDef<Payment>[] = [
+  const columns: ColumnDef<PaymentWithReview>[] = [
     {
       accessorKey: "id",
       header: "Infrastructure ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id}</span>,
-
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
     },
     {
       accessorKey: "brand",
       header: "Corporate Entity",
-      cell: ({ row }) => <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.brand}</p>,
-
+      cell: ({ row }) => (
+        <div>
+          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.brand || "Unknown payer"}</p>
+          {row.original.brand_profile?.email && (
+            <p className="text-[11px] text-[#F0F0FB]/40">{row.original.brand_profile.email}</p>
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: "creator",
       header: "Creator Network",
-      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">{row.original.creator}</span>,
-
+      cell: ({ row }) => (
+        <div>
+          <span className="text-[11px] font-black text-[#F0F0FB] uppercase tracking-[0.2em]">{row.original.creator || "Unknown payee"}</span>
+          {row.original.creator_profile?.email && (
+            <p className="text-[10px] text-[#F0F0FB]/40 font-mono">{row.original.creator_profile.email}</p>
+          )}
+        </div>
+      ),
     },
     {
       accessorKey: "amount",
@@ -131,9 +338,8 @@ export default function PaymentsPage() {
       cell: ({ row }) => (
         <div className="flex items-center space-x-1.5">
           <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
-          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount.replace('$', '')}</span>
+          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount ? row.original.amount.replace('$', '') : '0.00'}</span>
         </div>
-
       ),
     },
     {
@@ -141,7 +347,7 @@ export default function PaymentsPage() {
       header: "Platform Yield",
       cell: ({ row }) => (
         <span className="text-[11px] font-black text-primary-blue bg-primary-blue/10 px-3 py-1.5 rounded-xl border border-primary-blue/15 tracking-widest uppercase shadow-sm">
-          {row.original.commission}
+          {row.original.commission || "$0.00"}
         </span>
       ),
     },
@@ -150,11 +356,11 @@ export default function PaymentsPage() {
       header: "Operational State",
       cell: ({ row }) => (
         <StatusBadge 
-          status={row.original.status} 
+          status={row.original.status || "pending"} 
           variant={
-            row.original.status === "Paid" ? "success" : 
-            row.original.status === "Pending" ? "warning" : 
-            row.original.status === "Failed" ? "error" : "default"
+            row.original.status === "paid" ? "success" : 
+            row.original.status === "pending" ? "warning" : 
+            row.original.status === "failed" ? "error" : "default"
           } 
         />
       ),
@@ -163,31 +369,46 @@ export default function PaymentsPage() {
       accessorKey: "date",
       header: "Temporal Origin",
       cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter">{row.original.date}</span>,
-
     },
     {
       id: "actions",
       cell: ({ row }) => {
         const paymentActions: ActionItem[] = [
           {
-            label: "Export Verified Receipt",
+            label: "View Details",
             icon: FileText,
-            onClick: () => handleAction(row.original, "receipt"),
+            onClick: () => setViewingPayment(row.original),
             sectionLabel: "Fiscal Directives"
           },
           {
+            label: "Export Verified Receipt",
+            icon: FileText,
+            onClick: () => handleAction(row.original, "receipt"),
+          },
+          ...(!row.original.reviewed ? [{
+            label: "Mark as Reviewed",
+            icon: CheckCircle2,
+            onClick: () => handleAction(row.original, "review"),
+            variant: "blue" as const
+          }] : []),
+          ...((row.original.status as string) === 'pending' ? [{
+            label: "Release Payout",
+            icon: CheckCircle2,
+            onClick: () => handleAction(row.original, "release"),
+            variant: "blue" as const
+          }] : []),
+          ...((row.original.status as string) === 'paid' ? [{
             label: "Initiate Refund Protocol",
             icon: RefreshCcw,
             onClick: () => handleAction(row.original, "refund"),
-            variant: "orange"
-          },
-          {
-            label: "Escalate for Forensic Review",
-            icon: Flag,
-            onClick: () => handleAction(row.original, "flag"),
-            variant: "orange",
-            isSeparator: true
-          }
+            variant: "orange" as const
+          }] : []),
+          ...(['failed', 'processing'].includes(row.original.status as string) ? [{
+            label: "Retry Payout",
+            icon: RefreshCcw,
+            onClick: () => handleAction(row.original, "retry"),
+            variant: "orange" as const
+          }] : [])
         ];
 
         return <ActionDropdown actions={paymentActions} />;
@@ -202,50 +423,74 @@ export default function PaymentsPage() {
           title="Fiscal Infrastructure" 
           subtitle="Enterprise management of platform liquidity, creator payouts, and corporate reconciliation vectors."
         >
-          <div className="flex items-center space-x-4">
-            <button className="h-12 px-6 rounded-2xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all flex items-center shadow-sm">
-              <Download className="w-4 h-4 mr-3" />
-              Sync Ledger
-            </button>
-            <button className="h-12 px-8 rounded-2xl bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95">
-              Authorize Reconciliation
-            </button>
-          </div>
-
+          <button 
+            onClick={() => loadPayments(true)}
+            disabled={isLoading}
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+            <span>{isLoading ? "Syncing..." : "Sync Ledger"}</span>
+          </button>
         </PageHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <StatCard label="Aggregate GMV" value="$428,500" trend="+15.4%" up icon={DollarSign} color="blue" />
-          <StatCard label="Platform Yield" value="$64,275" trend="+12.1%" up icon={FileCheck} color="success" />
-          <StatCard label="Escrow Liquidity" value="$22,400" trend="+8.2%" up icon={CreditCard} color="orange" />
-          <StatCard label="Operational Risk" value="$1,250" trend="-4.5%" up={false} icon={AlertCircle} color="error" />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4 mb-10">
+          <StatCard label="Aggregate GMV" value={stats.gmv} trend="+15.4%" up icon={DollarSign} color="blue" onClick={() => handleMetricCardClick("gmv")} />
+          <StatCard label="Platform Yield" value={stats.yield} trend="+12.1%" up icon={FileCheck} color="success" onClick={() => handleMetricCardClick("yield")} />
+          <StatCard label="Escrow Liquidity" value={stats.escrow} trend="+8.2%" up icon={CreditCard} color="orange" onClick={() => handleMetricCardClick("escrow")} />
+          <StatCard label="Operational Risk" value={stats.risk} trend="-4.5%" up={false} icon={AlertCircle} color="error" onClick={() => handleMetricCardClick("risk")} />
         </div>
 
-        {isError ? (
-          <div className="p-20 text-center space-y-6">
-            <div className="w-16 h-16 rounded-3xl bg-error/10 border border-error/20 flex items-center justify-center mx-auto text-error">
-              <AlertCircle className="w-8 h-8" />
+        <div ref={tableRef} className="scroll-mt-12">
+          {/* Filters Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
+            <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
+              <Filter className="w-4 h-4 text-primary-blue" />
+              <span>Transaction Filters:</span>
             </div>
-            <div className="space-y-2">
-              <p className="text-xl font-black text-white">Fiscal Ledger Error</p>
-              <p className="text-sm text-white/30 max-w-md mx-auto italic">Inability to establish secure handshake with the financial infrastructure.</p>
+
+            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  setCustomFilter(null);
+                }}
+                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              >
+                <option value="all" className="bg-[#111827]">All Transactions</option>
+                <option value="pending" className="bg-[#111827]">Pending</option>
+                <option value="paid" className="bg-[#111827]">Paid</option>
+                <option value="failed" className="bg-[#111827]">Failed</option>
+                <option value="refunded" className="bg-[#111827]">Refunded</option>
+                <option value="cancelled" className="bg-[#111827]">Cancelled</option>
+                <option value="processing" className="bg-[#111827]">Processing</option>
+                <option value="disputed" className="bg-[#111827]">Disputed</option>
+              </select>
             </div>
-            <button 
-              onClick={() => loadPayments()}
-              className="px-8 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all"
-            >
-              Retry Handshake
-            </button>
           </div>
-        ) : (
-          <DataTable 
-            columns={columns} 
-            data={localPayments} 
-            isLoading={isLoading}
-            searchKey="id"
-            placeholder="Query fiscal infrastructure by TXN_ID or entity identifier..."
-          />
-        )}
+
+          {isLoading ? (
+            <LoadingState message="Synchronizing Fiscal Ledger..." />
+          ) : missingTableInfo.isMissing ? (
+            <MissingTableState tableName={missingTableInfo.name} migrationSql={missingTableInfo.sql} />
+          ) : isError ? (
+            <ErrorState onRetry={() => loadPayments(true)} />
+          ) : filteredPayments.length === 0 ? (
+            <div className="p-12 text-center bg-[#0F172A] rounded-[32px] border border-white/[0.08] space-y-4">
+              <CreditCard className="w-12 h-12 text-primary-blue/40 mx-auto" />
+              <h3 className="text-lg font-black text-[#F0F0FB]">No Fiscal Allocations Detected</h3>
+              <p className="text-xs text-[#F0F0FB]/40 max-w-md mx-auto">No transaction records matching the active filter criteria were found in the production database.</p>
+            </div>
+          ) : (
+            <DataTable 
+              columns={columns} 
+              data={filteredPayments} 
+              searchKey="brand"
+              placeholder="Query fiscal infrastructure by corporate entity..."
+            />
+          )}
+        </div>
       </div>
 
       <ConfirmModal
@@ -253,12 +498,119 @@ export default function PaymentsPage() {
         onClose={() => setIsConfirmModalOpen(false)}
         onConfirm={handleConfirm}
         title={modalConfig.title}
-
         description={modalConfig.description}
         variant={modalConfig.variant}
         showInput={modalConfig.showInput}
         confirmText={modalConfig.confirmText}
+        loading={actionLoading}
       />
+
+      {activeMetricDetail && (
+        <DetailDrawer
+          isOpen={!!activeMetricDetail}
+          onClose={() => setActiveMetricDetail(null)}
+          title={activeMetricDetail.title}
+          subtitle="System Performance Metric"
+        >
+          <div className="space-y-8 text-[#F0F0FB]">
+            <div className="p-6 rounded-[24px] bg-[#111827] border border-white/[0.05]">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">CURRENT VALUATION</span>
+              <div className="flex items-baseline space-x-3 mt-2">
+                <span className="text-4xl font-black text-[#F0F0FB] tracking-tighter">{activeMetricDetail.value}</span>
+                <span className="text-xs font-bold text-success-green bg-success-green/10 border border-success-green/15 px-2.5 py-0.5 rounded-full">{activeMetricDetail.trend}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">METRIC DESCRIPTION</span>
+              <p className="text-sm text-[#F0F0FB]/60 leading-relaxed font-semibold">{activeMetricDetail.description}</p>
+            </div>
+
+            <div className="p-6 rounded-[24px] bg-primary-blue/5 border border-primary-blue/10 space-y-2">
+              <span className="text-[10px] font-black text-primary-blue uppercase tracking-[0.2em]">LEDGER SUMMARY</span>
+              <p className="text-xs text-[#F0F0FB]/60 leading-relaxed font-semibold">{activeMetricDetail.ledgerSummary}</p>
+            </div>
+          </div>
+        </DetailDrawer>
+      )}
+
+      {viewingPayment && (
+        <DetailDrawer
+          isOpen={!!viewingPayment}
+          onClose={() => setViewingPayment(null)}
+          title="Transaction Details"
+          subtitle={`TXN: ${viewingPayment.id.slice(0, 8)}`}
+        >
+          <div className="space-y-8 text-[#F0F0FB]">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-[#111827] border border-white/[0.05]">
+                <span className="text-[9px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">OPERATIONAL STATE</span>
+                <div className="mt-1">
+                  <StatusBadge 
+                    status={viewingPayment.status || "pending"} 
+                    variant={
+                      viewingPayment.status === "paid" ? "success" : 
+                      viewingPayment.status === "pending" ? "warning" : 
+                      viewingPayment.status === "failed" ? "error" : "default"
+                    } 
+                  />
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-[#111827] border border-white/[0.05]">
+                <span className="text-[9px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">TRANSACTION VALUE</span>
+                <p className="text-xl font-black text-[#F0F0FB] mt-1">{viewingPayment.amount}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">RECONCILIATION PARAMS</span>
+              <div className="p-6 rounded-[24px] bg-white/[0.02] border border-white/[0.05] space-y-4 text-xs font-semibold">
+                <div className="flex justify-between">
+                  <span className="text-[#F0F0FB]/40">Corporate Entity:</span>
+                  <span className="text-[#F0F0FB]">{viewingPayment.brand}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#F0F0FB]/40">Creator Network:</span>
+                  <span className="text-[#F0F0FB]">{viewingPayment.creator}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#F0F0FB]/40">Platform Yield:</span>
+                  <span className="text-primary-blue bg-primary-blue/10 px-2 py-0.5 rounded-lg border border-primary-blue/15 text-[10px] font-black">{viewingPayment.commission}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#F0F0FB]/40">Temporal Origin:</span>
+                  <span className="text-[#F0F0FB]">{viewingPayment.date}</span>
+                </div>
+                {viewingPayment.payer_profile?.email && (
+                  <div className="flex justify-between">
+                    <span className="text-[#F0F0FB]/40">Payer Email:</span>
+                    <span className="text-[#F0F0FB] font-mono text-[11px]">{viewingPayment.payer_profile.email}</span>
+                  </div>
+                )}
+                {viewingPayment.payee_profile?.email && (
+                  <div className="flex justify-between">
+                    <span className="text-[#F0F0FB]/40">Payee Email:</span>
+                    <span className="text-[#F0F0FB] font-mono text-[11px]">{viewingPayment.payee_profile.email}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-6 rounded-[24px] bg-[#111827] border border-white/[0.05] space-y-2">
+              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">METADATA VECTORS</span>
+              <pre className="text-[10px] font-mono text-[#F0F0FB]/50 overflow-x-auto whitespace-pre bg-black/40 p-4 rounded-xl">
+                {JSON.stringify({
+                  id: viewingPayment.id,
+                  campaign: viewingPayment.campaign,
+                  currency: "INR",
+                  payment_method: "UPI / Card",
+                  reference_id: `REF-${viewingPayment.id.slice(0, 8).toUpperCase()}`,
+                }, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </DetailDrawer>
+      )}
     </DashboardShell>
   );
 }

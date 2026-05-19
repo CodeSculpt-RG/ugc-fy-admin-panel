@@ -1,47 +1,80 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeError } from "@/lib/api/normalizeError";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
+import { requirePermission } from "@/lib/api/requirePermission";
+
+async function safeSelectLatest(tableName: string, limit = 5) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from(tableName)
+      .select("*")
+      .limit(limit);
+
+    if (error) {
+      return {
+        table: tableName,
+        exists: false,
+        rows: [],
+        error: {
+          message: error.message,
+          code: error.code ?? "UNKNOWN",
+          details: error.details ?? null,
+          hint: error.hint ?? null,
+        },
+      };
+    }
+
+    return {
+      table: tableName,
+      exists: true,
+      rows: data ?? [],
+      error: null,
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : "Execution exception";
+    return {
+      table: tableName,
+      exists: false,
+      rows: [],
+      error: {
+        message: errorMsg,
+        code: "UNKNOWN",
+        details: null,
+        hint: null,
+      },
+    };
+  }
+}
 
 export async function GET(request: Request) {
   try {
-    const auth = await verifyAdmin(request);
-    if (!auth.success) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: auth.status }
-      );
-    }
+    const permissionCheck = await requirePermission(request, "infrastructure.read");
+    if (!permissionCheck.ok) return permissionCheck.response;
 
-    const { data: profiles, error: profilesError } = await supabaseAdmin
-      .from("users")
-      .select("id, email, role, is_active, is_verified, created_at")
-      .order("created_at", { ascending: false })
-      .limit(10);
+    const tableNames = [
+      "profiles",
+      "creator_profiles",
+      "brand_profiles",
+      "admin_profiles",
+      "moderation_cases",
+      "payments",
+      "platform_settings",
+      "security_events",
+    ];
 
-    if (profilesError) throw profilesError;
-
-    const { data: creators, error: creatorsError } = await supabaseAdmin
-      .from("creator_profiles")
-      .select("*")
-      .limit(10);
-
-    if (creatorsError) throw creatorsError;
-
-    const { data: brands, error: brandsError } = await supabaseAdmin
-      .from("brand_profiles")
-      .select("*")
-      .limit(10);
-
-    if (brandsError) throw brandsError;
+    const results = await Promise.all(tableNames.map((name) => safeSelectLatest(name, 5)));
+    const tablesMap = Object.fromEntries(results.map((res) => [res.table, res]));
 
     return NextResponse.json({
       success: true,
       source: "real_supabase_database",
       message: "Direct database synchronization verified.",
-      profiles: profiles ?? [],
-      creator_profiles: creators ?? [],
-      brand_profiles: brands ?? [],
+      env: {
+        hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+        hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+        hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      },
+      data: tablesMap,
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);

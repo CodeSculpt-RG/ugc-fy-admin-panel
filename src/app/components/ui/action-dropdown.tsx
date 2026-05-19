@@ -19,6 +19,7 @@ export interface ActionItem {
   variant?: "default" | "blue" | "orange";
   isSeparator?: boolean;
   sectionLabel?: string;
+  hidden?: boolean;
 }
 
 interface ActionDropdownProps {
@@ -34,6 +35,10 @@ export function ActionDropdown({
   triggerClassName,
   menuWidth = "w-64",
 }: ActionDropdownProps) {
+  const visibleActions = actions.filter((action) => !action.hidden);
+
+  if (visibleActions.length === 0) return null;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -53,7 +58,7 @@ export function ActionDropdown({
         collisionPadding={16}
         className={cn("p-2 bg-[#111827] border border-white/10 rounded-[28px] shadow-2xl z-[110]", menuWidth)}
       >
-        {actions.map((action, index) => (
+        {visibleActions.map((action, index) => (
           <React.Fragment key={index}>
             {action.sectionLabel && (
               <div className="px-4 py-3 border-b border-white/[0.05] mb-2">
