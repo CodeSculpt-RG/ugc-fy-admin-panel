@@ -48,9 +48,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-      "https://adminpanel-nine-murex.vercel.app";
+    // appUrl is hardcoded below to bypass environment variable redirect issues in production
 
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedFullName = (full_name || fullName || email.split("@")[0]).trim();
@@ -134,11 +132,12 @@ export async function POST(request: Request) {
 
     // Send password setup email AFTER upsert succeeds
     let emailWarning: string | null = null;
-    const setupRedirectUrl = `${appUrl}/admin/setup-password`;
+    const setupRedirectUrl =
+      "https://adminpanel-nine-murex.vercel.app/admin/setup-password";
 
-    console.log("[ADMIN SETUP EMAIL]", {
+    console.log("[ADMIN PASSWORD SETUP EMAIL REDIRECT]", {
       email: normalizedEmail,
-      redirectTo: setupRedirectUrl,
+      setupRedirectUrl,
     });
 
     const { error: setupEmailError } = await supabaseAdmin.auth.resetPasswordForEmail(
