@@ -43,6 +43,7 @@ export const adminService = {
           name: adminProfile.full_name || "Enterprise Admin",
           permissions: [],
           isActive: true,
+          mustChangePassword: adminProfile.must_change_password || false,
         }
       };
     }

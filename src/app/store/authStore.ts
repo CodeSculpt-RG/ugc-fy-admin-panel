@@ -9,6 +9,7 @@ export interface AuthAdminUser {
   name: string;
   permissions: AdminPermission[];
   isActive: boolean;
+  mustChangePassword?: boolean;
 }
 
 interface AuthState {

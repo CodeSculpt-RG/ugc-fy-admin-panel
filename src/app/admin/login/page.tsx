@@ -49,7 +49,11 @@ export default function AdminLoginPage() {
       setCookie("admin-token", token, { maxAge: 60 * 60 * 12 }); // 12h
       setAuth(admin, token);
       
-      router.push("/admin/dashboard");
+      if (admin.mustChangePassword) {
+        router.push("/admin/force-password-change");
+      } else {
+        router.push("/admin/dashboard");
+      }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Authentication protocol failed";
       setError(errorMessage);

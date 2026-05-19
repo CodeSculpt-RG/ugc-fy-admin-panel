@@ -1,9 +1,87 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import tls from "tls";
+import net from "net";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { requirePermission } from "@/lib/api/requirePermission";
 import { normalizeError } from "@/lib/api/normalizeError";
 import { writeAuditLog } from "@/lib/api/writeAuditLog";
+
+function generateTemporaryPassword(): string {
+  return `${crypto.randomBytes(12).toString("base64url")}A1!`;
+}
+
+function sendSMTPEmail(options: {
+  host: string;
+  port: number;
+  user?: string;
+  pass?: string;
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const isSecure = options.port === 465;
+    const socket = isSecure
+      ? tls.connect({ host: options.host, port: options.port, rejectUnauthorized: false })
+      : net.createConnection({ host: options.host, port: options.port });
+
+    let step = 0;
+    const send = (data: string) => {
+      socket.write(data + "\r\n");
+    };
+
+    socket.on("data", () => {
+      
+      if (step === 0) {
+        send(`EHLO localhost`);
+        step++;
+      } else if (step === 1) {
+        if (options.user && options.pass) {
+          send(`AUTH LOGIN`);
+          step++;
+        } else {
+          send(`MAIL FROM:<${options.from}>`);
+          step = 4;
+        }
+      } else if (step === 2) {
+        send(Buffer.from(options.user || "").toString("base64"));
+        step++;
+      } else if (step === 3) {
+        send(Buffer.from(options.pass || "").toString("base64"));
+        step++;
+      } else if (step === 4) {
+        send(`RCPT TO:<${options.to}>`);
+        step++;
+      } else if (step === 5) {
+        send(`DATA`);
+        step++;
+      } else if (step === 6) {
+        const emailContent = [
+          `From: ${options.from}`,
+          `To: ${options.to}`,
+          `Subject: ${options.subject}`,
+          `Content-Type: text/html; charset=utf-8`,
+          `MIME-Version: 1.0`,
+          ``,
+          options.html,
+          `.`
+        ].join("\r\n");
+        send(emailContent);
+        step++;
+      } else if (step === 7) {
+        send(`QUIT`);
+        socket.end();
+        resolve();
+      }
+    });
+
+    socket.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
 
 export async function GET(request: Request) {
   try {
@@ -48,8 +126,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // appUrl is hardcoded below to bypass environment variable redirect issues in production
-
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedFullName = (full_name || fullName || email.split("@")[0]).trim();
     const resolvedRole = (role || "support_admin").toLowerCase().trim();
@@ -78,6 +154,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Generate strong temporary password
+    const temporaryPassword = generateTemporaryPassword();
+
     // Find existing auth user by email
     const { data: usersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers();
     if (listUsersError) throw listUsersError;
@@ -90,16 +169,26 @@ export async function POST(request: Request) {
 
     if (existingAuthUser) {
       authUserId = existingAuthUser.id;
-    } else {
-      // Create new Supabase Auth user
-      const tempPassword = crypto.randomUUID() + "A1!";
-      const { data: authData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
-        email: normalizedEmail,
-        email_confirm: true,
-        password: tempPassword,
+      // Update their password and set must_change_password metadata
+      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        password: temporaryPassword,
         user_metadata: {
           full_name: normalizedFullName,
           admin_role: resolvedRole,
+          must_change_password: true,
+        },
+      });
+      if (updateAuthError) throw updateAuthError;
+    } else {
+      // Create new user with temporary password and metadata
+      const { data: authData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+        email: normalizedEmail,
+        email_confirm: true,
+        password: temporaryPassword,
+        user_metadata: {
+          full_name: normalizedFullName,
+          admin_role: resolvedRole,
+          must_change_password: true,
         },
       });
 
@@ -107,7 +196,7 @@ export async function POST(request: Request) {
       authUserId = authData.user.id;
     }
 
-    // Upsert admin profile (Step 3: unified single flow)
+    // Upsert admin profile
     const now = new Date().toISOString();
     const { data: adminProfile, error: profileError } = await supabaseAdmin
       .from("admin_profiles")
@@ -119,8 +208,8 @@ export async function POST(request: Request) {
           role: resolvedRole,
           is_active: true,
           invited_by: check.admin.id,
-          last_invited_at: now,
-          password_setup_sent_at: null,
+          must_change_password: true,
+          temp_password_issued_at: now,
           updated_at: now,
         },
         { onConflict: "id" }
@@ -130,43 +219,52 @@ export async function POST(request: Request) {
 
     if (profileError) throw profileError;
 
-    // Send password setup email AFTER upsert succeeds
+    // Send credentials email
     let emailWarning: string | null = null;
-    const setupRedirectUrl =
-      "https://adminpanel-nine-murex.vercel.app/admin/setup-password";
+    let emailSent = false;
 
-    console.log("[ADMIN PASSWORD SETUP EMAIL REDIRECT]", {
-      email: normalizedEmail,
-      setupRedirectUrl,
-    });
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 465;
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const smtpFrom = process.env.SMTP_FROM || `UGC FY <no-reply@adminpanel-nine-murex.vercel.app>`;
 
-    const { error: setupEmailError } = await supabaseAdmin.auth.resetPasswordForEmail(
-      normalizedEmail,
-      {
-        redirectTo: setupRedirectUrl,
+    const emailHtml = `
+      <h2>You’ve been assigned admin access to UGC FY</h2>
+      <p>Hello ${normalizedFullName},</p>
+      <p>You have been appointed as an administrator for the UGC FY Admin Panel.</p>
+      <p><strong>Login URL:</strong> https://adminpanel-nine-murex.vercel.app/admin/login</p>
+      <p><strong>Email:</strong> ${normalizedEmail}</p>
+      <p><strong>Temporary Password:</strong> <code>${temporaryPassword}</code></p>
+      <p><strong>Assigned Role:</strong> ${resolvedRole.replaceAll("_", " ")}</p>
+      <p>You will be required to change this password immediately after your first login.</p>
+    `;
+
+    if (smtpHost) {
+      try {
+        await sendSMTPEmail({
+          host: smtpHost,
+          port: smtpPort,
+          user: smtpUser,
+          pass: smtpPass,
+          from: smtpFrom,
+          to: normalizedEmail,
+          subject: "UGC FY Admin Access Credentials",
+          html: emailHtml,
+        });
+        emailSent = true;
+      } catch (err: unknown) {
+        const errorRecord = err as Record<string, unknown>;
+        emailWarning = String(errorRecord.message || "Failed to deliver SMTP mail socket conversation.");
+        console.error("[SMTP EMAIL ERROR]", err);
       }
-    );
-
-    if (setupEmailError) {
-      emailWarning = setupEmailError.message;
-      const errorRecord = setupEmailError as unknown as Record<string, unknown>;
-      console.error("[POST /api/admin/admins] Admin password setup email failed:", {
-        message: setupEmailError.message,
-        status: errorRecord.status ?? null,
-        code: errorRecord.code ?? null,
-        redirectTo: setupRedirectUrl,
+    } else {
+      console.log("[ADMIN CREATED WITH TEMP CREDENTIALS]", {
+        email: normalizedEmail,
+        temporaryPassword,
+        role: resolvedRole,
       });
     }
-
-    // Update profile after attempting email
-    await supabaseAdmin
-      .from("admin_profiles")
-      .update({
-        password_setup_sent_at: setupEmailError ? null : new Date().toISOString(),
-        last_invited_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", authUserId);
 
     // Insert real-time notification
     await supabaseAdmin.from("admin_notifications").insert({
@@ -195,20 +293,19 @@ export async function POST(request: Request) {
       success: true,
       source: "real_supabase_database",
       data: adminProfile,
-      message: setupEmailError
-        ? "Admin was assigned, but password setup email failed to send."
-        : "Admin assigned successfully. Password setup email has been sent.",
+      message: emailWarning
+        ? "Admin was provisioned, but SMTP email delivery failed."
+        : "Admin assigned successfully. Temporary credentials have been generated and emailed.",
       warning: emailWarning,
+      temp_credentials: {
+        email: normalizedEmail,
+        temporaryPassword,
+        role: resolvedRole,
+      },
       email: {
         attempted: true,
-        redirectTo: setupRedirectUrl,
-        error: setupEmailError
-          ? {
-              message: setupEmailError.message,
-              code: (setupEmailError as unknown as Record<string, unknown>).code ?? null,
-              status: (setupEmailError as unknown as Record<string, unknown>).status ?? null,
-            }
-          : null,
+        sent: emailSent,
+        error: emailWarning,
       },
     });
   } catch (error: unknown) {
