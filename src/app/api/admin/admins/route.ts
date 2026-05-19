@@ -122,7 +122,7 @@ export async function POST(request: Request) {
           is_active: true,
           invited_by: check.admin.id,
           last_invited_at: now,
-          password_setup_sent_at: now,
+          password_setup_sent_at: null,
           updated_at: now,
         },
         { onConflict: "id" }
@@ -132,23 +132,37 @@ export async function POST(request: Request) {
 
     if (profileError) throw profileError;
 
-    // Send password setup email
+    // Send password setup email AFTER upsert succeeds
+    let emailWarning: string | null = null;
+    const setupRedirectUrl = `${appUrl}/admin/setup-password`;
+
     const { error: setupEmailError } = await supabaseAdmin.auth.resetPasswordForEmail(
       normalizedEmail,
       {
-        redirectTo: `${appUrl}/admin/setup-password`,
+        redirectTo: setupRedirectUrl,
       }
     );
 
-    const warning = setupEmailError
-      ? "Admin was provisioned, but password setup email failed to send."
-      : null;
-
     if (setupEmailError) {
-      console.error("[POST /api/admin/admins] Password setup email failed:", {
+      emailWarning = setupEmailError.message;
+      const errorRecord = setupEmailError as unknown as Record<string, unknown>;
+      console.error("[POST /api/admin/admins] Admin password setup email failed:", {
         message: setupEmailError.message,
+        status: errorRecord.status ?? null,
+        code: errorRecord.code ?? null,
+        redirectTo: setupRedirectUrl,
       });
     }
+
+    // Update profile after attempting email
+    await supabaseAdmin
+      .from("admin_profiles")
+      .update({
+        password_setup_sent_at: setupEmailError ? null : new Date().toISOString(),
+        last_invited_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", authUserId);
 
     // Insert real-time notification
     await supabaseAdmin.from("admin_notifications").insert({
@@ -177,8 +191,21 @@ export async function POST(request: Request) {
       success: true,
       source: "real_supabase_database",
       data: adminProfile,
-      message: "Admin access provisioned successfully. Password setup link has been sent.",
-      warning,
+      message: setupEmailError
+        ? "Admin was assigned, but password setup email failed to send."
+        : "Admin assigned successfully. Password setup email has been sent.",
+      warning: emailWarning,
+      email: {
+        attempted: true,
+        redirectTo: setupRedirectUrl,
+        error: setupEmailError
+          ? {
+              message: setupEmailError.message,
+              code: (setupEmailError as unknown as Record<string, unknown>).code ?? null,
+              status: (setupEmailError as unknown as Record<string, unknown>).status ?? null,
+            }
+          : null,
+      },
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
