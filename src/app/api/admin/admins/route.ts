@@ -48,10 +48,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    if (!appUrl) {
-      throw new Error("Missing NEXT_PUBLIC_APP_URL for admin password setup redirect.");
-    }
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+      "https://adminpanel-nine-murex.vercel.app";
 
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedFullName = (full_name || fullName || email.split("@")[0]).trim();
