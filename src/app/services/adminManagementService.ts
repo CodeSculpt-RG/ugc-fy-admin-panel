@@ -1,6 +1,48 @@
 import { supabase } from "@/lib/supabase/client";
 import { AdminUser } from "@/app/types";
 
+type ApiError = {
+  message?: string;
+  code?: string;
+  details?: string | null;
+  hint?: string | null;
+};
+
+type ApiResponse<T> = {
+  success: boolean;
+  source?: string;
+  message?: string;
+  warning?: string | null;
+  data?: T;
+  error?: ApiError;
+  temp_credentials?: {
+    email: string;
+    temporaryPassword: string;
+    role: string;
+  } | null;
+};
+
+type AdminProfile = {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function getApiErrorMessage(
+  response: Response,
+  payload: ApiResponse<unknown> | null
+): string {
+  return (
+    payload?.error?.message ||
+    payload?.error?.details ||
+    `Failed to provision admin. HTTP ${response.status}`
+  );
+}
+
 export const adminManagementService = {
   getAdmins: async (): Promise<AdminUser[]> => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -33,7 +75,7 @@ export const adminManagementService = {
     }));
   },
 
-  createAdmin: async (payload: { email: string; full_name: string; role: string; is_active: boolean }) => {
+  createAdmin: async (payload: { email: string; full_name: string; role: string; is_active: boolean }): Promise<ApiResponse<AdminProfile>> => {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) throw new Error(`Auth error: ${sessionError.message}`);
     if (!session?.access_token) throw new Error("Administrative session required.");
@@ -47,20 +89,19 @@ export const adminManagementService = {
       body: JSON.stringify(payload),
     });
 
-    const resData = await response.json().catch(() => null);
+    const resData = (await response.json().catch(() => null)) as ApiResponse<AdminProfile> | null;
 
     if (!response.ok || !resData?.success) {
-      const message =
-        resData?.error?.message ||
-        resData?.error?.details ||
-        `Failed to provision admin. HTTP ${response.status}`;
+      const message = getApiErrorMessage(response, resData);
 
       console.error("[AdminManagementService] Provision Admin Error:", {
         status: response.status,
         statusText: response.statusText,
+        source: resData?.source ?? "unknown",
+        code: resData?.error?.code ?? "NO_ERROR_CODE",
         message,
-        code: resData?.error?.code ?? null,
         details: resData?.error?.details ?? null,
+        hint: resData?.error?.hint ?? null,
       });
 
       throw new Error(message);

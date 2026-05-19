@@ -16,28 +16,7 @@ export interface AddAdminModalProps {
   onSuccess?: () => void;
 }
 
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
 
-  if (typeof error === "object" && error !== null) {
-    const record = error as Record<string, unknown>;
-
-    if (typeof record.message === "string") return record.message;
-    if (typeof record.error === "string") return record.error;
-    if (typeof record.details === "string") return record.details;
-
-    try {
-      const serialized = JSON.stringify(error);
-      return serialized && serialized !== "{}"
-        ? serialized
-        : "Unable to provision admin because an unknown error occurred.";
-    } catch {
-      return "Unable to provision admin because the error could not be read.";
-    }
-  }
-
-  return String(error || "Unable to provision admin.");
-}
 
 export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps) {
   const { admin } = useAdminAuth();
@@ -122,9 +101,12 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
         onClose();
       }
     } catch (error: unknown) {
-      const message = getErrorMessage(error);
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to provision admin.";
+
       setErrorMessage(message);
-      showToast(message, "error");
+
       console.error("[ProvisionAdminModal] Failed to provision admin:", {
         message,
       });
