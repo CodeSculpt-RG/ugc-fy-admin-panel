@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Shield, Lock, Mail, Loader2, AlertCircle } from "lucide-react";
+import { Shield, Lock, Mail, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { setCookie } from "cookies-next";
 import { useRouter } from "next/navigation";
 import { adminService } from "@/app/services/systemServices";
@@ -21,8 +21,20 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [setupSuccess, setSetupSuccess] = useState(false);
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("setup") === "success") {
+        setTimeout(() => {
+          setSetupSuccess(true);
+        }, 0);
+      }
+    }
+  }, []);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -59,6 +71,15 @@ export default function AdminLoginPage() {
           <h1 className="text-4xl font-black text-white tracking-tighter mb-4">AUTHENTICATION</h1>
           <p className="text-[#F0F0FB]/30 text-[10px] font-black uppercase tracking-[0.4em]">UGC FY Enterprise Operations</p>
         </div>
+
+        {setupSuccess && (
+          <div className="mb-6 p-4 rounded-2xl bg-success-green/10 border border-success-green/20 flex items-center space-x-3 shadow-md shadow-success-green/5">
+            <CheckCircle className="w-5 h-5 text-success-green shrink-0" />
+            <p className="text-[11px] font-black text-success-green uppercase tracking-widest leading-normal">
+              Admin Credentials Activated successfully. Please log in below.
+            </p>
+          </div>
+        )}
 
         <div className="bg-[#0F172A] border border-white/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent" />

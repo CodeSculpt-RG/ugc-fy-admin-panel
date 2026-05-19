@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const normalizedEmail = email.trim().toLowerCase();
     const resolvedFullName = (full_name || fullName || email.split("@")[0]).trim();
     const resolvedRole = (role || "support_admin").toLowerCase().trim();
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
         normalizedEmail,
         {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/admin/reset-password`,
+          redirectTo: `${appUrl}/admin/setup-password`,
         }
       );
 
@@ -111,6 +112,14 @@ export async function POST(request: Request) {
         console.error("[POST /api/admin/admins] Password setup email failed:", {
           message: resetError.message,
         });
+      } else {
+        await supabaseAdmin
+          .from("admin_profiles")
+          .update({
+            password_setup_sent_at: new Date().toISOString(),
+            last_invited_at: new Date().toISOString(),
+          })
+          .eq("id", existingAdminProfile.id);
       }
 
       // 3. Create real-time notification
@@ -140,8 +149,8 @@ export async function POST(request: Request) {
         success: true,
         source: "real_supabase_database",
         data: updatedAdmin,
-        message: "Admin profile updated successfully. Password setup link has been sent.",
-        warning: resetError ? "Admin updated, but password email failed to send." : null,
+        message: "Admin access provisioned successfully. Password setup email has been sent.",
+        warning: resetError ? "Admin was provisioned, but password setup email failed to send." : null,
       });
     }
 
@@ -216,7 +225,7 @@ export async function POST(request: Request) {
     const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
       normalizedEmail,
       {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/admin/reset-password`,
+        redirectTo: `${appUrl}/admin/setup-password`,
       }
     );
 
@@ -224,6 +233,14 @@ export async function POST(request: Request) {
       console.error("[POST /api/admin/admins] Password setup email failed:", {
         message: resetError.message,
       });
+    } else {
+      await supabaseAdmin
+        .from("admin_profiles")
+        .update({
+          password_setup_sent_at: new Date().toISOString(),
+          last_invited_at: new Date().toISOString(),
+        })
+        .eq("id", authUserId);
     }
 
     // Create real-time notification
@@ -253,8 +270,8 @@ export async function POST(request: Request) {
       success: true,
       source: "real_supabase_database",
       data: adminProfile,
-      message: "Admin provisioned successfully. Password setup link has been sent.",
-      warning: resetError ? "Admin created, but password email failed to send." : null,
+      message: "Admin access provisioned successfully. Password setup email has been sent.",
+      warning: resetError ? "Admin was provisioned, but password setup email failed to send." : null,
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);

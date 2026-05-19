@@ -101,9 +101,9 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
       });
 
       if (res.warning) {
-        showToast(`${res.message} Warning: ${res.warning}`, "warning");
+        showToast(`Admin was provisioned, but password setup email failed to send.`, "warning");
       } else {
-        showToast(res.message || "Administrator successfully provisioned.", "success");
+        showToast("Admin access created successfully. A password setup link has been sent to the appointed admin.", "success");
       }
       onSuccess?.();
       onClose();
