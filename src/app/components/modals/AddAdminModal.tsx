@@ -100,7 +100,11 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
         is_active: isActive,
       });
 
-      showToast(res.message || "Administrator successfully provisioned.", "success");
+      if (res.warning) {
+        showToast(`${res.message} Warning: ${res.warning}`, "warning");
+      } else {
+        showToast(res.message || "Administrator successfully provisioned.", "success");
+      }
       onSuccess?.();
       onClose();
     } catch (error: unknown) {
