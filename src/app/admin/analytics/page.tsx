@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
               <ChartCard title="Entity Acquisition" subtitle="Entity growth lifecycle analysis (Creators vs Corporate)">
-                <div className="h-[380px] w-full pt-8">
+                <div className="h-[280px] min-h-[280px] w-full pt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
               </ChartCard>
 
               <ChartCard title="Revenue Yield (GMV)" subtitle="Weekly transaction volume and platform yield metrics">
-                <div className="h-[380px] w-full pt-8">
+                <div className="h-[280px] min-h-[280px] w-full pt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={revData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />
@@ -228,7 +228,7 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <ChartCard title="Sector Distribution" subtitle="Ecosystem segmentation by industry vector" className="lg:col-span-1">
-                <div className="h-[320px] w-full pt-4">
+                <div className="h-[280px] min-h-[280px] w-full pt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -271,7 +271,7 @@ export default function AnalyticsPage() {
               </ChartCard>
 
               <ChartCard title="Retention Dynamics" subtitle="Temporal user behavior and active engagement analysis" className="lg:col-span-2">
-                <div className="h-[380px] w-full pt-8">
+                <div className="h-[280px] min-h-[280px] w-full pt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />

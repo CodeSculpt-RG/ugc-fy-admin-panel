@@ -2,6 +2,9 @@ import { supabase } from "@/lib/supabase/client";
 
 export const adminService = {
   login: async (email: string, pass: string) => {
+    // Clear any stale local sessions to prevent "Invalid Refresh Token" errors
+    await supabase.auth.signOut();
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password: pass,

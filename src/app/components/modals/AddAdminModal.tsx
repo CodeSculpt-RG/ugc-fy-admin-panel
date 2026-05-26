@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, X, ShieldAlert, Check, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
+import { UserPlus, X, ShieldAlert, Check, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
@@ -50,13 +50,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const [tempCredentials, setTempCredentials] = useState<{
-    email: string;
-    temporaryPassword: string;
-    role: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
@@ -72,8 +66,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
         setRole("support_admin");
         setIsActive(true);
         setErrorMessage(null);
-        setTempCredentials(null);
-        setCopied(false);
+        setIsSuccess(false);
       }, 0);
       return () => clearTimeout(timer);
     } else {
@@ -102,48 +95,26 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
 
     setLoading(true);
     try {
-      const res = await adminManagementService.createAdmin({
+      await adminManagementService.createAdmin({
         email: email.trim(),
         full_name: fullName.trim() || email.split("@")[0],
         role,
         is_active: isActive,
       });
 
-      if (res.temp_credentials) {
-        setTempCredentials(res.temp_credentials);
-        showToast("Admin access created successfully. Temporary credentials issued.", "success");
-      } else {
-        if (res.warning) {
-          showToast(String(res.warning), "warning");
-        } else {
-          showToast("Admin access created successfully.", "success");
-        }
-        onSuccess?.();
-        onClose();
-      }
+      setIsSuccess(true);
+      showToast("Admin access created successfully. Password setup email has been sent.", "success");
     } catch (error: unknown) {
       const message = getErrorMessage(error);
-
       setErrorMessage(message);
-
-      console.error("[ProvisionAdminModal] Failed to provision admin:", {
-        message,
-      });
+      console.error(`[ProvisionAdminModal] Failed to provision admin: ${message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCopyPassword = () => {
-    if (!tempCredentials) return;
-    navigator.clipboard.writeText(tempCredentials.temporaryPassword);
-    setCopied(true);
-    showToast("Password copied to clipboard!", "success");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleSuccessClose = () => {
-    setTempCredentials(null);
+    setIsSuccess(false);
     onSuccess?.();
     onClose();
   };
@@ -157,7 +128,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={tempCredentials ? handleSuccessClose : onClose}
+            onClick={isSuccess ? handleSuccessClose : onClose}
             className="absolute inset-0 bg-black/70 backdrop-blur-md z-[200]"
           />
 
@@ -172,61 +143,51 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/50 to-transparent" />
 
             <button
-              onClick={tempCredentials ? handleSuccessClose : onClose}
+              onClick={isSuccess ? handleSuccessClose : onClose}
               className="absolute right-6 top-6 p-2 rounded-2xl bg-white/[0.03] border border-white/5 text-[#F0F0FB]/40 hover:text-white hover:bg-white/10 transition-all z-20 outline-none"
             >
               <X className="w-5 h-5" />
             </button>
 
-            {tempCredentials ? (
-              /* Success Credentials View */
+            {isSuccess ? (
+              /* Success Redirection Information View */
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar space-y-6">
                 <div className="flex flex-col items-center text-center space-y-4 border-b border-white/[0.05] pb-6">
                   <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/10 mb-2">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight uppercase">Credentials Generated</h3>
-                  <p className="text-xs text-[#F0F0FB]/40 font-medium">Please copy these credentials safely. The password will not be shown again.</p>
+                  <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight uppercase">Invitation Dispatched</h3>
+                  <p className="text-xs text-[#F0F0FB]/40 font-medium">Administrator access granted successfully.</p>
                 </div>
 
                 <div className="space-y-4 font-medium text-sm">
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-3">
+                  <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] space-y-4">
                     <div>
-                      <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em] block mb-1">Assigned Email</span>
-                      <p className="text-sm font-semibold text-white">{tempCredentials.email}</p>
+                      <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em] block mb-1">Target Account</span>
+                      <p className="text-sm font-semibold text-white">{email}</p>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em] block mb-1">Temporary Password</span>
-                      <div className="flex items-center justify-between gap-3 mt-1.5">
-                        <code className="bg-[#0b0e14] px-3 py-2 rounded-xl text-sm font-mono text-emerald-400 border border-white/5 break-all select-all flex-1">
-                          {tempCredentials.temporaryPassword}
-                        </code>
-                        <button
-                          type="button"
-                          onClick={handleCopyPassword}
-                          className="p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 text-emerald-400 transition-all hover:scale-105 shrink-0"
-                          title="Copy Password"
-                        >
-                          {copied ? <Check className="w-4 h-4 stroke-[3]" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em] block mb-1">Security Role</span>
+                      <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em] block mb-1">Assigned Vector</span>
                       <span className="inline-block px-2.5 py-1 rounded-lg bg-primary-blue/15 border border-primary-blue/20 text-xs font-black uppercase text-primary-blue tracking-wider">
-                        {tempCredentials.role.replaceAll("_", " ")}
+                        {role.replaceAll("_", " ")}
                       </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em] block mb-1">Status</span>
+                      <p className="text-xs text-[#F0F0FB]/60 leading-relaxed font-semibold">
+                        A secure password setup invitation has been automatically generated and sent to this inbox.
+                      </p>
                     </div>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-accent-orange/5 border border-accent-orange/10 flex items-start gap-3">
                     <ShieldAlert className="w-4.5 h-4.5 text-accent-orange shrink-0 mt-0.5" />
                     <div>
-                      <span className="text-[10px] font-black text-accent-orange uppercase tracking-wider block">First Login Obligation</span>
+                      <span className="text-[10px] font-black text-accent-orange uppercase tracking-wider block">Security Protocol</span>
                       <p className="text-[11px] text-[#F0F0FB]/60 mt-1 leading-relaxed">
-                        The appointed operator will be prompted to replace this temporary credential immediately upon logging into the UGC FY Admin Panel.
+                        The newly appointed admin must complete password initialization using the secure link provided in their email before gaining access to the control panel.
                       </p>
                     </div>
                   </div>

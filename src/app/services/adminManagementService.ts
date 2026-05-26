@@ -15,11 +15,6 @@ type ApiResponse<T> = {
   warning?: string | null;
   data?: T;
   error?: ApiError;
-  temp_credentials?: {
-    email: string;
-    temporaryPassword: string;
-    role: string;
-  } | null;
 };
 
 type AdminProfile = {
@@ -32,32 +27,10 @@ type AdminProfile = {
   updated_at: string;
 };
 
-function resolveApiErrorMessage(
-  response: Response,
-  payload: ApiResponse<unknown> | null
-): string {
-  return (
-    payload?.error?.message ||
-    payload?.error?.details ||
-    payload?.warning ||
-    `Failed to provision admin. HTTP ${response.status}`
-  );
-}
 
-function logProvisionError(
-  response: Response,
-  payload: ApiResponse<unknown> | null,
-  message: string
-): void {
-  console.error("[AdminManagementService] Provision Admin Error:", {
-    status: response.status,
-    statusText: response.statusText,
-    source: payload?.source ?? "unknown",
-    code: payload?.error?.code ?? "NO_ERROR_CODE",
-    message,
-    details: payload?.error?.details ?? null,
-    hint: payload?.error?.hint ?? null,
-  });
+
+function logProvisionError(message: string): void {
+  console.error(`[AdminManagementService] Provision Admin Error: ${message}`);
 }
 
 export const adminManagementService = {
@@ -111,9 +84,13 @@ export const adminManagementService = {
       .catch((): null => null)) as ApiResponse<AdminProfile> | null;
 
     if (!response.ok || !resData?.success) {
-      const message = resolveApiErrorMessage(response, resData);
+      const message =
+        resData?.error?.message ||
+        resData?.error?.details ||
+        resData?.warning ||
+        `Failed to provision admin. HTTP ${response.status}`;
 
-      logProvisionError(response, resData, message);
+      logProvisionError(message);
 
       throw new Error(message);
     }

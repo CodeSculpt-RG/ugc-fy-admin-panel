@@ -326,7 +326,7 @@ export default function DashboardPage() {
               title="Ecosystem Role Split" 
               subtitle="Distribution of registered entities"
             >
-              <div className="h-[350px] w-full mt-8">
+              <div className="h-[280px] min-h-[280px] w-full mt-8">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -362,7 +362,7 @@ export default function DashboardPage() {
               title="Approval Breakdown" 
               subtitle="Moderation status across all accounts"
             >
-              <div className="h-[350px] w-full mt-8">
+              <div className="h-[280px] min-h-[280px] w-full mt-8">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={approvalData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
