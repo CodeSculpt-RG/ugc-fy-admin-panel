@@ -21,7 +21,9 @@ import {
   ShieldAlert,
   ChevronRight,
   LogOut,
-  X
+  X,
+  MessageSquare,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { useSidebar } from "@/app/context/SidebarContext";
@@ -41,6 +43,8 @@ const menuItems = [
       { name: "Brands", href: "/admin/brands", icon: Building2 },
       { name: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
       { name: "Moderation", href: "/admin/moderation", icon: ShieldCheck },
+      { name: "Chat Monitoring", href: "/admin/chat-monitoring", icon: MessageSquare },
+      { name: "Escalations", href: "/admin/escalations", icon: AlertTriangle },
       { name: "Payments", href: "/admin/payments", icon: CreditCard },
       { name: "Escrow", href: "/admin/escrow", icon: Lock },
       { name: "Disputes", href: "/admin/disputes", icon: Scale },
@@ -91,7 +95,7 @@ export default function Sidebar() {
 
 
   const sidebarVariants = {
-    expanded: { width: 300 },
+    expanded: { width: 280 },
     collapsed: { width: 88 },
   };
 
@@ -105,7 +109,7 @@ export default function Sidebar() {
       {/* Logo Section */}
       <div className={cn("shrink-0 p-12 mb-6 flex items-center justify-between", isCollapsed && !isMobileOpen ? "px-6" : "p-12")}>
         <Link href="/admin/dashboard" scroll={false} className="flex items-center space-x-5 group">
-          <div className="w-14 h-14 bg-primary-blue rounded-[20px] flex items-center justify-center shadow-blue-glow group-hover:scale-110 transition-all duration-700 flex-shrink-0 relative overflow-hidden">
+          <div className="w-14 h-14 bg-primary rounded-[20px] flex items-center justify-center shadow-glow group-hover:scale-110 transition-all duration-700 flex-shrink-0 relative overflow-hidden">
             <Lock className="text-white w-6 h-6 relative z-10" />
             <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
           </div>
@@ -115,15 +119,15 @@ export default function Sidebar() {
               animate={{ opacity: 1, x: 0 }}
               className="flex flex-col"
             >
-          <span className="text-2xl font-black tracking-tighter text-[#F0F0FB] leading-none whitespace-nowrap">
-                UGC FY<span className="text-primary-blue">/</span>
+          <span className="text-2xl font-black tracking-tighter text-foreground leading-none whitespace-nowrap">
+                UGC FY<span className="text-primary">/</span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F0F0FB]/20 mt-1">Platform</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20 mt-1">Platform</span>
             </motion.div>
           )}
         </Link>
         {isMobileOpen && (
-          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-white/[0.04] border border-white/10 text-[#F0F0FB]/20 hover:text-[#F0F0FB] transition-all">
+          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-foreground/20 hover:text-foreground transition-all">
             <X className="w-6 h-6" />
           </button>
         )}
@@ -135,7 +139,7 @@ export default function Sidebar() {
         {filteredMenuItems.map((group) => (
           <div key={group.group} className="space-y-8">
             {(!isCollapsed || isMobileOpen) && (
-              <h3 className="px-5 text-[10px] font-black text-[#F0F0FB]/10 uppercase tracking-[0.5em]">
+              <h3 className="px-5 text-[10px] font-black text-foreground/10 uppercase tracking-[0.5em]">
                 {group.group}
               </h3>
             )}
@@ -149,23 +153,23 @@ export default function Sidebar() {
                     scroll={false}
                     onClick={() => setIsMobileOpen(false)}
                     className={cn(
-                      "group flex items-center justify-between px-6 py-4.5 rounded-[24px] transition-all relative overflow-hidden",
+                      "group flex items-center justify-between px-6 py-4 rounded-[20px] transition-all relative overflow-hidden border border-transparent",
                       isActive
-                        ? "bg-primary-blue text-white active-nav-glow shadow-lg shadow-primary-blue/30"
-                        : "text-[#F0F0FB]/30 hover:text-[#F0F0FB] hover:bg-white/[0.04]",
+                        ? "bg-primary text-white border-primary dark:bg-primary/10 dark:text-primary dark:border-primary/50 shadow-[0_4px_12px_rgba(108,92,231,0.2)] dark:shadow-[0_0_15px_rgba(108,92,231,0.15)] font-bold"
+                        : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated",
                       isCollapsed && !isMobileOpen && "justify-center px-0"
                     )}
                     title={isCollapsed && !isMobileOpen ? item.name : ""}
                   >
-                    <div className="flex items-center space-x-5 relative z-10">
+                    <div className="flex items-center space-x-4 relative z-10">
                       <item.icon className={cn(
-                        "w-5 h-5 transition-all duration-500 flex-shrink-0 stroke-[2.5]",
-                        isActive ? "text-white scale-110" : "text-[#F0F0FB]/20 group-hover:text-primary-blue group-hover:scale-110"
+                        "w-5 h-5 transition-all duration-300 flex-shrink-0 stroke-[2.5]",
+                        isActive ? "text-white dark:text-primary scale-110" : "text-text-secondary group-hover:text-primary group-hover:scale-110"
                       )} />
                       {(!isCollapsed || isMobileOpen) && (
                         <span className={cn(
-                          "text-[12px] font-black uppercase tracking-[0.1em] whitespace-nowrap transition-colors",
-                          isActive ? "text-white" : "text-[#F0F0FB]/40 group-hover:text-[#F0F0FB]"
+                          "text-[13px] font-semibold whitespace-nowrap transition-colors",
+                          isActive ? "text-white dark:text-primary font-bold" : "text-text-secondary group-hover:text-text-primary"
                         )}>
                           {item.name}
                         </span>
@@ -174,13 +178,13 @@ export default function Sidebar() {
                     {isActive && (
                       <motion.div
                         layoutId="active-indicator"
-                        className="absolute left-0 w-1.5 h-10 bg-white rounded-r-full shadow-[0_0_20px_rgba(255,255,255,0.4)]"
+                        className="absolute left-0 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_10px_rgba(108,92,231,0.4)]"
                       />
                     )}
                     {(!isCollapsed || isMobileOpen) && (
                       <ChevronRight className={cn(
                         "w-4 h-4 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 relative z-10",
-                        isActive ? "text-white/40" : "text-[#F0F0FB]/5"
+                        isActive ? "text-foreground/40" : "text-foreground/5"
                       )} />
                     )}
                   </Link>
@@ -193,25 +197,39 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom Profile Section */}
-      <div className="shrink-0 p-8 border-t border-white/[0.08]">
+      <div className="shrink-0 p-5 border-t border-border bg-surface-elevated">
         <div className={cn(
-          "bg-[#0F172A] rounded-[32px] p-6 flex items-center space-x-5 border border-white/10 group hover:border-white/20 hover:bg-white/[0.04] transition-all relative overflow-hidden",
-          isCollapsed && !isMobileOpen ? "flex-col space-x-0 space-y-5 px-4" : "flex-row"
+          "bg-surface rounded-2xl p-3 flex items-center justify-between border border-border group hover:border-primary/20 transition-all duration-300 relative overflow-hidden",
+          isCollapsed && !isMobileOpen ? "flex-col items-center gap-3 px-2 py-4" : "flex-row gap-3"
         )}>
-          <div className="w-14 h-14 rounded-[20px] bg-primary-blue/10 border border-primary-blue/20 flex items-center justify-center text-[12px] font-black text-primary-blue flex-shrink-0 group-hover:scale-110 transition-all duration-500 uppercase">
-            {admin?.name?.slice(0, 2) || "AD"}
-          </div>
-          {(!isCollapsed || isMobileOpen) && (
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-black text-[#F0F0FB] truncate tracking-tighter capitalize">{admin?.name || "Admin"}</p>
-              <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-[0.3em] mt-1">{admin?.role?.replace("_", " ") || "Administrator"}</p>
+          {/* Left / Top Side: Avatar & Info */}
+          <div className={cn(
+            "flex items-center gap-3 min-w-0",
+            isCollapsed && !isMobileOpen ? "flex-col text-center" : "flex-row"
+          )}>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center text-xs font-black text-primary flex-shrink-0 shadow-sm">
+              {admin?.name?.slice(0, 2)?.toUpperCase() || "AD"}
             </div>
-          )}
+            {(!isCollapsed || isMobileOpen) && (
+              <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
+                <p className="text-xs font-black text-foreground truncate leading-none mb-1">{admin?.name || "Admin Name"}</p>
+                <span className="inline-flex px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[8px] font-black uppercase tracking-wider w-max">
+                  {admin?.role === "owner" ? "OWNER" : "ADMIN"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right / Bottom Side: Logout button */}
           <button 
             onClick={handleLogout}
-            className="p-3.5 text-[#F0F0FB]/10 hover:text-accent-orange hover:bg-accent-orange/10 rounded-2xl transition-all group/logout"
+            className={cn(
+              "p-2 text-text-secondary hover:text-error hover:bg-error/10 border border-transparent hover:border-error/20 rounded-xl transition-all active:scale-95 flex-shrink-0",
+              isCollapsed && !isMobileOpen ? "w-full flex items-center justify-center" : ""
+            )}
+            title="Log out"
           >
-            <LogOut className="w-4.5 h-4.5 group-hover/logout:scale-125 transition-all duration-500" />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -228,7 +246,7 @@ export default function Sidebar() {
         initial={false}
         animate={isCollapsed ? "collapsed" : "expanded"}
         variants={sidebarVariants}
-        className="hidden lg:flex flex-col h-screen shrink-0 sticky top-0 bg-[#020617] border-r border-white/[0.08] z-50 shadow-2xl shadow-black"
+        className="hidden lg:flex flex-col h-screen shrink-0 sticky top-0 bg-sidebar-bg border-r border-border z-50 shadow-2xl shadow-black"
       >
         {SidebarContent}
       </motion.aside>
@@ -242,7 +260,7 @@ export default function Sidebar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileOpen(false)}
-              className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+              className="lg:hidden fixed inset-0 bg-background/60 backdrop-blur-sm z-[60]"
             />
             <motion.aside
               initial="closed"
@@ -250,7 +268,7 @@ export default function Sidebar() {
               exit="closed"
               variants={mobileVariants}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="lg:hidden fixed left-0 top-0 bottom-0 w-[300px] bg-[#020617] border-r border-white/[0.08] z-[70] flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.5)]"
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-[280px] bg-sidebar-bg border-r border-border z-[70] flex flex-col shadow-2xl"
             >
               {SidebarContent}
             </motion.aside>

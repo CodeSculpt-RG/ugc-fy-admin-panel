@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       .insert({
         title: resolvedTitle,
         type: resolvedType,
-        parameters: { dateRange, format: resolvedFormat, notes },
+        payload: { dateRange, format: resolvedFormat, notes },
         status: "Generating",
         file_url: `https://storage.ugc-fy.in/reports/${Date.now()}_${resolvedFormat}.${resolvedFormat}`,
         generated_by: check.admin.id,

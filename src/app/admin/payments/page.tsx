@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
-import { PageHeader, StatusBadge, StatCard } from "@/app/components/ui/core";
+import { PageHeader, StatusBadge, StatCard, formatINR } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
@@ -127,10 +127,10 @@ export default function PaymentsPage() {
     });
 
     return {
-      gmv: `$${totalGmv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      yield: `$${totalYield.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      escrow: `$${totalEscrow.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      risk: `$${totalRisk.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      gmv: formatINR(totalGmv),
+      yield: formatINR(totalYield),
+      escrow: formatINR(totalEscrow),
+      risk: formatINR(totalRisk),
     };
   }, [localPayments]);
 
@@ -167,7 +167,7 @@ export default function PaymentsPage() {
       setActiveMetricDetail({
         type: "gmv",
         title: "Aggregate GMV Details",
-        value: `$${paidAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        value: formatINR(paidAmt),
         trend: "+15.4%",
         description: "Gross Merchandise Value represents the total volume of successfully paid creator-brand matches processed on the platform.",
         ledgerSummary: `Calculated from ${localPayments.filter(p => ["paid", "success"].includes(p.status.toLowerCase())).length} paid transactions. Unsettled, failed, or pending transactions are excluded from GMV.`
@@ -186,7 +186,7 @@ export default function PaymentsPage() {
       setActiveMetricDetail({
         type: "yield",
         title: "Platform Yield Details",
-        value: `$${yieldAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        value: formatINR(yieldAmt),
         trend: "+12.1%",
         description: "Platform Yield represents the platform commission captured from creator campaigns and transactions.",
         ledgerSummary: hasFee 
@@ -203,7 +203,7 @@ export default function PaymentsPage() {
       setActiveMetricDetail({
         type: "risk",
         title: "Operational Risk Details",
-        value: `$${riskAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        value: formatINR(riskAmt),
         trend: "-4.5%",
         description: "Operational Risk represents the volume of transactions flagged as failed, disputed, refunded, or cancelled.",
         ledgerSummary: `Calculated from ${riskPayments.length} failed/disputed/refunded transactions. High alert indicates potential reconciliation issues.`
@@ -306,16 +306,16 @@ export default function PaymentsPage() {
     {
       accessorKey: "id",
       header: "Infrastructure ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-foreground/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
     },
     {
       accessorKey: "brand",
       header: "Corporate Entity",
       cell: ({ row }) => (
         <div>
-          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight">{row.original.brand || "Unknown payer"}</p>
+          <p className="text-[15px] font-black text-foreground tracking-tight">{row.original.brand || "Unknown payer"}</p>
           {row.original.brand_profile?.email && (
-            <p className="text-[11px] text-[#F0F0FB]/40">{row.original.brand_profile.email}</p>
+            <p className="text-[11px] text-foreground/40">{row.original.brand_profile.email}</p>
           )}
         </div>
       ),
@@ -325,9 +325,9 @@ export default function PaymentsPage() {
       header: "Creator Network",
       cell: ({ row }) => (
         <div>
-          <span className="text-[11px] font-black text-[#F0F0FB] uppercase tracking-[0.2em]">{row.original.creator || "Unknown payee"}</span>
+          <span className="text-[11px] font-black text-foreground uppercase tracking-[0.2em]">{row.original.creator || "Unknown payee"}</span>
           {row.original.creator_profile?.email && (
-            <p className="text-[10px] text-[#F0F0FB]/40 font-mono">{row.original.creator_profile.email}</p>
+            <p className="text-[10px] text-foreground/40 font-mono">{row.original.creator_profile.email}</p>
           )}
         </div>
       ),
@@ -336,9 +336,8 @@ export default function PaymentsPage() {
       accessorKey: "amount",
       header: "Transaction Value",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-1.5">
-          <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
-          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount ? row.original.amount.replace('$', '') : '0.00'}</span>
+        <div className="flex items-center">
+          <span className="text-[15px] font-black text-foreground tracking-tighter">{formatINR(row.original.amount ? row.original.amount.replace(/[^0-9.]/g, '') : '0')}</span>
         </div>
       ),
     },
@@ -346,8 +345,8 @@ export default function PaymentsPage() {
       accessorKey: "commission",
       header: "Platform Yield",
       cell: ({ row }) => (
-        <span className="text-[11px] font-black text-primary-blue bg-primary-blue/10 px-3 py-1.5 rounded-xl border border-primary-blue/15 tracking-widest uppercase shadow-sm">
-          {row.original.commission || "$0.00"}
+        <span className="text-[11px] font-black text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/15 tracking-widest uppercase shadow-sm">
+          {formatINR(row.original.commission ? row.original.commission.replace(/[^0-9.]/g, '') : '0')}
         </span>
       ),
     },
@@ -368,7 +367,7 @@ export default function PaymentsPage() {
     {
       accessorKey: "date",
       header: "Temporal Origin",
-      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter">{row.original.date}</span>,
+      cell: ({ row }) => <span className="text-[11px] font-black text-foreground/20 tracking-tighter">{row.original.date}</span>,
     },
     {
       id: "actions",
@@ -426,7 +425,7 @@ export default function PaymentsPage() {
           <button 
             onClick={() => loadPayments(true)}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
             <span>{isLoading ? "Syncing..." : "Sync Ledger"}</span>
@@ -442,30 +441,30 @@ export default function PaymentsPage() {
 
         <div ref={tableRef} className="scroll-mt-12">
           {/* Filters Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-            <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-              <Filter className="w-4 h-4 text-primary-blue" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+            <div className="flex items-center space-x-3 text-foreground/40 text-xs font-black uppercase tracking-widest">
+              <Filter className="w-4 h-4 text-primary" />
               <span>Transaction Filters:</span>
             </div>
 
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Status:</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => {
                   setSelectedStatus(e.target.value);
                   setCustomFilter(null);
                 }}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Transactions</option>
-                <option value="pending" className="bg-[#111827]">Pending</option>
-                <option value="paid" className="bg-[#111827]">Paid</option>
-                <option value="failed" className="bg-[#111827]">Failed</option>
-                <option value="refunded" className="bg-[#111827]">Refunded</option>
-                <option value="cancelled" className="bg-[#111827]">Cancelled</option>
-                <option value="processing" className="bg-[#111827]">Processing</option>
-                <option value="disputed" className="bg-[#111827]">Disputed</option>
+                <option value="all" className="bg-surface">All Transactions</option>
+                <option value="pending" className="bg-surface">Pending</option>
+                <option value="paid" className="bg-surface">Paid</option>
+                <option value="failed" className="bg-surface">Failed</option>
+                <option value="refunded" className="bg-surface">Refunded</option>
+                <option value="cancelled" className="bg-surface">Cancelled</option>
+                <option value="processing" className="bg-surface">Processing</option>
+                <option value="disputed" className="bg-surface">Disputed</option>
               </select>
             </div>
           </div>
@@ -477,10 +476,10 @@ export default function PaymentsPage() {
           ) : isError ? (
             <ErrorState onRetry={() => loadPayments(true)} />
           ) : filteredPayments.length === 0 ? (
-            <div className="p-12 text-center bg-[#0F172A] rounded-[32px] border border-white/[0.08] space-y-4">
-              <CreditCard className="w-12 h-12 text-primary-blue/40 mx-auto" />
-              <h3 className="text-lg font-black text-[#F0F0FB]">No Fiscal Allocations Detected</h3>
-              <p className="text-xs text-[#F0F0FB]/40 max-w-md mx-auto">No transaction records matching the active filter criteria were found in the production database.</p>
+            <div className="p-12 text-center bg-card-bg rounded-[32px] border border-border space-y-4">
+              <CreditCard className="w-12 h-12 text-primary/40 mx-auto" />
+              <h3 className="text-lg font-black text-foreground">No Fiscal Allocations Detected</h3>
+              <p className="text-xs text-foreground/40 max-w-md mx-auto">No transaction records matching the active filter criteria were found in the production database.</p>
             </div>
           ) : (
             <DataTable 
@@ -512,23 +511,23 @@ export default function PaymentsPage() {
           title={activeMetricDetail.title}
           subtitle="System Performance Metric"
         >
-          <div className="space-y-8 text-[#F0F0FB]">
-            <div className="p-6 rounded-[24px] bg-[#111827] border border-white/[0.05]">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">CURRENT VALUATION</span>
+          <div className="space-y-8 text-foreground">
+            <div className="p-6 rounded-[24px] bg-surface border border-border">
+              <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em]">CURRENT VALUATION</span>
               <div className="flex items-baseline space-x-3 mt-2">
-                <span className="text-4xl font-black text-[#F0F0FB] tracking-tighter">{activeMetricDetail.value}</span>
+                <span className="text-4xl font-black text-foreground tracking-tighter">{activeMetricDetail.value}</span>
                 <span className="text-xs font-bold text-success-green bg-success-green/10 border border-success-green/15 px-2.5 py-0.5 rounded-full">{activeMetricDetail.trend}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">METRIC DESCRIPTION</span>
-              <p className="text-sm text-[#F0F0FB]/60 leading-relaxed font-semibold">{activeMetricDetail.description}</p>
+              <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em]">METRIC DESCRIPTION</span>
+              <p className="text-sm text-foreground/60 leading-relaxed font-semibold">{activeMetricDetail.description}</p>
             </div>
 
-            <div className="p-6 rounded-[24px] bg-primary-blue/5 border border-primary-blue/10 space-y-2">
-              <span className="text-[10px] font-black text-primary-blue uppercase tracking-[0.2em]">LEDGER SUMMARY</span>
-              <p className="text-xs text-[#F0F0FB]/60 leading-relaxed font-semibold">{activeMetricDetail.ledgerSummary}</p>
+            <div className="p-6 rounded-[24px] bg-primary/5 border border-primary/10 space-y-2">
+              <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">LEDGER SUMMARY</span>
+              <p className="text-xs text-foreground/60 leading-relaxed font-semibold">{activeMetricDetail.ledgerSummary}</p>
             </div>
           </div>
         </DetailDrawer>
@@ -541,10 +540,10 @@ export default function PaymentsPage() {
           title="Transaction Details"
           subtitle={`TXN: ${viewingPayment.id.slice(0, 8)}`}
         >
-          <div className="space-y-8 text-[#F0F0FB]">
+          <div className="space-y-8 text-foreground">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-2xl bg-[#111827] border border-white/[0.05]">
-                <span className="text-[9px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">OPERATIONAL STATE</span>
+              <div className="p-4 rounded-2xl bg-surface border border-border">
+                <span className="text-[9px] font-black text-foreground/30 uppercase tracking-[0.2em]">OPERATIONAL STATE</span>
                 <div className="mt-1">
                   <StatusBadge 
                     status={viewingPayment.status || "pending"} 
@@ -556,49 +555,49 @@ export default function PaymentsPage() {
                   />
                 </div>
               </div>
-              <div className="p-4 rounded-2xl bg-[#111827] border border-white/[0.05]">
-                <span className="text-[9px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">TRANSACTION VALUE</span>
-                <p className="text-xl font-black text-[#F0F0FB] mt-1">{viewingPayment.amount}</p>
+              <div className="p-4 rounded-2xl bg-surface border border-border">
+                <span className="text-[9px] font-black text-foreground/30 uppercase tracking-[0.2em]">TRANSACTION VALUE</span>
+                <p className="text-xl font-black text-foreground mt-1">{formatINR(viewingPayment.amount ? viewingPayment.amount.replace(/[^0-9.]/g, '') : '0')}</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">RECONCILIATION PARAMS</span>
-              <div className="p-6 rounded-[24px] bg-white/[0.02] border border-white/[0.05] space-y-4 text-xs font-semibold">
+              <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em]">RECONCILIATION PARAMS</span>
+              <div className="p-6 rounded-[24px] bg-surface-elevated border border-border space-y-4 text-xs font-semibold">
                 <div className="flex justify-between">
-                  <span className="text-[#F0F0FB]/40">Corporate Entity:</span>
-                  <span className="text-[#F0F0FB]">{viewingPayment.brand}</span>
+                  <span className="text-foreground/40">Corporate Entity:</span>
+                  <span className="text-foreground">{viewingPayment.brand}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#F0F0FB]/40">Creator Network:</span>
-                  <span className="text-[#F0F0FB]">{viewingPayment.creator}</span>
+                  <span className="text-foreground/40">Creator Network:</span>
+                  <span className="text-foreground">{viewingPayment.creator}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#F0F0FB]/40">Platform Yield:</span>
-                  <span className="text-primary-blue bg-primary-blue/10 px-2 py-0.5 rounded-lg border border-primary-blue/15 text-[10px] font-black">{viewingPayment.commission}</span>
+                  <span className="text-foreground/40">Platform Yield:</span>
+                  <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-lg border border-primary/15 text-[10px] font-black">{formatINR(viewingPayment.commission ? viewingPayment.commission.replace(/[^0-9.]/g, '') : '0')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#F0F0FB]/40">Temporal Origin:</span>
-                  <span className="text-[#F0F0FB]">{viewingPayment.date}</span>
+                  <span className="text-foreground/40">Temporal Origin:</span>
+                  <span className="text-foreground">{viewingPayment.date}</span>
                 </div>
                 {viewingPayment.payer_profile?.email && (
                   <div className="flex justify-between">
-                    <span className="text-[#F0F0FB]/40">Payer Email:</span>
-                    <span className="text-[#F0F0FB] font-mono text-[11px]">{viewingPayment.payer_profile.email}</span>
+                    <span className="text-foreground/40">Payer Email:</span>
+                    <span className="text-foreground font-mono text-[11px]">{viewingPayment.payer_profile.email}</span>
                   </div>
                 )}
                 {viewingPayment.payee_profile?.email && (
                   <div className="flex justify-between">
-                    <span className="text-[#F0F0FB]/40">Payee Email:</span>
-                    <span className="text-[#F0F0FB] font-mono text-[11px]">{viewingPayment.payee_profile.email}</span>
+                    <span className="text-foreground/40">Payee Email:</span>
+                    <span className="text-foreground font-mono text-[11px]">{viewingPayment.payee_profile.email}</span>
                   </div>
                 )}
               </div>
             </div>
             
-            <div className="p-6 rounded-[24px] bg-[#111827] border border-white/[0.05] space-y-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">METADATA VECTORS</span>
-              <pre className="text-[10px] font-mono text-[#F0F0FB]/50 overflow-x-auto whitespace-pre bg-black/40 p-4 rounded-xl">
+            <div className="p-6 rounded-[24px] bg-surface border border-border space-y-2">
+              <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em]">METADATA VECTORS</span>
+              <pre className="text-[10px] font-mono text-foreground/50 overflow-x-auto whitespace-pre bg-background/40 p-4 rounded-xl">
                 {JSON.stringify({
                   id: viewingPayment.id,
                   campaign: viewingPayment.campaign,

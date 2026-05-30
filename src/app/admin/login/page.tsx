@@ -64,16 +64,16 @@ export default function AdminLoginPage() {
 
 
   return (
-    <div className="min-h-screen bg-[#030712] flex items-center justify-center p-6 selection:bg-primary-blue/30 selection:text-primary-blue">
+    <div className="min-h-screen bg-background flex items-center justify-center p-6 selection:bg-primary/30 selection:text-primary">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(37,99,235,0.1),transparent_50%)]" />
       
       <div className="w-full max-w-md relative z-10">
         <div className="mb-12 text-center">
-          <div className="w-20 h-20 bg-primary-blue/10 rounded-[30px] border border-primary-blue/20 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary-blue/10 animate-pulse">
-            <Shield className="w-10 h-10 text-primary-blue" />
+          <div className="w-20 h-20 bg-primary/10 rounded-[30px] border border-primary/20 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/10 animate-pulse">
+            <Shield className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tighter mb-4">AUTHENTICATION</h1>
-          <p className="text-[#F0F0FB]/30 text-[10px] font-black uppercase tracking-[0.4em]">UGC FY Enterprise Operations</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-3">Admin Login</h1>
+          <p className="text-text-secondary text-sm font-semibold uppercase tracking-widest">UGC FY Platform</p>
         </div>
 
         {setupSuccess && (
@@ -85,19 +85,19 @@ export default function AdminLoginPage() {
           </div>
         )}
 
-        <div className="bg-[#0F172A] border border-white/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent" />
+        <div className="bg-card-bg border border-border rounded-[40px] p-10 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
           
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-6">
               <div className="relative group">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-blue text-[#F0F0FB]/20">
+                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-foreground/20">
                   <Mail className="w-5 h-5" />
                 </div>
                 <input
                   {...register("email")}
                   placeholder="Enterprise Identifier"
-                  className="w-full h-16 bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 text-[#F0F0FB] text-[13px] font-black tracking-tight focus:outline-none focus:border-primary-blue/50 focus:bg-white/[0.04] transition-all placeholder:text-[#F0F0FB]/10 shadow-inner"
+                  className="w-full h-16 bg-surface-elevated border border-border rounded-2xl pl-14 pr-6 text-foreground text-[13px] font-black tracking-tight focus:outline-none focus:border-primary/50 focus:bg-surface-elevated hover:bg-foreground/5 transition-all placeholder:text-foreground/10 shadow-inner"
                 />
                 {errors.email && (
                   <p className="mt-2 text-[10px] font-black text-error uppercase tracking-widest ml-1">{errors.email.message}</p>
@@ -105,14 +105,14 @@ export default function AdminLoginPage() {
               </div>
 
               <div className="relative group">
-                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-blue text-[#F0F0FB]/20">
+                <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-foreground/20">
                   <Lock className="w-5 h-5" />
                 </div>
                 <input
                   {...register("password")}
                   type="password"
                   placeholder="Security Credential"
-                  className="w-full h-16 bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 text-[#F0F0FB] text-[13px] font-black tracking-tight focus:outline-none focus:border-primary-blue/50 focus:bg-white/[0.04] transition-all placeholder:text-[#F0F0FB]/10 shadow-inner"
+                  className="w-full h-16 bg-surface-elevated border border-border rounded-2xl pl-14 pr-6 text-foreground text-[13px] font-black tracking-tight focus:outline-none focus:border-primary/50 focus:bg-surface-elevated hover:bg-foreground/5 transition-all placeholder:text-foreground/10 shadow-inner"
                 />
                 {errors.password && (
                   <p className="mt-2 text-[10px] font-black text-error uppercase tracking-widest ml-1">{errors.password.message}</p>
@@ -130,15 +130,15 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-16 bg-primary-blue text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full h-16 bg-primary text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-primary/90 transition-all shadow-xl shadow-primary/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Authorize Access"}
             </button>
           </form>
         </div>
 
-        <div className="mt-12 pt-12 border-t border-white/5 text-center">
-          <p className="text-[9px] font-black text-[#F0F0FB]/20 uppercase tracking-[0.3em] leading-relaxed max-w-[300px] mx-auto">
+        <div className="mt-12 pt-12 border-t border-border text-center">
+          <p className="text-[9px] font-black text-foreground/20 uppercase tracking-[0.3em] leading-relaxed max-w-[300px] mx-auto">
             Restricted System. Unauthorized access attempts are monitored and recorded under security protocol 14-B.
           </p>
         </div>

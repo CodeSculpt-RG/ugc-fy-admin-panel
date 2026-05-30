@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 
-type ApprovalStatus = "pending_review" | "approved" | "rejected" | "blocked";
+type ApprovalStatus = "pending_review" | "approved" | "rejected" | "blocked" | "on_hold" | "pending" | "deleted";
 
 export type PendingUser = {
   id: string;

@@ -10,8 +10,9 @@ export async function GET(request: Request) {
     if (!check.ok) return check.response;
 
     const { data: admins, error, count } = await supabaseAdmin
-      .from("admin_profiles")
+      .from("profiles")
       .select("*", { count: "exact" })
+      .eq('role', 'admin')
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
         user_metadata: {
           full_name: normalizedFullName,
           admin_role: resolvedRole,
+          role: "admin",
         },
       });
       if (updateAuthError) throw updateAuthError;
@@ -105,6 +107,7 @@ export async function POST(request: Request) {
         user_metadata: {
           full_name: normalizedFullName,
           admin_role: resolvedRole,
+          role: "admin",
         },
       });
 

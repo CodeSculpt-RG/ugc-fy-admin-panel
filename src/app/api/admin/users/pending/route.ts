@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     const { data: profiles, error, count } = await supabaseAdmin
       .from("profiles")
-      .select("id, email, full_name, avatar_url, role, approval_status, profile_completed, created_at, updated_at", { count: "exact" })
+      .select("id, email, full_name, avatar_url, role, approval_status, profile_completed, created_at, updated_at, platform_id", { count: "exact" })
       .eq("approval_status", "pending_review")
       .order("created_at", { ascending: false });
 

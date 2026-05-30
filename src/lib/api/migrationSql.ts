@@ -138,16 +138,28 @@ CREATE POLICY "Admins can access payments" ON public.payments FOR ALL USING (tru
   reports: `-- Migration SQL for reports
 CREATE TABLE IF NOT EXISTS public.reports (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL,
-  type text NOT NULL CHECK (type IN ('Financial', 'User', 'Campaign', 'Security', 'Dispute')),
-  parameters jsonb DEFAULT '{}',
-  file_url text,
-  status text NOT NULL DEFAULT 'Generating' CHECK (status IN ('Generating', 'Ready', 'Failed')),
-  generated_by uuid REFERENCES auth.users(id),
-  created_at timestamptz DEFAULT now()
+  title text NOT NULL DEFAULT 'Untitled Report',
+  type text NOT NULL DEFAULT 'general',
+  report_type text NOT NULL DEFAULT 'general',
+  status text NOT NULL DEFAULT 'generated',
+  description text NULL,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  file_url text NULL,
+  generated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  generated_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON public.reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_type ON public.reports(type);
+CREATE INDEX IF NOT EXISTS idx_reports_report_type ON public.reports(report_type);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON public.reports(status);
+
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can access reports" ON public.reports FOR ALL USING (true);`,
+
+DROP POLICY IF EXISTS "Admins can manage reports" ON public.reports;
+CREATE POLICY "Admins can manage reports" ON public.reports FOR ALL USING (true) WITH CHECK (true);`,
 
   admin_invites: `-- Migration SQL for admin_invites
 CREATE TABLE IF NOT EXISTS public.admin_invites (
@@ -161,9 +173,42 @@ CREATE TABLE IF NOT EXISTS public.admin_invites (
 );
 ALTER TABLE public.admin_invites ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins can access admin invites" ON public.admin_invites FOR ALL USING (true);`,
+
+  chat_escalations: `-- Migration SQL for chat_escalations
+CREATE TABLE IF NOT EXISTS public.chat_escalations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id uuid NULL,
+  message_id uuid NULL,
+  campaign_id uuid NULL,
+  raised_by_profile_id uuid NULL REFERENCES public.profiles(id) ON DELETE SET NULL,
+  against_profile_id uuid NULL REFERENCES public.profiles(id) ON DELETE SET NULL,
+  creator_profile_id uuid NULL,
+  brand_profile_id uuid NULL,
+  issue_type text NOT NULL DEFAULT 'other',
+  title text NOT NULL DEFAULT 'Chat escalation',
+  description text NULL,
+  priority text NOT NULL DEFAULT 'medium',
+  status text NOT NULL DEFAULT 'open',
+  attachment_url text NULL,
+  admin_notes text NULL,
+  resolved_by_admin_id uuid NULL REFERENCES public.profiles(id) ON DELETE SET NULL,
+  resolved_at timestamptz NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_escalations_status ON public.chat_escalations(status);
+CREATE INDEX IF NOT EXISTS idx_chat_escalations_priority ON public.chat_escalations(priority);
+CREATE INDEX IF NOT EXISTS idx_chat_escalations_issue_type ON public.chat_escalations(issue_type);
+CREATE INDEX IF NOT EXISTS idx_chat_escalations_created_at ON public.chat_escalations(created_at DESC);
+
+ALTER TABLE public.chat_escalations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can manage chat escalations" ON public.chat_escalations;
+CREATE POLICY "Admins can manage chat escalations" ON public.chat_escalations FOR ALL USING (true) WITH CHECK (true);`,
 };
 
-export function getMissingTableInfo(errCode?: string, errMsg?: string) {
+export function getMissingTableInfo(errCode?: string, errMsg?: string, fallbackTableName?: string) {
   const isMissing =
     errCode === "PGRST205" ||
     errCode === "PGRST200" ||
@@ -188,6 +233,11 @@ export function getMissingTableInfo(errCode?: string, errMsg?: string) {
       tableName = match[1].replace(/^public\./, "");
     }
   }
+
+  if ((tableName === "unknown" || !MIGRATION_SQL_MAP[tableName]) && fallbackTableName) {
+    tableName = fallbackTableName;
+  }
+
   return {
     isMissingTable: true,
     tableName,

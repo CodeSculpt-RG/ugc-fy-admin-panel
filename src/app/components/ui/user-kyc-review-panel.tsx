@@ -107,7 +107,18 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
   const logs = data?.audit_logs ?? [];
 
   const role = String(profile?.role ?? "User").toUpperCase();
-  const name = String(profile?.full_name ?? brand?.company_name ?? brand?.brand_name ?? creator?.creator_name ?? "Anonymous Entity");
+  const name = String(
+    profile?.full_name ||
+    profile?.name ||
+    brand?.company_name ||
+    brand?.brand_name ||
+    brand?.contact_name ||
+    creator?.creator_name ||
+    creator?.username ||
+    profile?.email ||
+    profile?.platform_id ||
+    "Unnamed Entity"
+  );
   const email = String(profile?.email ?? "No Email Registered");
   const approvalStatus = String(profile?.approval_status ?? "pending_review");
 
@@ -150,32 +161,31 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md z-[150]"
+            className="absolute inset-0 bg-background/80 backdrop-blur-md z-[150]"
           />
 
-          {/* Drawer Panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 32, stiffness: 300 }}
-            className="absolute right-0 top-0 h-screen w-full max-w-[760px] bg-[#0B101B] border-l border-white/10 z-[151] shadow-2xl flex flex-col"
+            className="absolute right-0 top-0 h-screen w-full max-w-[760px] bg-card-bg border-l border-border z-[151] shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="p-8 sm:p-10 border-b border-white/[0.08] bg-[#0E1626] flex items-center justify-between relative overflow-hidden group">
+            <div className="p-6 sm:p-8 border-b border-border bg-surface-elevated flex items-center justify-between relative overflow-hidden group">
               <div className="absolute -right-10 -bottom-10 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-700 pointer-events-none">
-                <Sparkles className="w-64 h-64 text-primary-blue" />
+                <Sparkles className="w-64 h-64 text-primary" />
               </div>
               <div>
                 <div className="flex items-center space-x-3 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full bg-primary-blue/10 border border-primary-blue/20 text-primary-blue">
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary">
                     KYC & Identity Dossier
                   </span>
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 font-mono">
-                    ID: {userId ? `${userId.substring(0, 8)}...` : "N/A"}
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] px-3 py-1 rounded-full bg-foreground/5 border border-border text-foreground/60 font-mono">
+                    ID: {profile?.platform_id ? String(profile.platform_id) : (userId ? `${userId.substring(0, 8)}...` : "N/A")}
                   </span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#F0F0FB] tracking-tighter truncate">
+                <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tighter truncate">
                   {name}
                 </h2>
               </div>
@@ -184,13 +194,13 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                   onClick={fetchDetails}
                   disabled={loading}
                   title="Refresh Dossier Data"
-                  className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-95 disabled:opacity-50"
+                  className="p-3 rounded-2xl bg-foreground/5 border border-border text-foreground/40 hover:text-white hover:bg-foreground/10 transition-all active:scale-95 disabled:opacity-50"
                 >
                   <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
                 </button>
                 <button
                   onClick={onClose}
-                  className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                  className="p-3 rounded-2xl bg-foreground/5 border border-border text-foreground/40 hover:text-white hover:bg-foreground/10 transition-all active:scale-95"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -198,7 +208,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-8 sm:p-10 space-y-10 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8 custom-scrollbar pb-32">
               {loading ? (
                 <LoadingState message="Extracting KYC & Dossier Metadata..." />
               ) : error ? (
@@ -211,15 +221,15 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
               ) : (
                 <div className="space-y-10">
                   {/* Status & Security Banner */}
-                  <div className="p-6 rounded-[28px] bg-[#121A2C] border border-white/10 flex flex-wrap items-center justify-between gap-4 shadow-xl">
+                  <div className="p-6 rounded-[24px] bg-surface-elevated border border-border flex flex-wrap items-center justify-between gap-4 shadow-sm">
                     <div className="flex items-center space-x-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary-blue/10 border border-primary-blue/20 flex items-center justify-center text-primary-blue flex-shrink-0 font-black text-xl">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary flex-shrink-0 font-black text-xl">
                         {String(name).charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-black text-white tracking-tight truncate">{email}</p>
-                        <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest mt-0.5">
-                          Ecosystem Tier: <span className="text-primary-blue font-black">{role}</span>
+                        <p className="text-sm font-black text-foreground tracking-tight truncate">{email}</p>
+                        <p className="text-[11px] font-bold text-foreground/40 uppercase tracking-widest mt-0.5">
+                          Ecosystem Tier: <span className="text-primary font-black">{role}</span>
                         </p>
                       </div>
                     </div>
@@ -243,68 +253,68 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                       <AlertCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-xs font-black uppercase tracking-widest">Administrative Directive Notice</p>
-                        <p className="text-sm font-bold text-white mt-1 leading-relaxed">{String(profile.rejection_reason)}</p>
+                        <p className="text-sm font-bold text-error mt-1 leading-relaxed">{String(profile.rejection_reason)}</p>
                       </div>
                     </div>
                   )}
 
                   {/* 1. Identity Overview */}
                   <div className="space-y-4">
-                    <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.4em] flex items-center space-x-2 border-b border-white/10 pb-3">
-                      <UserIcon className="w-4 h-4 text-primary-blue" />
+                    <h3 className="text-xs font-black text-foreground/40 uppercase tracking-[0.4em] flex items-center space-x-2 border-b border-border pb-3">
+                      <UserIcon className="w-4 h-4 text-primary" />
                       <span>1. Identity Overview</span>
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Full Legal Name</span>
-                        <p className="text-sm font-black text-white truncate">{String(profile?.full_name ?? "Not Registered")}</p>
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                        <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Full Legal Name</span>
+                        <p className="text-sm font-black text-foreground truncate">{String(profile?.full_name ?? "Not Registered")}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Contact Email</span>
-                        <p className="text-sm font-black text-primary-blue truncate">{String(profile?.email ?? "N/A")}</p>
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                        <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Contact Email</span>
+                        <p className="text-sm font-black text-primary truncate">{String(profile?.email ?? "N/A")}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Identity Created</span>
-                        <p className="text-xs font-mono text-white/80">{formatDate(profile?.created_at)}</p>
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                        <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Identity Created</span>
+                        <p className="text-xs font-mono text-foreground/80">{formatDate(profile?.created_at)}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Last Infrastructure Update</span>
-                        <p className="text-xs font-mono text-white/80">{formatDate(profile?.updated_at)}</p>
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                        <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Last Infrastructure Update</span>
+                        <p className="text-xs font-mono text-foreground/80">{formatDate(profile?.updated_at)}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* 2. Creator Details if role = creator */}
                   {profile.role === "creator" && (
-                    <div className="space-y-6 pt-4 border-t border-white/10">
-                      <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.4em] flex items-center space-x-2 border-b border-white/10 pb-3">
-                        <UserIcon className="w-4 h-4 text-primary-blue" />
+                    <div className="space-y-6 pt-4 border-t border-border">
+                      <h3 className="text-xs font-black text-foreground/40 uppercase tracking-[0.4em] flex items-center space-x-2 border-b border-border pb-3">
+                        <UserIcon className="w-4 h-4 text-primary" />
                         <span>2. Creator KYC & Portfolio Data</span>
                       </h3>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Creator Stage Name</span>
-                          <p className="text-sm font-black text-white truncate">{String(creator?.creator_name ?? profile.full_name ?? "N/A")}</p>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Creator Stage Name</span>
+                          <p className="text-sm font-black text-foreground truncate">{String(creator?.creator_name ?? profile.full_name ?? "N/A")}</p>
                         </div>
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Strategic Niche</span>
-                          <p className="text-sm font-black text-primary-blue uppercase tracking-wider">{String(creator?.niche ?? "Unspecified")}</p>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Strategic Niche</span>
+                          <p className="text-sm font-black text-primary uppercase tracking-wider">{String(creator?.niche ?? "Unspecified")}</p>
                         </div>
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Phone Contact</span>
-                          <p className="text-sm font-bold text-white font-mono">{String(creator?.phone ?? "N/A")}</p>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Phone Contact</span>
+                          <p className="text-sm font-bold text-foreground font-mono">{String(creator?.phone ?? "N/A")}</p>
                         </div>
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Geographic Location</span>
-                          <p className="text-sm font-bold text-white">{String(creator?.location ?? "N/A")}</p>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Geographic Location</span>
+                          <p className="text-sm font-bold text-foreground">{String(creator?.location ?? "N/A")}</p>
                         </div>
                       </div>
 
                       {/* Bio */}
-                      <div className="p-6 rounded-2xl bg-[#111726] border border-white/10 space-y-2">
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Professional Bio / Mission Statement</span>
-                        <p className="text-xs sm:text-sm text-white/80 leading-relaxed font-medium">
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                        <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Professional Bio / Mission Statement</span>
+                        <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed font-medium">
                           {creator?.bio ? String(creator.bio) : "No bio submitted."}
                         </p>
                       </div>
@@ -320,14 +330,14 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                           >
                             <div className="flex items-center space-x-3">
                               <Share2 className="w-5 h-5 text-pink-400" />
-                              <span className="text-xs font-black text-white tracking-wide">Instagram Connected</span>
+                              <span className="text-xs font-black text-foreground tracking-wide">Instagram Connected</span>
                             </div>
-                            <ExternalLink className="w-4 h-4 text-white/40 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                            <ExternalLink className="w-4 h-4 text-foreground/40 group-hover:text-pink-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                           </a>
                         ) : (
-                          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center space-x-3 opacity-50">
-                            <Share2 className="w-5 h-5 text-white/20" />
-                            <span className="text-xs font-bold text-white/40">Instagram Not Connected</span>
+                          <div className="p-5 rounded-2xl bg-foreground/5 border border-border flex items-center space-x-3 opacity-50">
+                            <Share2 className="w-5 h-5 text-foreground/20" />
+                            <span className="text-xs font-bold text-foreground/40">Instagram Not Connected</span>
                           </div>
                         )}
 
@@ -340,26 +350,26 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                           >
                             <div className="flex items-center space-x-3">
                               <Share2 className="w-5 h-5 text-red-500" />
-                              <span className="text-xs font-black text-white tracking-wide">YouTube Connected</span>
+                              <span className="text-xs font-black text-foreground tracking-wide">YouTube Connected</span>
                             </div>
-                            <ExternalLink className="w-4 h-4 text-white/40 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                            <ExternalLink className="w-4 h-4 text-foreground/40 group-hover:text-red-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                           </a>
                         ) : (
-                          <div className="p-5 rounded-2xl bg-white/5 border border-white/10 flex items-center space-x-3 opacity-50">
-                            <Share2 className="w-5 h-5 text-white/20" />
-                            <span className="text-xs font-bold text-white/40">YouTube Not Connected</span>
+                          <div className="p-5 rounded-2xl bg-foreground/5 border border-border flex items-center space-x-3 opacity-50">
+                            <Share2 className="w-5 h-5 text-foreground/20" />
+                            <span className="text-xs font-bold text-foreground/40">YouTube Not Connected</span>
                           </div>
                         )}
                       </div>
 
                       {/* Videos & Portfolio */}
-                      <div className="space-y-4 pt-4 border-t border-white/10">
-                        <h4 className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center space-x-2">
-                          <Video className="w-4 h-4 text-primary-blue" />
+                      <div className="space-y-4 pt-4 border-t border-border">
+                        <h4 className="text-[11px] font-black text-foreground/40 uppercase tracking-widest flex items-center space-x-2">
+                          <Video className="w-4 h-4 text-primary" />
                           <span>Uploaded Video Proofs ({videos.length})</span>
                         </h4>
                         {videos.length === 0 ? (
-                          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center text-xs text-white/40 font-bold uppercase tracking-wider">
+                          <div className="p-6 rounded-2xl bg-foreground/5 border border-border text-center text-xs text-foreground/40 font-bold uppercase tracking-wider">
                             No verification videos uploaded
                           </div>
                         ) : (
@@ -372,16 +382,16 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                                   href={String(vid?.url ?? '#')}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-primary-blue/40 transition-all flex items-center space-x-3 group"
+                                  className="p-4 rounded-xl bg-foreground/5 border border-border hover:border-primary/40 transition-all flex items-center space-x-3 group"
                                 >
-                                  <div className="p-3 rounded-lg bg-primary-blue/10 text-primary-blue flex-shrink-0">
+                                  <div className="p-3 rounded-lg bg-primary/10 text-primary flex-shrink-0">
                                     <Video className="w-4 h-4" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black text-white truncate">Video Asset #{i + 1}</p>
-                                    <p className="text-[10px] font-mono text-white/40 truncate">{String(vid?.title ?? vid?.url ?? 'View Stream')}</p>
+                                    <p className="text-xs font-black text-foreground truncate">Video Asset #{i + 1}</p>
+                                    <p className="text-[10px] font-mono text-foreground/40 truncate">{String(vid?.title ?? vid?.url ?? 'View Stream')}</p>
                                   </div>
-                                  <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white transition-colors flex-shrink-0" />
+                                  <ExternalLink className="w-4 h-4 text-foreground/30 group-hover:text-primary transition-colors flex-shrink-0" />
                                 </a>
                               );
                             })}
@@ -389,8 +399,8 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                         )}
 
                         {portfolio.length > 0 && (
-                          <div className="space-y-3 pt-3 border-t border-white/10">
-                            <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">External Portfolio Links</span>
+                          <div className="space-y-3 pt-3 border-t border-border">
+                            <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">External Portfolio Links</span>
                             <div className="flex flex-wrap gap-2">
                               {portfolio.map((pLink: unknown, idx: number) => (
                                 <a 
@@ -398,7 +408,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                                   href={String(pLink)} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="px-3 py-1.5 rounded-xl bg-primary-blue/10 border border-primary-blue/20 text-primary-blue text-xs font-bold hover:underline flex items-center space-x-1.5"
+                                  className="px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-xs font-bold hover:underline flex items-center space-x-1.5"
                                 >
                                   <span>{String(pLink)}</span>
                                   <ExternalLink className="w-3 h-3" />
@@ -413,55 +423,55 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
 
                   {/* 3. Brand Details if role = brand */}
                   {profile.role === "brand" && (
-                    <div className="space-y-6 pt-4 border-t border-white/10">
-                      <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.4em] flex items-center space-x-2 border-b border-white/10 pb-3">
+                    <div className="space-y-6 pt-4 border-t border-border">
+                      <h3 className="text-xs font-black text-foreground/40 uppercase tracking-[0.4em] flex items-center space-x-2 border-b border-border pb-3">
                         <Building2 className="w-4 h-4 text-accent-orange" />
                         <span>3. Corporate Brand KYC Data</span>
                       </h3>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Company / Legal Name</span>
-                          <p className="text-sm font-black text-white truncate">{String(brand?.company_name ?? brand?.brand_name ?? profile.full_name ?? "N/A")}</p>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Company / Legal Name</span>
+                          <p className="text-sm font-black text-foreground truncate">{String(brand?.company_name ?? brand?.brand_name ?? profile.full_name ?? "N/A")}</p>
                         </div>
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Industry Classification</span>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Industry Classification</span>
                           <p className="text-sm font-black text-accent-orange uppercase tracking-wider">{String(brand?.industry ?? "Commercial")}</p>
                         </div>
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Digital Website</span>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Digital Website</span>
                           <a 
                             href={brand?.website_url ? (brand.website_url.toString().startsWith('http') ? String(brand.website_url) : `https://${brand.website_url}`) : '#'} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-sm font-bold text-primary-blue hover:underline flex items-center space-x-1.5 truncate"
+                            className="text-sm font-bold text-primary hover:underline flex items-center space-x-1.5 truncate"
                           >
                             <span>{String(brand?.website_url ?? "N/A")}</span>
                             {Boolean(brand?.website_url) && <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />}
                           </a>
                         </div>
-                        <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 space-y-1">
-                          <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Corporate Phone</span>
-                          <p className="text-sm font-bold text-white font-mono">{String(brand?.phone ?? "N/A")}</p>
+                        <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-1">
+                          <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Corporate Phone</span>
+                          <p className="text-sm font-bold text-foreground font-mono">{String(brand?.phone ?? "N/A")}</p>
                         </div>
                       </div>
 
                       {/* Business Description */}
-                      <div className="p-6 rounded-2xl bg-[#111726] border border-white/10 space-y-2">
-                        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest">Enterprise Operations Summary</span>
-                        <p className="text-xs sm:text-sm text-white/80 leading-relaxed font-medium">
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-2">
+                        <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Enterprise Operations Summary</span>
+                        <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed font-medium">
                           {brand?.business_description ? String(brand.business_description) : "No business overview provided."}
                         </p>
                       </div>
 
                       {/* Corporate Documents / Verification Uploads */}
-                      <div className="space-y-4 pt-4 border-t border-white/10">
-                        <h4 className="text-[11px] font-black text-white/40 uppercase tracking-widest flex items-center space-x-2">
+                      <div className="space-y-4 pt-4 border-t border-border">
+                        <h4 className="text-[11px] font-black text-foreground/40 uppercase tracking-widest flex items-center space-x-2">
                           <FileText className="w-4 h-4 text-accent-orange" />
                           <span>Verification Documents ({docs.length})</span>
                         </h4>
                         {docs.length === 0 ? (
-                          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center text-xs text-white/40 font-bold uppercase tracking-wider">
+                          <div className="p-6 rounded-2xl bg-foreground/5 border border-border text-center text-xs text-foreground/40 font-bold uppercase tracking-wider">
                             No registration documents submitted
                           </div>
                         ) : (
@@ -474,16 +484,16 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                                   href={String(doc?.url ?? '#')}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-accent-orange/40 transition-all flex items-center space-x-3 group"
+                                  className="p-4 rounded-xl bg-foreground/5 border border-border hover:border-accent-orange/40 transition-all flex items-center space-x-3 group"
                                 >
                                   <div className="p-3 rounded-lg bg-accent-orange/10 text-accent-orange flex-shrink-0">
                                     <FileText className="w-4 h-4" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black text-white truncate">{String(doc?.name ?? `Doc #${i+1}`)}</p>
-                                    <p className="text-[10px] font-mono text-white/40 truncate">{String(doc?.url ?? 'Download Document')}</p>
+                                    <p className="text-xs font-black text-foreground truncate">{String(doc?.name ?? `Doc #${i+1}`)}</p>
+                                    <p className="text-[10px] font-mono text-foreground/40 truncate">{String(doc?.url ?? 'Download Document')}</p>
                                   </div>
-                                  <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white transition-colors flex-shrink-0" />
+                                  <ExternalLink className="w-4 h-4 text-foreground/30 group-hover:text-primary transition-colors flex-shrink-0" />
                                 </a>
                               );
                             })}
@@ -494,17 +504,17 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                   )}
 
                   {/* Audit Logs / Timeline */}
-                  <div className="space-y-6 pt-6 border-t border-white/10">
-                    <h3 className="text-xs font-black text-white/40 uppercase tracking-[0.4em] flex items-center space-x-2 mb-4">
-                      <Clock className="w-4 h-4 text-primary-blue" />
+                  <div className="space-y-6 pt-6 border-t border-border">
+                    <h3 className="text-xs font-black text-foreground/40 uppercase tracking-[0.4em] flex items-center space-x-2 mb-4">
+                      <Clock className="w-4 h-4 text-primary" />
                       <span>Temporal Audit & Action Ledger</span>
                     </h3>
 
                     <div className="space-y-4">
-                      <div className="p-5 rounded-2xl bg-[#111726] border border-white/10 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-surface-elevated border border-border flex items-center justify-between">
                         <div>
-                          <p className="text-xs font-black text-white">Identity Record Created</p>
-                          <p className="text-[11px] font-mono text-white/40 mt-1">{formatDate(profile.created_at)}</p>
+                          <p className="text-xs font-black text-foreground">Identity Record Created</p>
+                          <p className="text-[11px] font-mono text-foreground/40 mt-1">{formatDate(profile.created_at)}</p>
                         </div>
                         <CheckCircle2 className="w-5 h-5 text-success-green flex-shrink-0" />
                       </div>
@@ -513,7 +523,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                         <div className="p-5 rounded-2xl bg-success-green/10 border border-success-green/20 flex items-center justify-between">
                           <div>
                             <p className="text-xs font-black text-success-green uppercase tracking-wider">Administrative Verification Executed</p>
-                            <p className="text-[11px] font-mono text-white/60 mt-1">Verified at {formatDate(profile.approved_at)}</p>
+                            <p className="text-[11px] font-mono text-foreground/60 mt-1">Verified at {formatDate(profile.approved_at)}</p>
                           </div>
                           <ShieldCheck className="w-5 h-5 text-success-green flex-shrink-0" />
                         </div>
@@ -523,20 +533,20 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                         const log = logItem as Record<string, unknown> | null;
                         const actor = log?.actor as Record<string, unknown> | null;
                         return (
-                          <div key={idx} className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                          <div key={idx} className="p-5 rounded-2xl bg-foreground/5 border border-border space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-primary-blue uppercase tracking-wider">
+                              <span className="text-xs font-black text-primary uppercase tracking-wider">
                                 Action: {String(log?.action ?? 'System Directive')}
                               </span>
-                              <span className="text-[10px] font-mono text-white/40">
+                              <span className="text-[10px] font-mono text-foreground/40">
                                 {formatDate(log?.created_at)}
                               </span>
                             </div>
-                            <p className="text-xs text-white/80 font-medium">
-                              Executed by Admin: <span className="text-white font-bold">{String(actor?.full_name || actor?.email || log?.actor_admin_id || "System Authority")}</span>
+                            <p className="text-xs text-foreground/80 font-medium">
+                              Executed by Admin: <span className="text-foreground font-bold">{String(actor?.full_name || actor?.email || log?.actor_admin_id || "System Authority")}</span>
                             </p>
                             {Boolean(log?.metadata) && Object.keys(log?.metadata as object).length > 0 && (
-                              <pre className="p-3 rounded-xl bg-black/40 border border-white/10 text-[11px] font-mono text-white/60 overflow-x-auto">
+                              <pre className="p-3 rounded-xl bg-background/40 border border-border text-[11px] font-mono text-foreground/60 overflow-x-auto">
                                 {JSON.stringify(log?.metadata, null, 2)}
                               </pre>
                             )}
@@ -551,17 +561,17 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
 
             {/* 4. Verification / Approval Controls */}
             {profile && (
-              <div className="p-6 border-t border-white/[0.08] bg-[#0E1626] space-y-4">
+              <div className="p-6 border-t border-border bg-surface-elevated space-y-4 sticky bottom-0 z-20">
                 {showReasonInput && (
-                  <div className="space-y-2 p-4 rounded-2xl bg-black/40 border border-white/10 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="space-y-2 p-4 rounded-2xl bg-background/40 border border-border animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-black uppercase tracking-wider text-white/80 flex items-center space-x-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-foreground/80 flex items-center space-x-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-accent-orange" />
                         <span>Justification Reason for {showReasonInput.toUpperCase()}</span>
                       </label>
                       <button 
                         onClick={() => setShowReasonInput(null)}
-                        className="text-white/40 hover:text-white text-xs font-bold"
+                        className="text-foreground/40 hover:text-foreground text-xs font-bold"
                       >
                         Cancel
                       </button>
@@ -571,7 +581,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                       placeholder={`Enter reason for ${showReasonInput}...`}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      className="w-full bg-[#111827] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-primary-blue"
+                      className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-xs text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary"
                     />
                     <div className="flex justify-end pt-2">
                       <button
@@ -603,7 +613,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                       <button
                         onClick={() => handleApprovalAction("pending_review")}
                         disabled={Boolean(actionLoading) || approvalStatus === "pending_review"}
-                        className="flex-1 min-w-[140px] h-12 rounded-2xl bg-accent-orange text-white text-xs font-black uppercase tracking-widest hover:bg-accent-orange/90 transition-all shadow-xl shadow-accent-orange/20 active:scale-95 disabled:opacity-40 flex items-center justify-center space-x-2"
+                        className="flex-1 min-w-[140px] h-12 rounded-2xl bg-primary text-white text-xs font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-40 flex items-center justify-center space-x-2"
                       >
                         <PauseCircle className="w-4 h-4" />
                         <span>{actionLoading === "pending_review" ? "Holding..." : "Hold / Pending"}</span>
@@ -612,7 +622,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
                       <button
                         onClick={() => handleApprovalAction("rejected")}
                         disabled={Boolean(actionLoading) || approvalStatus === "rejected"}
-                        className="flex-1 min-w-[140px] h-12 rounded-2xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-error/20 hover:border-error/40 text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center space-x-2"
+                        className="flex-1 min-w-[140px] h-12 rounded-2xl bg-foreground/5 border border-border text-foreground/80 hover:text-white hover:bg-error/20 hover:border-error/40 text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center space-x-2"
                       >
                         <Ban className="w-4 h-4 text-error" />
                         <span>{actionLoading === "rejected" ? "Rejecting..." : "Reject"}</span>

@@ -92,7 +92,7 @@ export default function ForcePasswordChangePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-foreground relative overflow-hidden px-4">
       {/* Background glow effects */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-blue/15 blur-[120px] rounded-full pointer-events-none -z-10" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/15 blur-[120px] rounded-full pointer-events-none -z-10" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent-orange/10 blur-[120px] rounded-full pointer-events-none -z-10" />
 
       <motion.div
@@ -146,7 +146,7 @@ export default function ForcePasswordChangePage() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading || success}
               placeholder="••••••••••••"
-              className="w-full bg-background/50 border border-border/60 hover:border-border focus:border-primary-blue rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors duration-200"
+              className="w-full bg-background/50 border border-border/60 hover:border-border focus:border-primary rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors duration-200"
               required
             />
           </div>
@@ -161,7 +161,7 @@ export default function ForcePasswordChangePage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={loading || success}
               placeholder="••••••••••••"
-              className="w-full bg-background/50 border border-border/60 hover:border-border focus:border-primary-blue rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors duration-200"
+              className="w-full bg-background/50 border border-border/60 hover:border-border focus:border-primary rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors duration-200"
               required
             />
           </div>
@@ -169,10 +169,10 @@ export default function ForcePasswordChangePage() {
           <button
             type="submit"
             disabled={loading || success}
-            className="w-full bg-primary-blue hover:bg-primary-blue/90 disabled:opacity-50 text-white font-medium py-3 px-4 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary-blue/20"
+            className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-medium py-3 px-4 rounded-xl text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
           >
             {loading ? (
-              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="w-5 h-5 border-2 border-border border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <span>Activate Credentials</span>

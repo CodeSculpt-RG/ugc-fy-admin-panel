@@ -59,9 +59,10 @@ export const adminManagementService = {
       id: String(adm.id || ""),
       name: String(adm.full_name || (typeof adm.email === "string" ? adm.email.split("@")[0] : "") || "Unknown"),
       email: String(adm.email || ""),
-      role: String(adm.role || "analyst").toUpperCase(),
+      role: String(adm.role || "admin").toUpperCase() as "OWNER" | "SUPER_ADMIN" | "MODERATION_ADMIN" | "FINANCE_ADMIN" | "SUPPORT_ADMIN" | "ANALYST",
       lastActive: adm.updated_at ? new Date(String(adm.updated_at)).toLocaleString() : "Never",
-      status: adm.is_active ? "Active" : "Suspended",
+      status: (adm.approval_status === "approved" || adm.is_active === true) ? "Active" : "Suspended",
+      platformId: adm.platform_id ? String(adm.platform_id) : undefined,
     }));
   },
 

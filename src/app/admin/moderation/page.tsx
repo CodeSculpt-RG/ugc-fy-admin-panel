@@ -114,21 +114,21 @@ export default function ModerationPage() {
           subtitle="Enterprise-grade moderation of platform assets and ecosystem interactions."
         >
           <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-6 p-2.5 bg-[#111827] border border-white/10 rounded-[24px] shadow-inner">
-               <div className="flex items-center space-x-3 px-4 border-r border-white/[0.05]">
+            <div className="hidden sm:flex items-center space-x-6 p-2.5 bg-surface border border-border rounded-[24px] shadow-inner">
+               <div className="flex items-center space-x-3 px-4 border-r border-border">
                   <ShieldCheck className="w-4 h-4 text-success-green" />
-                  <span className="text-[11px] font-black text-[#F0F0FB]/40 uppercase tracking-widest">{clearedCount} Cleared</span>
+                  <span className="text-[11px] font-black text-foreground/40 uppercase tracking-widest">{clearedCount} Cleared</span>
                </div>
                <div className="flex items-center space-x-3 px-4">
                   <ShieldAlert className="w-4 h-4 text-error" />
-                  <span className="text-[11px] font-black text-[#F0F0FB]/40 uppercase tracking-widest">{flaggedCount} Flagged</span>
+                  <span className="text-[11px] font-black text-foreground/40 uppercase tracking-widest">{flaggedCount} Flagged</span>
                </div>
             </div>
 
             <button 
               onClick={() => loadQueue()}
               disabled={isLoading}
-              className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+              className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Sync Queue</span>
@@ -145,8 +145,8 @@ export default function ModerationPage() {
               className={cn(
                 "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap",
                 filter === tab 
-                  ? "bg-primary-blue border-primary-blue text-white shadow-xl shadow-primary-blue/20" 
-                  : "bg-[#111827] border-white/[0.08] text-[#F0F0FB]/30 hover:text-[#F0F0FB] hover:bg-white/[0.04]"
+                  ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" 
+                  : "bg-surface border-border text-foreground/30 hover:text-foreground hover:bg-surface-elevated hover:bg-foreground/5"
               )}
             >
               {tab}
@@ -162,8 +162,8 @@ export default function ModerationPage() {
         ) : isError ? (
           <ErrorState onRetry={loadQueue} />
         ) : filteredItems.length === 0 ? (
-          <div className="col-span-full py-20 text-center glass-card rounded-[40px] border border-white/[0.08] p-12 shadow-premium">
-            <span className="text-xs font-black uppercase tracking-[0.4em] text-[#F0F0FB]/40">No moderation cases found.</span>
+          <div className="col-span-full py-20 text-center glass-card rounded-[40px] border border-border p-12 shadow-premium">
+            <span className="text-xs font-black uppercase tracking-[0.4em] text-foreground/40">No moderation cases found.</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
@@ -173,24 +173,24 @@ export default function ModerationPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] overflow-hidden group hover:border-primary-blue/30 transition-all duration-500 shadow-premium interactive-card flex flex-col relative"
+                className="bg-card-bg border border-border rounded-[32px] overflow-hidden group hover:border-primary/30 transition-all duration-500 shadow-premium interactive-card flex flex-col relative"
               >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                 {/* Media Preview */}
                 <div className="aspect-video bg-black relative overflow-hidden flex items-center justify-center shrink-0">
                   {item.type === "Video" ? (
                     <>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10 opacity-60" />
-                      <div className="z-20 w-14 h-14 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
+                      <div className="z-20 w-14 h-14 rounded-full bg-foreground/10 backdrop-blur-xl border border-border flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
                         <Play className="w-6 h-6 text-white fill-white ml-1" />
                       </div>
-                      <div className="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 text-[9px] font-black text-white uppercase tracking-widest">
+                      <div className="absolute top-4 left-4 z-20 px-3 py-1.5 rounded-xl bg-background/40 backdrop-blur-md border border-border text-[9px] font-black text-white uppercase tracking-widest">
                         {item.type}
                       </div>
                     </>
                   ) : (
-                    <div className="p-8 text-center italic text-[#F0F0FB]/40 text-xs font-medium leading-relaxed">
+                    <div className="p-8 text-center italic text-foreground/40 text-xs font-medium leading-relaxed">
                       &quot;{item.content || item.title}&quot;
                     </div>
                   )}
@@ -200,8 +200,8 @@ export default function ModerationPage() {
                 <div className="p-8 space-y-6 flex-1 flex flex-col min-w-0">
                   <div className="flex justify-between items-start gap-4 min-w-0">
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-black text-[#F0F0FB] truncate tracking-tight">{item.title}</h3>
-                      <p className="text-[9px] text-[#F0F0FB]/20 uppercase font-black tracking-widest mt-1.5 truncate">{item.campaign}</p>
+                      <h3 className="text-base font-black text-foreground truncate tracking-tight">{item.title}</h3>
+                      <p className="text-[9px] text-foreground/20 uppercase font-black tracking-widest mt-1.5 truncate">{item.campaign}</p>
                     </div>
 
                     <div className={cn(
@@ -214,18 +214,18 @@ export default function ModerationPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-sm min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-primary-blue/10 border border-primary-blue/15 flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4 text-primary-blue" />
+                  <div className="flex items-center space-x-4 p-4 rounded-2xl bg-surface-elevated border border-border shadow-sm min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 text-primary" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black text-[#F0F0FB] truncate tracking-tight">{item.creator}</p>
-                      <p className="text-[9px] text-[#F0F0FB]/20 font-black uppercase tracking-widest mt-0.5 truncate">Entity Profile</p>
+                      <p className="text-xs font-black text-foreground truncate tracking-tight">{item.creator}</p>
+                      <p className="text-[9px] text-foreground/20 font-black uppercase tracking-widest mt-0.5 truncate">Entity Profile</p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center space-x-2 text-[#F0F0FB]/20">
+                    <div className="flex items-center space-x-2 text-foreground/20">
                       <Clock className="w-3.5 h-3.5" />
                       <span className="text-[9px] font-black uppercase tracking-widest">{item.timestamp}</span>
                     </div>
@@ -245,7 +245,7 @@ export default function ModerationPage() {
                       <button 
                         onClick={() => handleApprove(item.id)}
                         disabled={actionLoading === item.id || !hasPermission("moderation.write")}
-                        className="flex items-center justify-center space-x-2 bg-primary-blue text-white hover:bg-primary-blue/90 py-3.5 rounded-2xl transition-all shadow-lg shadow-primary-blue/20 active:scale-95 text-[10px] font-black uppercase tracking-widest disabled:opacity-50 outline-none"
+                        className="flex items-center justify-center space-x-2 bg-primary text-white hover:bg-primary/90 py-3.5 rounded-2xl transition-all shadow-lg shadow-primary/20 active:scale-95 text-[10px] font-black uppercase tracking-widest disabled:opacity-50 outline-none"
                       >
                         <ThumbsUp className="w-3.5 h-3.5" />
                         <span>Dismiss</span>
@@ -253,7 +253,7 @@ export default function ModerationPage() {
                       <button 
                         onClick={() => handleReject(item.id)}
                         disabled={actionLoading === item.id || !hasPermission("moderation.write")}
-                        className="flex items-center justify-center space-x-2 bg-white/[0.03] border border-white/10 text-[#F0F0FB]/40 hover:bg-error hover:text-white hover:border-error py-3.5 rounded-2xl transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest shadow-sm disabled:opacity-50 outline-none"
+                        className="flex items-center justify-center space-x-2 bg-surface-elevated border border-border text-foreground/40 hover:bg-error hover:text-white hover:border-error py-3.5 rounded-2xl transition-all active:scale-95 text-[10px] font-black uppercase tracking-widest shadow-sm disabled:opacity-50 outline-none"
                       >
                         <ThumbsDown className="w-3.5 h-3.5" />
                         <span>Restrict</span>
@@ -263,7 +263,7 @@ export default function ModerationPage() {
                     <button 
                       onClick={() => handleEscalate(item.id)}
                       disabled={actionLoading === item.id || !hasPermission("moderation.write")}
-                      className="w-full flex items-center justify-center space-x-2 bg-white/[0.02] border border-white/10 text-[#F0F0FB]/30 hover:text-[#F0F0FB] py-3.5 rounded-2xl transition-all text-[10px] font-black uppercase tracking-widest group shadow-sm disabled:opacity-50 outline-none"
+                      className="w-full flex items-center justify-center space-x-2 bg-surface-elevated border border-border text-foreground/30 hover:text-foreground py-3.5 rounded-2xl transition-all text-[10px] font-black uppercase tracking-widest group shadow-sm disabled:opacity-50 outline-none"
                     >
                       <Flag className="w-3.5 h-3.5 group-hover:text-error transition-colors" />
                       <span>Escalate Incident</span>

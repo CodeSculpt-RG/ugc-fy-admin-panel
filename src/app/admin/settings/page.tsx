@@ -315,13 +315,13 @@ export default function SettingsPage() {
             title="System Configuration"
             subtitle="Configure platform-wide parameters, security protocols, and integration architectures."
           />
-          <div className="p-16 rounded-[40px] bg-[#0F172A] border border-white/[0.08] text-center space-y-6">
+          <div className="p-16 rounded-[40px] bg-card-bg border border-border text-center space-y-6">
             <div className="w-20 h-20 rounded-full bg-error/10 border border-error/20 flex items-center justify-center mx-auto shadow-lg">
               <Lock className="w-8 h-8 text-error" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-[#F0F0FB] tracking-tight">Access Restricted</h2>
-              <p className="text-sm font-medium text-[#F0F0FB]/40 max-w-md mx-auto">
+              <h2 className="text-2xl font-black text-foreground tracking-tight">Access Restricted</h2>
+              <p className="text-sm font-medium text-foreground/40 max-w-md mx-auto">
                 You lack the required security clearance (settings.read) to inspect enterprise platform configuration.
               </p>
             </div>
@@ -342,7 +342,7 @@ export default function SettingsPage() {
             <button
               onClick={() => loadSettings()}
               disabled={isLoading || isSaving}
-              className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-white/[0.02] border border-white/10 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/[0.08] transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-surface-elevated border border-border text-white text-[11px] font-black uppercase tracking-widest hover:bg-surface-elevated transition-all active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Sync Nodes</span>
@@ -354,8 +354,8 @@ export default function SettingsPage() {
               className={cn(
                 "flex items-center space-x-3 h-12 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl active:scale-95 disabled:opacity-50",
                 canWrite
-                  ? "bg-primary-blue text-white shadow-primary-blue/20 hover:bg-primary-blue/90"
-                  : "bg-white/5 border border-white/10 text-white/30 cursor-not-allowed"
+                  ? "bg-primary text-white shadow-primary/20 hover:bg-primary/90"
+                  : "bg-foreground/5 border border-border text-foreground/30 cursor-not-allowed"
               )}
             >
               <Save className="w-4 h-4" />
@@ -377,11 +377,11 @@ export default function SettingsPage() {
                   className={cn(
                     "w-full flex items-center space-x-4 px-6 py-4 rounded-2xl transition-all font-black text-[11px] uppercase tracking-[0.2em] shadow-sm text-left",
                     isActive
-                      ? "bg-primary-blue text-white shadow-lg shadow-primary-blue/20"
-                      : "bg-[#111827] border border-white/10 text-[#F0F0FB]/40 hover:text-[#F0F0FB] hover:bg-white/[0.04]"
+                      ? "bg-primary text-white shadow-lg shadow-primary/20"
+                      : "bg-surface border border-border text-foreground/40 hover:text-foreground hover:bg-surface-elevated hover:bg-foreground/5"
                   )}
                 >
-                  <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-white" : "text-[#F0F0FB]/20")} />
+                  <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-white" : "text-foreground/20")} />
                   <span className="truncate">{item.label}</span>
                 </button>
               );
@@ -395,20 +395,20 @@ export default function SettingsPage() {
             ) : isError ? (
               <ErrorState onRetry={loadSettings} />
             ) : (
-              <section className="p-10 rounded-[40px] bg-[#0F172A] border border-white/[0.08] space-y-10 shadow-premium relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
+              <section className="p-10 rounded-[40px] bg-card-bg border border-border space-y-10 shadow-premium relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
                 {activeSection === "general_settings" && (
                   <>
                     <div>
-                      <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight leading-none">General Settings</h3>
-                      <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                      <h3 className="text-xl font-black text-foreground tracking-tight leading-none">General Settings</h3>
+                      <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                         Core enterprise identity and monetary configuration parameters.
                       </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Enterprise Name</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Enterprise Name</label>
                         <input
                           value={form.general_settings.enterprise_name}
                           onChange={(e) =>
@@ -417,11 +417,11 @@ export default function SettingsPage() {
                               general_settings: { ...prev.general_settings, enterprise_name: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Support Vector Email</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Support Vector Email</label>
                         <input
                           type="email"
                           value={form.general_settings.support_email}
@@ -431,11 +431,11 @@ export default function SettingsPage() {
                               general_settings: { ...prev.general_settings, support_email: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Yield Fee Coefficient (%)</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Yield Fee Coefficient (%)</label>
                         <input
                           type="number"
                           value={form.general_settings.yield_fee_coefficient}
@@ -445,11 +445,11 @@ export default function SettingsPage() {
                               general_settings: { ...prev.general_settings, yield_fee_coefficient: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Fiscal Currency</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Fiscal Currency</label>
                         <input
                           value={form.general_settings.currency}
                           onChange={(e) =>
@@ -458,7 +458,7 @@ export default function SettingsPage() {
                               general_settings: { ...prev.general_settings, currency: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -468,8 +468,8 @@ export default function SettingsPage() {
                 {activeSection === "security_settings" && (
                   <>
                     <div>
-                      <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight leading-none">Security Settings</h3>
-                      <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                      <h3 className="text-xl font-black text-foreground tracking-tight leading-none">Security Settings</h3>
+                      <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                         Authentication thresholds, session rules, and security overrides.
                       </p>
                     </div>
@@ -481,16 +481,16 @@ export default function SettingsPage() {
                             security_settings: { ...prev.security_settings, require_admin_2fa: !prev.security_settings.require_admin_2fa },
                           }))
                         }
-                        className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors shadow-sm cursor-pointer"
+                        className="flex items-center justify-between p-6 rounded-3xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors shadow-sm cursor-pointer"
                       >
                         <div>
-                          <p className="text-[14px] font-black text-[#F0F0FB] tracking-tight leading-none">Require Admin 2FA</p>
-                          <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2">Mandate Two-Factor Authentication across all administrative logins.</p>
+                          <p className="text-[14px] font-black text-foreground tracking-tight leading-none">Require Admin 2FA</p>
+                          <p className="text-[12px] font-medium text-foreground/30 mt-2">Mandate Two-Factor Authentication across all administrative logins.</p>
                         </div>
                         <div
                           className={cn(
                             "w-14 h-7 rounded-full transition-colors relative shadow-lg flex-shrink-0 ml-4",
-                            form.security_settings.require_admin_2fa ? "bg-primary-blue border-primary-blue/20 shadow-primary-blue/20" : "bg-white/[0.08] border-white/10"
+                            form.security_settings.require_admin_2fa ? "bg-primary border-primary/20 shadow-primary/20" : "bg-surface-elevated border-border"
                           )}
                         >
                           <div
@@ -509,16 +509,16 @@ export default function SettingsPage() {
                             security_settings: { ...prev.security_settings, allow_owner_override: !prev.security_settings.allow_owner_override },
                           }))
                         }
-                        className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors shadow-sm cursor-pointer"
+                        className="flex items-center justify-between p-6 rounded-3xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors shadow-sm cursor-pointer"
                       >
                         <div>
-                          <p className="text-[14px] font-black text-[#F0F0FB] tracking-tight leading-none">Allow Owner Security Override</p>
-                          <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2">Permit platform owners to bypass standard session restrictions during outages.</p>
+                          <p className="text-[14px] font-black text-foreground tracking-tight leading-none">Allow Owner Security Override</p>
+                          <p className="text-[12px] font-medium text-foreground/30 mt-2">Permit platform owners to bypass standard session restrictions during outages.</p>
                         </div>
                         <div
                           className={cn(
                             "w-14 h-7 rounded-full transition-colors relative shadow-lg flex-shrink-0 ml-4",
-                            form.security_settings.allow_owner_override ? "bg-primary-blue border-primary-blue/20 shadow-primary-blue/20" : "bg-white/[0.08] border-white/10"
+                            form.security_settings.allow_owner_override ? "bg-primary border-primary/20 shadow-primary/20" : "bg-surface-elevated border-border"
                           )}
                         >
                           <div
@@ -532,7 +532,7 @@ export default function SettingsPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Max Login Attempts</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Max Login Attempts</label>
                           <input
                             type="number"
                             value={form.security_settings.max_login_attempts}
@@ -542,11 +542,11 @@ export default function SettingsPage() {
                                 security_settings: { ...prev.security_settings, max_login_attempts: e.target.value },
                               }))
                             }
-                            className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                            className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                           />
                         </div>
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Session Timeout (Minutes)</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Session Timeout (Minutes)</label>
                           <input
                             type="number"
                             value={form.security_settings.session_timeout_minutes}
@@ -556,7 +556,7 @@ export default function SettingsPage() {
                                 security_settings: { ...prev.security_settings, session_timeout_minutes: e.target.value },
                               }))
                             }
-                            className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                            className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                           />
                         </div>
                       </div>
@@ -567,8 +567,8 @@ export default function SettingsPage() {
                 {activeSection === "notification_settings" && (
                   <>
                     <div>
-                      <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight leading-none">Notification Settings</h3>
-                      <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                      <h3 className="text-xl font-black text-foreground tracking-tight leading-none">Notification Settings</h3>
+                      <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                         Enterprise event routing and system alert dispatch controls.
                       </p>
                     </div>
@@ -589,16 +589,16 @@ export default function SettingsPage() {
                                 notification_settings: { ...prev.notification_settings, [item.key]: !checked },
                               }))
                             }
-                            className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors shadow-sm cursor-pointer"
+                            className="flex items-center justify-between p-6 rounded-3xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors shadow-sm cursor-pointer"
                           >
                             <div>
-                              <p className="text-[14px] font-black text-[#F0F0FB] tracking-tight leading-none">{item.title}</p>
-                              <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2">{item.desc}</p>
+                              <p className="text-[14px] font-black text-foreground tracking-tight leading-none">{item.title}</p>
+                              <p className="text-[12px] font-medium text-foreground/30 mt-2">{item.desc}</p>
                             </div>
                             <div
                               className={cn(
                                 "w-14 h-7 rounded-full transition-colors relative shadow-lg flex-shrink-0 ml-4",
-                                checked ? "bg-primary-blue border-primary-blue/20 shadow-primary-blue/20" : "bg-white/[0.08] border-white/10"
+                                checked ? "bg-primary border-primary/20 shadow-primary/20" : "bg-surface-elevated border-border"
                               )}
                             >
                               <div
@@ -618,14 +618,14 @@ export default function SettingsPage() {
                 {activeSection === "email_smtp_settings" && (
                   <>
                     <div>
-                      <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight leading-none">Email SMTP Architecture</h3>
-                      <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                      <h3 className="text-xl font-black text-foreground tracking-tight leading-none">Email SMTP Architecture</h3>
+                      <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                         SMTP gateway routing parameters for outbound mail transmission.
                       </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">SMTP Host</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">SMTP Host</label>
                         <input
                           value={form.email_smtp_settings.smtp_host}
                           placeholder="smtp.sendgrid.net"
@@ -635,11 +635,11 @@ export default function SettingsPage() {
                               email_smtp_settings: { ...prev.email_smtp_settings, smtp_host: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">SMTP Port</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">SMTP Port</label>
                         <input
                           type="number"
                           value={form.email_smtp_settings.smtp_port}
@@ -649,11 +649,11 @@ export default function SettingsPage() {
                               email_smtp_settings: { ...prev.email_smtp_settings, smtp_port: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">SMTP Username</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">SMTP Username</label>
                         <input
                           value={form.email_smtp_settings.smtp_username}
                           placeholder="apikey / username"
@@ -663,11 +663,11 @@ export default function SettingsPage() {
                               email_smtp_settings: { ...prev.email_smtp_settings, smtp_username: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">SMTP From Email</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">SMTP From Email</label>
                         <input
                           type="email"
                           value={form.email_smtp_settings.smtp_from_email}
@@ -678,7 +678,7 @@ export default function SettingsPage() {
                               email_smtp_settings: { ...prev.email_smtp_settings, smtp_from_email: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                         />
                       </div>
                     </div>
@@ -689,16 +689,16 @@ export default function SettingsPage() {
                           email_smtp_settings: { ...prev.email_smtp_settings, smtp_secure: !prev.email_smtp_settings.smtp_secure },
                         }))
                       }
-                      className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors shadow-sm cursor-pointer mt-6"
+                      className="flex items-center justify-between p-6 rounded-3xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors shadow-sm cursor-pointer mt-6"
                     >
                       <div>
-                        <p className="text-[14px] font-black text-[#F0F0FB] tracking-tight leading-none">Use TLS/SSL Protocol (Secure)</p>
-                        <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2">Enforce secure TLS transmission encryption for all outgoing mail packets.</p>
+                        <p className="text-[14px] font-black text-foreground tracking-tight leading-none">Use TLS/SSL Protocol (Secure)</p>
+                        <p className="text-[12px] font-medium text-foreground/30 mt-2">Enforce secure TLS transmission encryption for all outgoing mail packets.</p>
                       </div>
                       <div
                         className={cn(
                           "w-14 h-7 rounded-full transition-colors relative shadow-lg flex-shrink-0 ml-4",
-                          form.email_smtp_settings.smtp_secure ? "bg-primary-blue border-primary-blue/20 shadow-primary-blue/20" : "bg-white/[0.08] border-white/10"
+                          form.email_smtp_settings.smtp_secure ? "bg-primary border-primary/20 shadow-primary/20" : "bg-surface-elevated border-border"
                         )}
                       >
                         <div
@@ -715,8 +715,8 @@ export default function SettingsPage() {
                 {activeSection === "database_settings" && (
                   <>
                     <div>
-                      <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight leading-none">Database & Realtime Core</h3>
-                      <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                      <h3 className="text-xl font-black text-foreground tracking-tight leading-none">Database & Realtime Core</h3>
+                      <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                         PostgreSQL query execution controls and Supabase realtime channel management.
                       </p>
                     </div>
@@ -736,16 +736,16 @@ export default function SettingsPage() {
                                 database_settings: { ...prev.database_settings, [item.key]: !checked },
                               }))
                             }
-                            className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors shadow-sm cursor-pointer"
+                            className="flex items-center justify-between p-6 rounded-3xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors shadow-sm cursor-pointer"
                           >
                             <div>
-                              <p className="text-[14px] font-black text-[#F0F0FB] tracking-tight leading-none">{item.title}</p>
-                              <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2">{item.desc}</p>
+                              <p className="text-[14px] font-black text-foreground tracking-tight leading-none">{item.title}</p>
+                              <p className="text-[12px] font-medium text-foreground/30 mt-2">{item.desc}</p>
                             </div>
                             <div
                               className={cn(
                                 "w-14 h-7 rounded-full transition-colors relative shadow-lg flex-shrink-0 ml-4",
-                                checked ? "bg-primary-blue border-primary-blue/20 shadow-primary-blue/20" : "bg-white/[0.08] border-white/10"
+                                checked ? "bg-primary border-primary/20 shadow-primary/20" : "bg-surface-elevated border-border"
                               )}
                             >
                               <div
@@ -760,7 +760,7 @@ export default function SettingsPage() {
                       })}
 
                       <div className="space-y-3 pt-4">
-                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">PostgreSQL Query Timeout (Seconds)</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">PostgreSQL Query Timeout (Seconds)</label>
                         <input
                           type="number"
                           value={form.database_settings.query_timeout_seconds}
@@ -770,7 +770,7 @@ export default function SettingsPage() {
                               database_settings: { ...prev.database_settings, query_timeout_seconds: e.target.value },
                             }))
                           }
-                          className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner max-w-md"
+                          className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner max-w-md"
                         />
                       </div>
                     </div>
@@ -780,8 +780,8 @@ export default function SettingsPage() {
                 {activeSection === "mobile_app_settings" && (
                   <>
                     <div>
-                      <h3 className="text-xl font-black text-[#F0F0FB] tracking-tight leading-none">Mobile App Gateway</h3>
-                      <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                      <h3 className="text-xl font-black text-foreground tracking-tight leading-none">Mobile App Gateway</h3>
+                      <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                         Client release protocols, platform feature flags, and maintenance banners.
                       </p>
                     </div>
@@ -801,16 +801,16 @@ export default function SettingsPage() {
                                 mobile_app_settings: { ...prev.mobile_app_settings, [item.key]: !checked },
                               }))
                             }
-                            className="flex items-center justify-between p-6 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors shadow-sm cursor-pointer"
+                            className="flex items-center justify-between p-6 rounded-3xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors shadow-sm cursor-pointer"
                           >
                             <div>
-                              <p className="text-[14px] font-black text-[#F0F0FB] tracking-tight leading-none">{item.title}</p>
-                              <p className="text-[12px] font-medium text-[#F0F0FB]/30 mt-2">{item.desc}</p>
+                              <p className="text-[14px] font-black text-foreground tracking-tight leading-none">{item.title}</p>
+                              <p className="text-[12px] font-medium text-foreground/30 mt-2">{item.desc}</p>
                             </div>
                             <div
                               className={cn(
                                 "w-14 h-7 rounded-full transition-colors relative shadow-lg flex-shrink-0 ml-4",
-                                checked ? "bg-primary-blue border-primary-blue/20 shadow-primary-blue/20" : "bg-white/[0.08] border-white/10"
+                                checked ? "bg-primary border-primary/20 shadow-primary/20" : "bg-surface-elevated border-border"
                               )}
                             >
                               <div
@@ -826,7 +826,7 @@ export default function SettingsPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Minimum Client Version</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Minimum Client Version</label>
                           <input
                             value={form.mobile_app_settings.minimum_app_version}
                             placeholder="1.0.0"
@@ -836,11 +836,11 @@ export default function SettingsPage() {
                                 mobile_app_settings: { ...prev.mobile_app_settings, minimum_app_version: e.target.value },
                               }))
                             }
-                            className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                            className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                           />
                         </div>
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 ml-1">Maintenance Lockout Message</label>
+                          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/30 ml-1">Maintenance Lockout Message</label>
                           <input
                             value={form.mobile_app_settings.maintenance_message}
                             placeholder="Scheduled infrastructure maintenance in progress..."
@@ -850,7 +850,7 @@ export default function SettingsPage() {
                                 mobile_app_settings: { ...prev.mobile_app_settings, maintenance_message: e.target.value },
                               }))
                             }
-                            className="w-full bg-white/[0.02] border border-white/[0.05] text-[#F0F0FB] font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary-blue/30 focus:bg-white/[0.05] transition-all shadow-inner"
+                            className="w-full bg-surface-elevated border border-border text-foreground font-black text-[13px] h-14 rounded-2xl px-5 focus:outline-none focus:border-primary/30 focus:bg-surface-elevated hover:bg-foreground/5 transition-all shadow-inner"
                           />
                         </div>
                       </div>

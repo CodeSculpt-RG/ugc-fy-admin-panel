@@ -161,13 +161,13 @@ export default function SecurityPage() {
             title="Security Infrastructure"
             subtitle="Real-time monitoring of platform integrity, threat vector detection, and access policy enforcement."
           />
-          <div className="p-16 rounded-[40px] bg-[#0F172A] border border-white/[0.08] text-center space-y-6">
+          <div className="p-16 rounded-[40px] bg-card-bg border border-border text-center space-y-6">
             <div className="w-20 h-20 rounded-full bg-error/10 border border-error/20 flex items-center justify-center mx-auto shadow-lg">
               <Lock className="w-8 h-8 text-error" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-[#F0F0FB] tracking-tight">Access Restricted</h2>
-              <p className="text-sm font-medium text-[#F0F0FB]/40 max-w-md mx-auto">
+              <h2 className="text-2xl font-black text-foreground tracking-tight">Access Restricted</h2>
+              <p className="text-sm font-medium text-foreground/40 max-w-md mx-auto">
                 You lack the required security clearance (security.read) to inspect security events and platform integrity.
               </p>
             </div>
@@ -205,8 +205,8 @@ export default function SecurityPage() {
             className={cn(
               "flex items-center space-x-3 px-6 py-3.5 rounded-[22px] font-black text-[11px] uppercase tracking-widest transition-all shadow-xl active:scale-95 disabled:opacity-50",
               canWrite
-                ? "bg-primary-blue text-white shadow-primary-blue/20 hover:bg-primary-blue/90"
-                : "bg-white/5 border border-white/10 text-white/30 cursor-not-allowed"
+                ? "bg-primary text-white shadow-primary/20 hover:bg-primary/90"
+                : "bg-foreground/5 border border-border text-foreground/30 cursor-not-allowed"
             )}
           >
             <RefreshCw className={cn("w-4 h-4", isActionLoading && "animate-spin")} />
@@ -226,7 +226,7 @@ export default function SecurityPage() {
               {/* Threat Level Card */}
               <div
                 className={cn(
-                  "p-12 rounded-[48px] bg-[#0F172A] border text-[#F0F0FB] relative overflow-hidden shadow-premium",
+                  "p-12 rounded-[48px] bg-card-bg border text-foreground relative overflow-hidden shadow-premium",
                   isNominal ? "border-success-green/20" : isWarning ? "border-warning/30" : "border-error/30"
                 )}
               >
@@ -239,7 +239,7 @@ export default function SecurityPage() {
 
                 <div className="relative z-10 flex items-center justify-between gap-12">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F0F0FB]/30 mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/30 mb-4">
                       System Intelligence State
                     </p>
                     <h3
@@ -256,15 +256,15 @@ export default function SecurityPage() {
                         )}
                       />
                     </h3>
-                    <p className="text-[15px] font-medium text-[#F0F0FB]/40 mt-6 max-w-md leading-relaxed">
+                    <p className="text-[15px] font-medium text-foreground/40 mt-6 max-w-md leading-relaxed">
                       {isNominal
                         ? "Platform integrity verified. All security subsystems are operating within established enterprise parameters."
                         : isWarning
                         ? `${data?.highCount || 1} high-severity security vectors detected requiring prompt administrative review.`
                         : `${data?.criticalCount || 1} critical security threat vectors detected. Immediate mitigation action required.`}
                     </p>
-                    <div className="flex items-center space-x-2 mt-4 text-[11px] font-mono text-[#F0F0FB]/40">
-                      <Clock className="w-3.5 h-3.5 text-primary-blue" />
+                    <div className="flex items-center space-x-2 mt-4 text-[11px] font-mono text-foreground/40">
+                      <Clock className="w-3.5 h-3.5 text-primary" />
                       <span>
                         Last Integrity Scan:{" "}
                         {data?.latestIntegrityScan
@@ -295,19 +295,19 @@ export default function SecurityPage() {
                     isNominal ? "bg-success-green/10" : isWarning ? "bg-warning/15" : "bg-error/15"
                   )}
                 />
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary-blue/5 blur-[100px] -ml-32 -mb-32 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 blur-[100px] -ml-32 -mb-32 pointer-events-none" />
               </div>
 
               {/* Security Modules Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="p-8 rounded-[40px] bg-[#111827] border border-white/[0.08] space-y-6 shadow-premium hover:border-primary-blue/20 transition-all group relative">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="w-14 h-14 rounded-2xl bg-primary-blue/10 flex items-center justify-center border border-primary-blue/15 shadow-sm">
-                    <Globe className="w-7 h-7 text-primary-blue" />
+                <div className="p-8 rounded-[40px] bg-surface border border-border space-y-6 shadow-premium hover:border-primary/20 transition-all group relative">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/15 shadow-sm">
+                    <Globe className="w-7 h-7 text-primary" />
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-[#F0F0FB] tracking-tight leading-none">WAF & DDoS Mitigation</h4>
-                    <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                    <h4 className="text-base font-black text-foreground tracking-tight leading-none">WAF & DDoS Mitigation</h4>
+                    <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                       Enterprise edge proxy active. {data?.wafFiltered?.toLocaleString() || "14,202"} request vectors
                       filtered in the last 24h cycle.
                     </p>
@@ -316,7 +316,7 @@ export default function SecurityPage() {
                     onClick={handleQueryTrafficLogs}
                     className={cn(
                       "text-[10px] font-black uppercase tracking-widest transition-colors flex items-center group/btn",
-                      filterTrafficLogs ? "text-accent-orange hover:text-white" : "text-primary-blue hover:text-[#F0F0FB]"
+                      filterTrafficLogs ? "text-accent-orange hover:text-white" : "text-primary hover:text-foreground"
                     )}
                   >
                     <span>{filterTrafficLogs ? "Clear Suspicious Filter" : "Query Traffic Logs"}</span>
@@ -324,16 +324,16 @@ export default function SecurityPage() {
                   </button>
                 </div>
 
-                <div className="p-8 rounded-[40px] bg-[#111827] border border-white/[0.08] space-y-6 shadow-premium hover:border-accent-orange/20 transition-all group relative">
+                <div className="p-8 rounded-[40px] bg-surface border border-border space-y-6 shadow-premium hover:border-accent-orange/20 transition-all group relative">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent-orange/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                   <div className="w-14 h-14 rounded-2xl bg-accent-orange/10 flex items-center justify-center border border-accent-orange/15 shadow-sm">
                     <Fingerprint className="w-7 h-7 text-accent-orange" />
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-[#F0F0FB] tracking-tight leading-none">
+                    <h4 className="text-base font-black text-foreground tracking-tight leading-none">
                       Auth Anomaly Intelligence
                     </h4>
-                    <p className="text-[13px] text-[#F0F0FB]/40 mt-3 leading-relaxed font-medium">
+                    <p className="text-[13px] text-foreground/40 mt-3 leading-relaxed font-medium">
                       Monitoring brute force velocity.{" "}
                       {data?.failedLoginCount24h === 0 && data?.unauthorizedAccessCount24h === 0
                         ? "0 suspicious events detected in last 24h."
@@ -342,7 +342,7 @@ export default function SecurityPage() {
                   </div>
                   <button
                     onClick={handleConfigureProtocol}
-                    className="text-[10px] font-black uppercase tracking-widest text-accent-orange hover:text-[#F0F0FB] transition-colors flex items-center group/btn"
+                    className="text-[10px] font-black uppercase tracking-widest text-accent-orange hover:text-foreground transition-colors flex items-center group/btn"
                   >
                     <span>Configure Protocol</span>
                     <ArrowRight className="ml-2 w-3.5 h-3.5 opacity-0 group-hover/btn:opacity-100 transition-all" />
@@ -351,17 +351,17 @@ export default function SecurityPage() {
               </div>
 
               {/* Event Log Table */}
-              <div className="p-8 rounded-[40px] bg-[#0F172A] border border-white/[0.08] shadow-premium">
+              <div className="p-8 rounded-[40px] bg-card-bg border border-border shadow-premium">
                 <div className="flex items-center justify-between mb-6">
-                  <h4 className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em]">
+                  <h4 className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.4em]">
                     {filterTrafficLogs ? "Suspicious Traffic Advisory Stream" : "Recent Security Advisory Stream"}
                   </h4>
-                  <span className="text-xs font-bold text-[#F0F0FB]/40">
+                  <span className="text-xs font-bold text-foreground/40">
                     Showing {displayedEvents.length} of {data?.totalEvents || 0} events
                   </span>
                 </div>
                 {displayedEvents.length === 0 ? (
-                  <div className="py-12 text-center text-sm text-[#F0F0FB]/40 font-medium">
+                  <div className="py-12 text-center text-sm text-foreground/40 font-medium">
                     {filterTrafficLogs ? "No suspicious traffic anomalies detected." : "No security events recorded."}
                   </div>
                 ) : (
@@ -377,15 +377,15 @@ export default function SecurityPage() {
                                   ? "bg-error/10 border-error/20 text-error"
                                   : event.severity.toLowerCase() === "high"
                                   ? "bg-warning/10 border-warning/20 text-warning"
-                                  : "bg-white/[0.03] border-white/10 text-[#F0F0FB]/40"
+                                  : "bg-surface-elevated border-border text-foreground/40"
                               )}
                             >
                               {event.severity}
                             </span>
-                            <span className="text-xs font-bold text-[#F0F0FB]">{event.type}</span>
+                            <span className="text-xs font-bold text-foreground">{event.type}</span>
                           </div>
-                          <p className="text-xs text-[#F0F0FB]/60 mt-1">{event.description}</p>
-                          <div className="flex items-center space-x-3 mt-1 text-[10px] font-mono text-[#F0F0FB]/30">
+                          <p className="text-xs text-foreground/60 mt-1">{event.description}</p>
+                          <div className="flex items-center space-x-3 mt-1 text-[10px] font-mono text-foreground/30">
                             {event.ip && <span>IP: {event.ip}</span>}
                             <span>•</span>
                             <span>{new Date(event.created_at).toLocaleString()}</span>
@@ -406,7 +406,7 @@ export default function SecurityPage() {
                                 "text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all shadow-sm flex items-center space-x-1.5 active:scale-95",
                                 canWrite
                                   ? "bg-warning/10 text-warning border border-warning/20 hover:bg-warning hover:text-black"
-                                  : "bg-white/5 border border-white/10 text-white/30 cursor-not-allowed"
+                                  : "bg-foreground/5 border border-border text-foreground/30 cursor-not-allowed"
                               )}
                             >
                               <ShieldAlert className="w-3.5 h-3.5" />
@@ -423,8 +423,8 @@ export default function SecurityPage() {
 
             <div className="space-y-8">
               {/* System Health Stream */}
-              <div className="p-8 rounded-[40px] bg-[#0F172A] border border-white/[0.08] shadow-premium">
-                <h4 className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em] mb-8">
+              <div className="p-8 rounded-[40px] bg-card-bg border border-border shadow-premium">
+                <h4 className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.4em] mb-8">
                   System Health Stream
                 </h4>
                 <div className="space-y-8">
@@ -448,7 +448,7 @@ export default function SecurityPage() {
                       status: maxAttempts ? `Max ${maxAttempts}/min` : "Not Configured",
                       configured: maxAttempts !== null,
                       icon: Zap,
-                      color: maxAttempts ? "text-primary-blue" : "text-warning",
+                      color: maxAttempts ? "text-primary" : "text-warning",
                     },
                     {
                       label: "Identity Policy",
@@ -462,7 +462,7 @@ export default function SecurityPage() {
                       status: sessionTimeout ? `${sessionTimeout} Mins` : "Not Configured",
                       configured: sessionTimeout !== null,
                       icon: Clock,
-                      color: sessionTimeout ? "text-primary-blue" : "text-warning",
+                      color: sessionTimeout ? "text-primary" : "text-warning",
                     },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center justify-between group cursor-pointer">
@@ -470,15 +470,15 @@ export default function SecurityPage() {
                         <item.icon
                           className={cn(
                             "w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity",
-                            item.configured ? item.color : "text-white/20"
+                            item.configured ? item.color : "text-foreground/20"
                           )}
                         />
-                        <span className="text-[13px] font-black text-[#F0F0FB]/60 tracking-tight">{item.label}</span>
+                        <span className="text-[13px] font-black text-foreground/60 tracking-tight">{item.label}</span>
                       </div>
                       <span
                         className={cn(
                           "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded",
-                          item.configured ? item.color : "bg-white/5 text-white/30 border border-white/10"
+                          item.configured ? item.color : "bg-foreground/5 text-foreground/30 border border-border"
                         )}
                       >
                         {item.status}
@@ -496,7 +496,7 @@ export default function SecurityPage() {
                     <ShieldAlert className="w-5 h-5 text-error" />
                     <h4 className="text-sm font-black text-error uppercase tracking-widest">Security Advisory</h4>
                   </div>
-                  <p className="text-[13px] text-[#F0F0FB]/40 mb-8 leading-relaxed font-medium">
+                  <p className="text-[13px] text-foreground/40 mb-8 leading-relaxed font-medium">
                     {data?.rotationDataConfigured
                       ? `${data?.unrotatedAdminCount || 0} administrative nodes have not rotated credentials within the 90-day threshold. This increases entropy risk.`
                       : "Credential rotation lifecycle data not currently configured across edge nodes."}
@@ -509,7 +509,7 @@ export default function SecurityPage() {
                       "w-full h-12 font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center space-x-2 disabled:opacity-50",
                       canWrite
                         ? "bg-error text-white shadow-error/20 hover:bg-error/90"
-                        : "bg-white/5 border border-white/10 text-white/30 cursor-not-allowed"
+                        : "bg-foreground/5 border border-border text-foreground/30 cursor-not-allowed"
                     )}
                   >
                     <RefreshCw className={cn("w-3.5 h-3.5", isActionLoading && "animate-spin")} />

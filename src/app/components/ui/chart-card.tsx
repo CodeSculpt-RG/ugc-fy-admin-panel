@@ -29,13 +29,13 @@ export function ChartCard({
         className
       )}
     >
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12 relative z-10">
         <div className="space-y-1.5">
-          <h3 className="text-3xl font-black text-[#F0F0FB] tracking-tighter">{title}</h3>
+          <h3 className="text-3xl font-black text-foreground tracking-tighter">{title}</h3>
           {subtitle && (
-            <p className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em]">
+            <p className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.4em]">
               {subtitle}
             </p>
           )}

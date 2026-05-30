@@ -19,12 +19,11 @@ import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown"
 import { UserKycReviewPanel } from "@/app/components/ui/user-kyc-review-panel";
 import { ProtectedRoute } from "@/app/components/auth/ProtectedRoute";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import { cn } from "@/app/lib/utils";
+
 import { useToast } from "@/app/hooks/useToast";
 import { userService } from "@/app/services/userService";
 import { approvalService } from "@/app/services/approvalService";
 import { User } from "@/app/types";
-import { normalizeError } from "@/lib/api/normalizeError";
 
 export default function UsersPage() {
   const { hasPermission } = useAdminAuth();
@@ -44,13 +43,20 @@ export default function UsersPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [actionLoading, setActionLoading] = useState(false);
   
-  const [modalConfig, setModalConfig] = useState({ 
+  const [modalConfig, setModalConfig] = useState<{
+    title: string;
+    description: string;
+    variant: "danger" | "info" | "warning" | "success";
+    showInput: boolean;
+    confirmText: string;
+    actionType: "block" | "authorize" | "reject" | "hold" | "delete" | null;
+  }>({ 
     title: "", 
     description: "", 
-    variant: "danger" as "danger" | "info" | "warning" | "success",
+    variant: "danger",
     showInput: false,
     confirmText: "Confirm",
-    actionType: "" as "block" | "authorize" | "reject"
+    actionType: null
   });
 
   const loadUsers = useCallback(async () => {
@@ -61,11 +67,11 @@ export default function UsersPage() {
       const data = await userService.getUsers();
       setLocalUsers(data);
     } catch (err: unknown) {
-      const normalizedError = normalizeError(err);
-      console.error("[UsersPage] Failed to fetch identity protocols:", normalizedError);
+      console.error("[UsersPage] Failed to fetch identity protocols:", err instanceof Error ? err.message : JSON.stringify(err));
       setIsError(true);
-      setErrorMsg(normalizedError.message);
-      showToast(normalizedError.message, "error");
+      const friendlyMsg = "Failed to load users. Please check backend connection and permissions.";
+      setErrorMsg(friendlyMsg);
+      showToast(friendlyMsg, "error");
     } finally {
       setIsLoading(false);
     }
@@ -78,10 +84,14 @@ export default function UsersPage() {
 
   const filteredUsers = useMemo(() => {
     return localUsers.filter(u => {
+      if (u.role.toLowerCase() === 'admin') return false;
       const matchRole = selectedRole === "all" || u.role.toLowerCase() === selectedRole.toLowerCase();
       const matchStatus = selectedStatus === "all" || u.status.toLowerCase() === selectedStatus.toLowerCase();
       return matchRole && matchStatus;
-    });
+    }).map(u => ({
+      ...u,
+      searchable: `${u.email} ${u.platformId || ''} ${u.name} ${u.role || ''} ${u.phone || ''}`.toLowerCase()
+    }));
   }, [localUsers, selectedRole, selectedStatus]);
 
   const handleAction = (user: User, action: string) => {
@@ -119,6 +129,26 @@ export default function UsersPage() {
         actionType: "block"
       });
       setIsConfirmModalOpen(true);
+    } else if (action === "hold") {
+      setModalConfig({
+        title: "Put User On Hold",
+        description: `This will place ${user.name} on administrative hold. They will not be visible publicly. Provide a reason.`,
+        variant: "warning",
+        showInput: true,
+        confirmText: "Put on Hold",
+        actionType: "hold"
+      });
+      setIsConfirmModalOpen(true);
+    } else if (action === "delete") {
+      setModalConfig({
+        title: "Permanently Delete Account",
+        description: `WARNING: This will soft-delete ${user.name}'s account and restrict access. This action preserves all audit logs in the system ledger.`,
+        variant: "danger",
+        showInput: true,
+        confirmText: "Delete Account",
+        actionType: "delete"
+      });
+      setIsConfirmModalOpen(true);
     }
   };
 
@@ -135,6 +165,12 @@ export default function UsersPage() {
       } else if (modalConfig.actionType === "authorize") {
         await approvalService.updateApprovalStatus(selectedUser.id, "approved", "Manual administrative authorization");
         showToast(`User identity authorized successfully.`, "success");
+      } else if (modalConfig.actionType === "hold") {
+        await approvalService.updateApprovalStatus(selectedUser.id, "on_hold", reason || "Administrative hold applied");
+        showToast(`User identity placed on hold.`, "warning");
+      } else if (modalConfig.actionType === "delete") {
+        await approvalService.updateApprovalStatus(selectedUser.id, "deleted", reason || "Administrative soft delete");
+        showToast(`User account soft-deleted. Audit logs preserved.`, "success");
       }
       setIsConfirmModalOpen(false);
       await loadUsers(); // Refresh the ledger
@@ -146,65 +182,68 @@ export default function UsersPage() {
     }
   };
 
-  const columns: ColumnDef<User>[] = [
+  type SearchableUser = User & { searchable?: string };
+
+  const columns: ColumnDef<SearchableUser>[] = [
     {
-      accessorKey: "email",
-      header: "Email",
+      accessorKey: "searchable",
+      header: "",
       enableHiding: true,
       cell: () => null,
     },
     {
       accessorKey: "name",
-      header: "User Infrastructure",
+      header: "Name",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-5 py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-primary-blue/10 transition-all duration-500 flex-shrink-0">
-            <UserIcon className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors" />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.name}</p>
-            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest truncate">{row.original.email}</p>
-          </div>
-        </div>
+        <span className="text-[14px] font-bold text-[#111827]">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <span className="text-[14px] text-[#4B5563]">{row.original.email}</span>
+      ),
+    },
+    {
+      accessorKey: "platformId",
+      header: "Platform ID",
+      cell: ({ row }) => (
+        <span className="text-[14px] font-mono text-[#4B5563]">{row.original.platformId || "CN000000"}</span>
       ),
     },
     {
       accessorKey: "role",
-      header: "Classification",
-      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">{row.original.role}</span>,
+      header: "Role",
+      cell: ({ row }) => (
+        <span className="text-[14px] text-[#4B5563] capitalize">{row.original.role}</span>
+      ),
     },
     {
       accessorKey: "status",
-      header: "Operational State",
+      header: "Status",
       cell: ({ row }) => (
         <StatusBadge 
-          status={row.original.status} 
-          variant={row.original.status === "Active" ? "success" : row.original.status === "Pending" ? "warning" : "error"} 
+          status={row.original.status === "approved" ? "APPROVED" : row.original.status === "pending_review" || row.original.status === "pending" ? "PENDING" : row.original.status === "on_hold" ? "ON HOLD" : row.original.status === "rejected" ? "REJECTED" : "RESTRICTED"} 
+          variant={row.original.status === "approved" ? "success" : (row.original.status === "pending" || row.original.status === "pending_review" || row.original.status === "on_hold") ? "warning" : "error"} 
         />
       ),
     },
     {
-      accessorKey: "verification",
-      header: "Security Tier",
-      cell: ({ row }) => (
-        <div className="flex items-center space-x-3">
-          <div className={cn(
-            "w-8 h-8 rounded-xl flex items-center justify-center border transition-all duration-500",
-            row.original.verification === "Verified" 
-              ? "bg-primary-blue/10 border-primary-blue/15 text-primary-blue" 
-              : "bg-accent-orange/10 border-accent-orange/15 text-accent-orange"
-          )}>
-            {row.original.verification === "Verified" ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
-          </div>
-          <span className={cn(
-            "text-[10px] font-black uppercase tracking-widest",
-            row.original.verification === "Verified" ? "text-primary-blue" : "text-accent-orange"
-          )}>{row.original.verification}</span>
-        </div>
-      ),
+      accessorKey: "created_at",
+      header: "Created",
+      cell: ({ row }) => {
+        const dateStr = (row.original as any).createdAt || row.original.lastActive;
+        return (
+          <span className="text-[14px] text-[#4B5563]">
+            {dateStr ? new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
+          </span>
+        );
+      }
     },
     {
       id: "actions",
+      header: "Actions",
       cell: ({ row }) => {
         const userActions: ActionItem[] = [
           {
@@ -222,6 +261,13 @@ export default function UsersPage() {
             hidden: !hasPermission("users.approve")
           },
           {
+            label: "Put User On Hold",
+            icon: ShieldAlert,
+            onClick: () => handleAction(row.original, "hold"),
+            variant: "orange",
+            hidden: !hasPermission("users.approve")
+          },
+          {
             label: "Reject Profile",
             icon: ShieldAlert,
             onClick: () => handleAction(row.original, "reject"),
@@ -232,6 +278,13 @@ export default function UsersPage() {
             label: "Restrict System Access",
             icon: Ban,
             onClick: () => handleAction(row.original, "block"),
+            variant: "orange",
+            hidden: !hasPermission("users.block")
+          },
+          {
+            label: "Permanently Delete Account",
+            icon: Ban,
+            onClick: () => handleAction(row.original, "delete"),
             variant: "orange",
             isSeparator: true,
             hidden: !hasPermission("users.block")
@@ -254,45 +307,44 @@ export default function UsersPage() {
           <button 
             onClick={() => loadUsers()}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
-            <span>Synchronize Global Ledger</span>
+            <span>Sync Data</span>
           </button>
         </PageHeader>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-primary-blue" />
-            <span>Ledger Filters:</span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
+            <Filter className="w-4 h-4 text-primary" />
+            <span>Filters:</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Role:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-xs text-text-secondary">Role:</span>
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Roles</option>
-                <option value="creator" className="bg-[#111827]">Creator</option>
-                <option value="brand" className="bg-[#111827]">Brand</option>
-                <option value="admin" className="bg-[#111827]">Admin</option>
+                <option value="all" className="bg-surface">All Roles</option>
+                <option value="creator" className="bg-surface">Creator</option>
+                <option value="brand" className="bg-surface">Brand</option>
               </select>
             </div>
 
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-xs text-text-secondary">Status:</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Status</option>
-                <option value="active" className="bg-[#111827]">Active</option>
-                <option value="pending" className="bg-[#111827]">Pending</option>
-                <option value="restricted" className="bg-[#111827]">Restricted</option>
+                <option value="all" className="bg-surface">All Status</option>
+                <option value="active" className="bg-surface">Active</option>
+                <option value="pending" className="bg-surface">Pending</option>
+                <option value="restricted" className="bg-surface">Restricted</option>
               </select>
             </div>
           </div>
@@ -306,9 +358,9 @@ export default function UsersPage() {
           <DataTable 
             columns={columns} 
             data={filteredUsers} 
-            searchKey="email"
-            placeholder="Query user infrastructure by email..."
-            onRowClick={(row) => {
+            searchKey="searchable"
+            placeholder="Query user by email, name, or platform ID (e.g. CN000001)..."
+            onRowClick={(row: SearchableUser) => {
               setSelectedUserId(row.id);
               setReviewPanelOpen(true);
             }}
@@ -325,6 +377,7 @@ export default function UsersPage() {
         variant={modalConfig.variant}
         showInput={modalConfig.showInput}
         confirmText={modalConfig.confirmText}
+        confirmTextToType={modalConfig.actionType === "delete" ? "DELETE" : undefined}
         loading={actionLoading}
       />
 

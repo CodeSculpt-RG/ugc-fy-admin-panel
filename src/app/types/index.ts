@@ -1,4 +1,4 @@
-export type UserStatus = "Approved" | "Pending" | "Restricted" | "Whitelisted" | "Active" | "Suspended" | "Blocked" | "pending_review" | "rejected";
+export type UserStatus = "approved" | "pending" | "restricted" | "Whitelisted" | "Active" | "Suspended" | "Blocked" | "pending_review" | "rejected" | "on_hold";
 export type RiskLevel = "Low" | "Medium" | "High";
 export type AdminRole = "OWNER" | "SUPER_ADMIN" | "MODERATION_ADMIN" | "FINANCE_ADMIN" | "SUPPORT_ADMIN" | "ANALYST";
 
@@ -17,6 +17,7 @@ export interface Creator {
   approvedAt?: string;
   approvedBy?: string;
   rejectionReason?: string;
+  platformId?: string;
 }
 
 export interface Brand {
@@ -35,6 +36,7 @@ export interface Brand {
   approvedAt?: string;
   approvedBy?: string;
   rejectionReason?: string;
+  platformId?: string;
 }
 
 export interface User {
@@ -46,6 +48,8 @@ export interface User {
   verification: "Verified" | "Unverified";
   lastActive: string;
   riskLevel: RiskLevel;
+  platformId?: string;
+  phone?: string;
 }
 
 export interface ModerationItem {
@@ -145,6 +149,7 @@ export interface AdminUser {
   role: AdminRole;
   status: "Active" | "Suspended";
   lastActive: string;
+  platformId?: string;
 }
 
 export interface AuditLog {

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
         id,
         title,
         type,
-        parameters,
+        payload,
         file_url,
         status,
         generated_by,
@@ -37,8 +37,26 @@ export async function GET(request: Request) {
           source: "real_supabase_database",
           isMissingTable: true,
           tableName: "reports",
-          migrationSql:
-            "-- Ensure reports table and updated_at column\nALTER TABLE public.reports ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();",
+          migrationSql: `
+-- Migration SQL for reports
+CREATE TABLE IF NOT EXISTS public.reports (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL DEFAULT 'Untitled Report',
+  type text NOT NULL DEFAULT 'general',
+  status text NOT NULL DEFAULT 'generated',
+  payload jsonb DEFAULT '{}'::jsonb,
+  file_url text,
+  generated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON public.reports(created_at DESC);
+
+ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins can access reports" ON public.reports;
+CREATE POLICY "Admins can access reports" ON public.reports FOR ALL USING (true);`,
           data: [],
           count: 0,
           automationSettings: null,
@@ -72,8 +90,8 @@ export async function GET(request: Request) {
       const prof = r.generated_by ? profileMap.get(r.generated_by) : null;
       const statusStr = String(r.status || "Ready");
       let paramDesc = "Automated compliance package.";
-      if (r.parameters && typeof r.parameters === "object") {
-        const pObj = r.parameters as Record<string, unknown>;
+      if (r.payload && typeof r.payload === "object") {
+        const pObj = r.payload as Record<string, unknown>;
         const range = pObj.dateRange || "Platform Audit";
         const fmt = String(pObj.format || "json").toUpperCase();
         paramDesc = `Format: ${fmt} | Range: ${range}${pObj.notes ? ` | Notes: ${pObj.notes}` : ""}`;

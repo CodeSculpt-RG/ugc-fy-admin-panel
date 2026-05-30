@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
-import { PageHeader, StatusBadge, StatCard } from "@/app/components/ui/core";
+import { PageHeader, StatusBadge, StatCard, formatINR } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
@@ -95,9 +95,9 @@ export default function EscrowPage() {
     });
 
     return {
-      held: `$${totalHeld.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      released: `$${totalReleased.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      frozen: `$${totalFrozen.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      held: formatINR(totalHeld),
+      released: formatINR(totalReleased),
+      frozen: formatINR(totalFrozen),
       disputes: totalDisputes.toString()
     };
   }, [localEscrow]);
@@ -172,21 +172,21 @@ export default function EscrowPage() {
     {
       accessorKey: "id",
       header: "Infrastructure ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-foreground/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
     },
     {
       accessorKey: "campaign",
       header: "Campaign Initiative",
       cell: ({ row }) => (
         <div className="py-1 min-w-0">
-          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight leading-none truncate">{row.original.campaign}</p>
+          <p className="text-[15px] font-black text-foreground tracking-tight leading-none truncate">{row.original.campaign}</p>
           <div className="flex items-center space-x-3 mt-2 min-w-0">
-             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest min-w-0">
+             <div className="flex items-center space-x-1.5 text-[9px] text-foreground/30 uppercase font-black tracking-widest min-w-0">
                 <Building className="w-3 h-3 flex-shrink-0" />
                 <span className="truncate">{row.original.brand}</span>
              </div>
-             <span className="text-[#F0F0FB]/10 flex-shrink-0">•</span>
-             <div className="flex items-center space-x-1.5 text-[9px] text-[#F0F0FB]/30 uppercase font-black tracking-widest min-w-0">
+             <span className="text-foreground/10 flex-shrink-0">•</span>
+             <div className="flex items-center space-x-1.5 text-[9px] text-foreground/30 uppercase font-black tracking-widest min-w-0">
                 <UserIcon className="w-3 h-3 flex-shrink-0" />
                 <span className="truncate">{row.original.creator}</span>
              </div>
@@ -198,9 +198,10 @@ export default function EscrowPage() {
       accessorKey: "amount",
       header: "Fiscal Allocation",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-1.5">
-          <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
-          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.amount.replace('$', '')}</span>
+        <div className="flex items-center">
+          <span className="text-[15px] font-black text-foreground tracking-tighter">
+            {formatINR(row.original.amount.replace(/[^0-9.]/g, ''))}
+          </span>
         </div>
       ),
     },
@@ -221,7 +222,7 @@ export default function EscrowPage() {
     {
       accessorKey: "releaseDate",
       header: "Temporal Threshold",
-      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter uppercase">{row.original.releaseDate}</span>,
+      cell: ({ row }) => <span className="text-[11px] font-black text-foreground/20 tracking-tighter uppercase">{row.original.releaseDate}</span>,
     },
     {
       id: "actions",
@@ -251,7 +252,7 @@ export default function EscrowPage() {
           ] : [])
         ];
 
-        return escrowActions.length > 0 ? <ActionDropdown actions={escrowActions} /> : <span className="text-xs text-white/20 italic">No actions</span>;
+        return escrowActions.length > 0 ? <ActionDropdown actions={escrowActions} /> : <span className="text-xs text-foreground/20 italic">No actions</span>;
       },
     },
   ];
@@ -266,7 +267,7 @@ export default function EscrowPage() {
           <button 
             onClick={() => loadEscrow()}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Sync Vault</span>
@@ -281,8 +282,8 @@ export default function EscrowPage() {
         </div>
 
         {/* Protocol Lifecycle Visualization */}
-        <div className="bg-[#0F172A] border border-white/[0.08] rounded-[40px] p-10 overflow-hidden relative shadow-premium mb-10">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
+        <div className="bg-card-bg border border-border rounded-[40px] p-10 overflow-hidden relative shadow-premium mb-10">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
           
           <div className="flex items-center justify-between relative z-10 max-w-5xl mx-auto">
             {[
@@ -296,16 +297,16 @@ export default function EscrowPage() {
                 <div className="flex flex-col items-center space-y-4">
                   <div className={cn(
                     "w-16 h-16 rounded-[22px] flex items-center justify-center border transition-all duration-500 shadow-sm",
-                    step.color === "blue" ? "bg-primary-blue/10 border-primary-blue/15 text-primary-blue shadow-primary-blue/10" :
+                    step.color === "blue" ? "bg-primary/10 border-primary/15 text-primary shadow-primary/10" :
                     step.color === "orange" ? "bg-accent-orange/10 border-accent-orange/15 text-accent-orange shadow-accent-orange/10" :
                     "bg-success-green/10 border-success-green/15 text-success-green shadow-success-green/10"
                   )}>
                     <step.icon className="w-6 h-6" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/30">{step.label}</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/30">{step.label}</span>
                 </div>
                 {i < 4 && (
-                  <div className="flex-1 h-px bg-white/[0.08] mx-6 mt-[-30px] border-dashed border-b" />
+                  <div className="flex-1 h-px bg-surface-elevated mx-6 mt-[-30px] border-dashed border-b" />
                 )}
               </React.Fragment>
             ))}
@@ -313,24 +314,24 @@ export default function EscrowPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-primary-blue" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-foreground/40 text-xs font-black uppercase tracking-widest">
+            <Filter className="w-4 h-4 text-primary" />
             <span>Escrow Filters:</span>
           </div>
 
-          <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-            <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+          <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+            <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Status:</span>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
             >
-              <option value="all" className="bg-[#111827]">All Records</option>
-              <option value="Held" className="bg-[#111827]">Held in Vault</option>
-              <option value="Released" className="bg-[#111827]">Released</option>
-              <option value="Frozen" className="bg-[#111827]">Frozen</option>
-              <option value="Disputed" className="bg-[#111827]">Disputed</option>
+              <option value="all" className="bg-surface">All Records</option>
+              <option value="Held" className="bg-surface">Held in Vault</option>
+              <option value="Released" className="bg-surface">Released</option>
+              <option value="Frozen" className="bg-surface">Frozen</option>
+              <option value="Disputed" className="bg-surface">Disputed</option>
             </select>
           </div>
         </div>

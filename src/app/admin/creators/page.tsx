@@ -201,54 +201,43 @@ export default function CreatorsPage() {
 
   const columns: ColumnDef<Creator>[] = [
     {
-      accessorKey: "email",
-      header: "Email",
-      enableHiding: true,
-      cell: () => null,
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="text-[14px] font-bold text-[#111827]">{row.original.name}</span>
+      ),
     },
     {
-      accessorKey: "name",
-      header: "Creator Entity",
+      accessorKey: "email",
+      header: "Email",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-5 py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-primary-blue/10 transition-all duration-500 flex-shrink-0">
-            <UserIcon className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors" />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.name}</p>
-            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest truncate">{row.original.email}</p>
-          </div>
-        </div>
+        <span className="text-[14px] text-[#4B5563]">{row.original.email}</span>
+      ),
+    },
+    {
+      accessorKey: "platformId",
+      header: "Platform ID",
+      cell: ({ row }) => (
+        <span className="text-[14px] font-mono text-[#4B5563]">{row.original.platformId || "CN000000"}</span>
       ),
     },
     {
       accessorKey: "niche",
-      header: "Strategic Niche",
-      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.25em]">{row.original.niche}</span>,
-    },
-    {
-      accessorKey: "followers",
-      header: "Audience Density",
+      header: "Category",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-2 text-[11px] font-black text-[#F0F0FB]/60 tracking-tighter">
-          <TrendingUp className="w-3.5 h-3.5 text-success-green" />
-          <span>{row.original.followers}</span>
-        </div>
+        <span className="text-[14px] text-[#4B5563]">{row.original.niche}</span>
       ),
     },
     {
-      accessorKey: "rating",
-      header: "Trust Score",
+      accessorKey: "followers",
+      header: "Followers",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-2">
-          <Star className="w-3.5 h-3.5 text-accent-orange fill-accent-orange shadow-sm" />
-          <span className="text-[11px] font-black text-[#F0F0FB]">{row.original.rating}</span>
-        </div>
+        <span className="text-[14px] text-[#111827]">{row.original.followers}</span>
       ),
     },
     {
       accessorKey: "status",
-      header: "Operational State",
+      header: "Approval",
       cell: ({ row }) => (
         <StatusBadge 
           status={row.original.approvalStatus === 'pending_review' ? 'Pending' : row.original.status} 
@@ -259,6 +248,33 @@ export default function CreatorsPage() {
           } 
         />
       ),
+    },
+    {
+      accessorKey: "kycStatus",
+      header: "KYC",
+      cell: ({ row }) => {
+        const kyc = (row.original as any).kycStatus || (row.original as any).kyc_status || "not_started";
+        const kycLabels: Record<string, string> = {
+          not_started: "Not Started",
+          submitted: "Submitted",
+          pending: "Pending",
+          approved: "Approved",
+          rejected: "Rejected"
+        };
+        const kycVariants: Record<string, "success" | "warning" | "error" | "info"> = {
+          approved: "success",
+          submitted: "warning",
+          pending: "warning",
+          rejected: "error",
+          not_started: "info"
+        };
+        return (
+          <StatusBadge 
+            status={kycLabels[kyc] || kyc} 
+            variant={kycVariants[kyc] || "info"} 
+          />
+        );
+      }
     },
     {
       id: "actions",
@@ -309,47 +325,47 @@ export default function CreatorsPage() {
           <button 
             onClick={() => loadCreators(selectedStatus)}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
             <Zap className="w-4 h-4 fill-current" />
-            <span>Synchronize Network</span>
+            <span>Sync Data</span>
           </button>
         </PageHeader>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-primary-blue" />
-            <span>Creator Filters:</span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
+            <Filter className="w-4 h-4 text-primary" />
+            <span>Filters:</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Niche:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-xs text-text-secondary">Niche:</span>
               <select
                 value={selectedNiche}
                 onChange={(e) => setSelectedNiche(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Niches</option>
+                <option value="all" className="bg-surface">All Niches</option>
                 {uniqueNiches.map(niche => (
-                  <option key={niche} value={niche} className="bg-[#111827]">{niche}</option>
+                  <option key={niche} value={niche} className="bg-surface">{niche}</option>
                 ))}
               </select>
             </div>
 
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-xs text-text-secondary">Status:</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Status</option>
-                <option value="approved" className="bg-[#111827]">Approved</option>
-                <option value="pending_review" className="bg-[#111827]">Pending Review</option>
-                <option value="rejected" className="bg-[#111827]">Rejected</option>
-                <option value="blocked" className="bg-[#111827]">Blocked</option>
+                <option value="all" className="bg-surface">All Status</option>
+                <option value="approved" className="bg-surface">Approved</option>
+                <option value="pending_review" className="bg-surface">Pending Review</option>
+                <option value="rejected" className="bg-surface">Rejected</option>
+                <option value="blocked" className="bg-surface">Blocked</option>
               </select>
             </div>
           </div>
@@ -360,7 +376,7 @@ export default function CreatorsPage() {
         ) : isError ? (
           <ErrorState message={errorMsg || undefined} onRetry={() => loadCreators(selectedStatus)} />
         ) : filteredCreators.length === 0 ? (
-          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 bg-[#0F172A] border border-white/[0.08] rounded-[40px] shadow-sm">
+          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-foreground/30 bg-card-bg border border-border rounded-[40px] shadow-sm">
             {selectedStatus === "approved" ? "No approved creators found" : "No creators found"}
           </div>
         ) : (

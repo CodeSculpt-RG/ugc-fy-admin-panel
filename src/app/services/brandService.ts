@@ -96,24 +96,24 @@ export const brandService = {
 
     const data = payload.data ?? [];
     
-    return data.map((item: BrandApiResponseRow): Brand => {
-      const brandProfile = item.profile;
+    return data.map((item: any): Brand => {
       const approvalStatus = (item.approval_status as ApprovalStatus) || "pending_review";
       
       return {
         id: item.id,
-        name: brandProfile?.company_name || item.full_name || "Unknown Entity",
+        name: item.name || "Unnamed Brand",
         email: item.email || "",
-        company: brandProfile?.company_name || "Unregistered Corp",
-        industry: brandProfile?.industry || "Commercial",
-        activeCampaigns: 0,
-        totalSpend: "₹0",
+        company: item.company_name || "Unregistered Corp",
+        industry: item.industry || "Commercial",
+        activeCampaigns: item.active_campaigns || 0,
+        totalSpend: "₹" + (item.aggregate_gmv || 0),
         status: (approvalStatus === 'approved' ? 'Active' : approvalStatus === 'pending_review' ? 'Pending' : 'Restricted') as UserStatus,
         approvalStatus: approvalStatus,
         risk: "Low",
         lastActive: item.updated_at || new Date().toISOString(),
         disputes: 0,
-        rejectionReason: item.rejection_reason || undefined
+        rejectionReason: item.rejection_reason || undefined,
+        platformId: item.platform_id || ""
       };
     });
   },

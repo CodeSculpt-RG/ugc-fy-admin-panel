@@ -10,15 +10,49 @@ export async function GET(request: Request) {
 
     const { data: profiles, error, count } = await supabaseAdmin
       .from("profiles")
-      .select("id, email, full_name, avatar_url, role, approval_status, profile_completed, created_at, updated_at", { count: "exact" })
+      .select(`
+        id, 
+        email, 
+        phone,
+        full_name, 
+        avatar_url, 
+        role, 
+        approval_status, 
+        profile_completed,
+        kyc_status,
+        is_verified,
+        created_at, 
+        updated_at,
+        platform_id,
+        is_visible_publicly,
+        brand_profiles(*),
+        creator_profiles(*)
+      `, { count: "exact" })
+      .in('role', ['brand', 'creator'])
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    const mappedUsers = (profiles ?? []).map(u => ({
-      ...u,
-      is_verified: u.approval_status === "approved"
-    }));
+    const mappedUsers = (profiles ?? []).map(u => {
+
+      return {
+        id: u.id,
+        platform_id: u.platform_id,
+        full_name: u.full_name,
+        username: u.email ? u.email.split('@')[0] : null,
+        email: u.email,
+        role: u.role,
+        approval_status: u.approval_status,
+        is_visible_publicly: u.is_visible_publicly,
+        kyc_status: u.kyc_status,
+        created_at: u.created_at,
+        updated_at: u.updated_at,
+        
+        // Pass these so getDisplayName in frontend doesn't break if it expects it
+        brand_profiles: u.brand_profiles,
+        creator_profiles: u.creator_profiles
+      };
+    });
 
     return NextResponse.json({
       success: true,

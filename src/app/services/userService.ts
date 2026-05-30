@@ -9,6 +9,10 @@ export type UserInternal = {
   approval_status: "pending_review" | "approved" | "rejected" | "blocked";
   is_verified: boolean | null;
   updated_at: string;
+  phone?: string | null;
+  platform_id?: string | null;
+  brand_profiles?: Record<string, unknown> | Record<string, unknown>[];
+  creator_profiles?: Record<string, unknown> | Record<string, unknown>[];
 };
 
 type ApiError = {
@@ -56,21 +60,55 @@ function getApiErrorMessage(
   );
 }
 
-const mapInternalToUser = (internal: UserInternal): User => ({
+function normalizeApiError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    return JSON.stringify(error, Object.getOwnPropertyNames(error));
+  }
+
+  return String(error);
+}
+
+function getDisplayName(internal: any): string {
+  let subName: string | undefined;
+  if (internal.role === 'brand') {
+    const bp = Array.isArray(internal.brand_profiles) ? internal.brand_profiles[0] : internal.brand_profiles;
+    subName = bp?.company_name || bp?.brand_name || bp?.contact_name;
+  } else if (internal.role === 'creator') {
+    const cp = Array.isArray(internal.creator_profiles) ? internal.creator_profiles[0] : internal.creator_profiles;
+    subName = cp?.full_name || cp?.username || cp?.creator_name || cp?.display_name;
+  }
+
+  return (
+    internal.full_name ||
+    internal.name ||
+    subName ||
+    internal.email ||
+    internal.platform_id ||
+    "Unnamed User"
+  );
+}
+
+const mapInternalToUser = (internal: any): User => ({
   id: internal.id,
-  name: internal.full_name || "Anonymous Entity",
+  name: getDisplayName(internal),
   email: internal.email,
   role: (internal.role.charAt(0).toUpperCase() +
     internal.role.slice(1)) as "Creator" | "Brand" | "Admin",
-  status: (internal.approval_status === "approved"
-    ? "Active"
-    : internal.approval_status === "pending_review"
-      ? "Pending"
-      : "Restricted") as UserStatus,
-  verification: internal.approval_status === "approved" ? "Verified" : "Unverified",
+  status: (internal.approval_status || "pending") as UserStatus,
+  verification: internal.is_verified || internal.approval_status === "approved" ? "Verified" : "Unverified",
   lastActive: internal.updated_at || new Date().toISOString(),
   riskLevel: "Low" as RiskLevel,
-});
+  platformId: internal.platform_id || undefined,
+  phone: internal.phone || undefined,
+  createdAt: internal.created_at || internal.updated_at || undefined,
+} as any);
 
 export type UserDetailsData = {
   profile: Record<string, unknown> | null;
@@ -81,83 +119,75 @@ export type UserDetailsData = {
 
 export const userService = {
   async getUsers(): Promise<User[]> {
-    const response = await fetch("/api/admin/users", {
-      method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    });
-
-    const payload = (await response
-      .json()
-      .catch((): null => null)) as UserApiResponse | null;
-
-    if (!response.ok || !payload?.success) {
-      const message = getApiErrorMessage(response, payload);
-
-      console.error("[UserService] API Error:", {
-        status: response.status,
-        statusText: response.statusText,
-        source: payload?.source ?? null,
-        apiError: payload?.error ?? null,
-        message,
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "GET",
+        headers: await getAuthHeaders(),
+        cache: "no-store",
       });
 
-      throw new Error(message);
-    }
+      const payload = (await response
+        .json()
+        .catch((): null => null)) as UserApiResponse | null;
 
-    return (payload.data ?? []).map(mapInternalToUser);
+      if (!response.ok || !payload?.success) {
+        const message = getApiErrorMessage(response, payload);
+        throw new Error(message);
+      }
+
+      return (payload.data ?? []).map(mapInternalToUser);
+    } catch (error) {
+      console.error("[UserService] API Error:", normalizeApiError(error));
+      throw error;
+    }
   },
 
   async getPendingUsers(): Promise<User[]> {
-    const response = await fetch("/api/admin/users/pending", {
-      method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    });
-
-    const payload = (await response
-      .json()
-      .catch((): null => null)) as UserApiResponse | null;
-
-    if (!response.ok || !payload?.success) {
-      const message = getApiErrorMessage(response, payload);
-
-      console.error("[UserService] API Error (Pending):", {
-        status: response.status,
-        statusText: response.statusText,
-        source: payload?.source ?? null,
-        apiError: payload?.error ?? null,
-        message,
+    try {
+      const response = await fetch("/api/admin/users/pending", {
+        method: "GET",
+        headers: await getAuthHeaders(),
+        cache: "no-store",
       });
 
-      throw new Error(message);
-    }
+      const payload = (await response
+        .json()
+        .catch((): null => null)) as UserApiResponse | null;
 
-    return (payload.data ?? []).map(mapInternalToUser);
+      if (!response.ok || !payload?.success) {
+        const message = getApiErrorMessage(response, payload);
+        throw new Error(message);
+      }
+
+      return (payload.data ?? []).map(mapInternalToUser);
+    } catch (error) {
+      console.error("[UserService] API Error:", normalizeApiError(error));
+      throw error;
+    }
   },
 
   async getUserDetails(userId: string): Promise<UserDetailsData> {
-    const response = await fetch(`/api/admin/users/${userId}/details`, {
-      method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
-    });
-
-    const payload = (await response
-      .json()
-      .catch((): null => null)) as { success?: boolean; data?: UserDetailsData; error?: ApiError } | null;
-
-    if (!response.ok || !payload?.success) {
-      const message = payload?.error?.message || payload?.error?.details || `Failed to load user details. HTTP ${response.status}`;
-      console.error("[UserService] Details API Error:", {
-        status: response.status,
-        statusText: response.statusText,
-        message,
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/details`, {
+        method: "GET",
+        headers: await getAuthHeaders(),
+        cache: "no-store",
       });
-      throw new Error(message);
-    }
 
-    return payload.data ?? { profile: null, creator_profile: null, brand_profile: null, audit_logs: [] };
+      const payload = (await response
+        .json()
+        .catch((): null => null)) as { success?: boolean; data?: UserDetailsData; error?: ApiError } | null;
+
+      if (!response.ok || !payload?.success) {
+        const message = payload?.error?.message || payload?.error?.details || `Failed to load user details. HTTP ${response.status}`;
+        throw new Error(message);
+      }
+
+      return payload.data ?? { profile: null, creator_profile: null, brand_profile: null, audit_logs: [] };
+    } catch (error) {
+      console.error("[UserService] API Error:", normalizeApiError(error));
+      throw error;
+    }
   },
 };
 

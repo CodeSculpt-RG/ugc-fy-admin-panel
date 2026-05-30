@@ -45,6 +45,15 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = React.useState<string>("");
+
+  const hasSearchKey = React.useMemo(() => {
+    if (!searchKey) return false;
+    return columns.some((col) => {
+      const c = col as { accessorKey?: string; id?: string };
+      return c.accessorKey === searchKey || c.id === searchKey;
+    });
+  }, [searchKey, columns]);
 
   // eslint-disable-next-line
   const table = useReactTable({
@@ -56,9 +65,12 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
+      globalFilter,
+      columnVisibility: hasSearchKey && searchKey ? { [searchKey]: false } : {},
     },
   });
 
@@ -67,25 +79,35 @@ export function DataTable<TData, TValue>({
       {searchKey && (
         <div className="flex items-center">
           <div className="relative flex-1 max-w-xl group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-[#F0F0FB]/20 group-focus-within:text-primary-blue transition-all duration-500" />
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/20 group-focus-within:text-primary transition-all duration-500" />
             <Input
               placeholder={placeholder}
-              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-              onChange={(event) =>
-                table.getColumn(searchKey)?.setFilterValue(event.target.value)
+              value={
+                (hasSearchKey && searchKey
+                  ? (table.getColumn(searchKey)?.getFilterValue() as string)
+                  : globalFilter) ?? ""
               }
-              className="pl-16 bg-[#111827] border-white/[0.08] text-[#F0F0FB] rounded-[24px] h-16 focus-visible:ring-2 focus-visible:ring-primary-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030712] focus-visible:border-primary-blue/20 placeholder:text-[#F0F0FB]/20 text-xs font-semibold tracking-wide transition-all duration-500 group-hover:bg-[#111827]/80"
+              onChange={(event) => {
+                const value = event.target.value;
+                const column = hasSearchKey && searchKey ? table.getColumn(searchKey) : undefined;
+                if (column) {
+                  column.setFilterValue(value);
+                } else {
+                  table.setGlobalFilter(value);
+                }
+              }}
+              className="pl-16 bg-surface border-border text-foreground rounded-[24px] h-16 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:border-primary/20 placeholder:text-foreground/40 text-xs font-semibold tracking-wide transition-all duration-500 group-hover:bg-surface/80"
             />
           </div>
         </div>
       )}
 
       <div className="relative group overflow-x-auto custom-scrollbar">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20" />
         <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent border-white/[0.08]">
+              <TableRow key={headerGroup.id} className="hover:bg-transparent border-border">
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
@@ -104,8 +126,8 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-80 text-center">
                   <div className="flex flex-col items-center space-y-6">
-                    <Loader2 className="w-10 h-10 animate-spin text-primary-blue opacity-50" />
-                    <span className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-[0.4em]">Synchronizing Secure Data...</span>
+                    <Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" />
+                    <span className="text-[11px] font-black text-foreground/20 uppercase tracking-[0.4em]">Synchronizing Secure Data...</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -116,12 +138,12 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick && onRowClick(row.original)}
                   className={cn(
-                    "group hover:bg-white/[0.02] transition-all duration-300 border-white/[0.04] last:border-0",
+                    "group hover:bg-surface-elevated transition-all duration-300 border-b border-border last:border-0",
                     onRowClick && "cursor-pointer"
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-8 py-6 text-[#F0F0FB]/80 font-medium">
+                    <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -129,9 +151,9 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-80 text-center text-[#F0F0FB]/20 italic font-black uppercase tracking-[0.4em] text-[11px]">
+                <TableCell colSpan={columns.length} className="h-80 text-center text-foreground/20 italic font-black uppercase tracking-[0.4em] text-[11px]">
                   <div className="flex flex-col items-center space-y-6">
-                    <div className="p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.04] shadow-inner">
+                    <div className="p-6 rounded-[28px] bg-surface-elevated border border-border shadow-inner">
                       <Search className="w-10 h-10 opacity-20" />
                     </div>
                     <span>No matching operational data found.</span>
@@ -145,9 +167,8 @@ export function DataTable<TData, TValue>({
 
       <div className="flex items-center justify-between px-8 py-2">
         <div className="flex flex-col space-y-1">
-          <p className="text-[10px] font-black text-[#F0F0FB]/10 uppercase tracking-[0.4em]">Audit Ledger Controls</p>
-          <p className="text-xs font-black text-[#F0F0FB]/40 uppercase tracking-widest">
-            Displaying <span className="text-primary-blue">{table.getRowModel().rows.length}</span> of <span className="text-[#F0F0FB]/80">{data.length}</span> entries
+          <p className="text-sm text-text-secondary">
+            Displaying <span className="font-bold text-foreground">{table.getRowModel().rows.length}</span> of <span className="font-bold text-foreground">{data.length}</span> entries
           </p>
         </div>
 
@@ -157,7 +178,7 @@ export function DataTable<TData, TValue>({
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="rounded-[20px] h-12 px-8 text-[11px] font-black uppercase tracking-[0.2em] transition-all disabled:opacity-10 border-white/[0.08] bg-[#111827] hover:bg-white/5 hover:text-[#F0F0FB]"
+            className="rounded-xl h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-border bg-surface hover:bg-surface-elevated hover:text-foreground"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Prev
@@ -167,7 +188,7 @@ export function DataTable<TData, TValue>({
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="rounded-[20px] h-12 px-8 text-[11px] font-black uppercase tracking-[0.2em] transition-all disabled:opacity-10 border-white/[0.08] bg-[#111827] hover:bg-white/5 hover:text-[#F0F0FB]"
+            className="rounded-xl h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-border bg-surface hover:bg-surface-elevated hover:text-foreground"
           >
             Next
             <ChevronRight className="w-4 h-4 ml-2" />

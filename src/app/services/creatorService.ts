@@ -117,15 +117,14 @@ export const creatorService = {
       throw new Error(message);
     }
 
-    return (payload.data ?? []).map((row: CreatorApiResponseRow): Creator => {
-      const niche = row.creator_profile?.niche || "General";
+    return (payload.data ?? []).map((row: any): Creator => {
       const appStatus = (row.approval_status as ApprovalStatus) || "pending_review";
       
       return {
         id: row.id,
-        name: row.creator_profile?.creator_name || row.full_name || "New Creator",
+        name: row.name || "New Creator",
         email: row.email || "",
-        niche: niche,
+        niche: row.category || "General",
         followers: row.creator_profile?.followers || "0",
         status: (appStatus === 'approved' ? 'Active' : appStatus === 'pending_review' ? 'Pending' : 'Restricted') as UserStatus,
         approvalStatus: appStatus,
@@ -135,7 +134,8 @@ export const creatorService = {
         rating: row.creator_profile?.rating || 5.0,
         approvedAt: row.approved_at || undefined,
         approvedBy: row.approved_by || undefined,
-        rejectionReason: row.rejection_reason || undefined
+        rejectionReason: row.rejection_reason || undefined,
+        platformId: row.platform_id || ""
       };
     });
   },

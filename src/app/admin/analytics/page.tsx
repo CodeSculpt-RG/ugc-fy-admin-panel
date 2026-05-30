@@ -114,7 +114,7 @@ export default function AnalyticsPage() {
               type="button"
               onClick={handleSyncIntelligence}
               disabled={isLoading}
-              className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-primary-blue text-white px-6 text-xs font-bold uppercase tracking-[0.18em] hover:bg-primary-blue/90 active:scale-95 transition-all shadow-xl shadow-primary-blue/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-primary text-white px-6 text-xs font-bold uppercase tracking-[0.18em] hover:bg-primary/90 active:scale-95 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={"h-4 w-4 shrink-0 " + (isLoading ? "animate-spin" : "")} />
               <span className="leading-none">Sync Intelligence</span>
@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
             <button
               type="button"
               onClick={handleConfigureVectors}
-              className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-white/[0.02] border border-white/10 text-[#F0F0FB] px-6 text-xs font-bold uppercase tracking-[0.18em] hover:bg-white hover:text-black active:scale-95 transition-all shadow-sm"
+              className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-surface-elevated border border-border text-foreground px-6 text-xs font-bold uppercase tracking-[0.18em] hover:bg-white hover:text-black active:scale-95 transition-all shadow-sm"
             >
               <Filter className="h-4 w-4 shrink-0" />
               <span className="leading-none">Configure Vectors</span>
@@ -132,7 +132,7 @@ export default function AnalyticsPage() {
             <button
               type="button"
               onClick={handleExportProtocol}
-              className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-primary-blue text-white px-6 text-xs font-bold uppercase tracking-[0.18em] hover:bg-primary-blue/90 active:scale-95 transition-all shadow-xl shadow-primary-blue/20"
+              className="inline-flex h-12 min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-primary text-white px-6 text-xs font-bold uppercase tracking-[0.18em] hover:bg-primary/90 active:scale-95 transition-all shadow-xl shadow-primary/20"
             >
               <Download className="h-4 w-4 shrink-0" />
               <span className="leading-none">Export Protocol</span>
@@ -141,15 +141,15 @@ export default function AnalyticsPage() {
         </PageHeader>
 
         {showFilters && (
-          <div className="mb-8 p-6 rounded-[28px] bg-[#0F172A] border border-white/10 shadow-xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="mb-8 p-6 rounded-[28px] bg-card-bg border border-border shadow-xl flex flex-wrap items-center justify-between gap-4 animate-in fade-in duration-300">
             <div className="flex items-center space-x-3">
-              <Filter className="w-5 h-5 text-primary-blue" />
+              <Filter className="w-5 h-5 text-primary" />
               <span className="text-xs font-black uppercase tracking-widest text-white">Active Vector Configuration</span>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-[#F0F0FB]/70">
-              <span className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10">Timeframe: Last 6 Months</span>
-              <span className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10">Entity Target: All Sectors</span>
-              <span className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/10">Yield Base: USD</span>
+            <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-foreground/70">
+              <span className="px-4 py-2 rounded-xl bg-surface-elevated hover:bg-foreground/5 border border-border">Timeframe: Last 6 Months</span>
+              <span className="px-4 py-2 rounded-xl bg-surface-elevated hover:bg-foreground/5 border border-border">Entity Target: All Sectors</span>
+              <span className="px-4 py-2 rounded-xl bg-surface-elevated hover:bg-foreground/5 border border-border">Yield Base: USD</span>
             </div>
           </div>
         )}
@@ -162,7 +162,7 @@ export default function AnalyticsPage() {
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
               <ChartCard title="Entity Acquisition" subtitle="Entity growth lifecycle analysis (Creators vs Corporate)">
-                <div className="h-[280px] min-h-[280px] w-full pt-8">
+                <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
               </ChartCard>
 
               <ChartCard title="Revenue Yield (GMV)" subtitle="Weekly transaction volume and platform yield metrics">
-                <div className="h-[280px] min-h-[280px] w-full pt-8">
+                <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={revData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />
@@ -228,7 +228,7 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <ChartCard title="Sector Distribution" subtitle="Ecosystem segmentation by industry vector" className="lg:col-span-1">
-                <div className="h-[280px] min-h-[280px] w-full pt-4">
+                <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -258,12 +258,12 @@ export default function AnalyticsPage() {
                   </ResponsiveContainer>
                   <div className="mt-8 grid grid-cols-2 gap-4">
                     {sectors.map((sector, i) => (
-                      <div key={sector.name} className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.02] border border-white/[0.08] shadow-sm truncate">
+                      <div key={sector.name} className="flex items-center justify-between p-3 rounded-2xl bg-surface-elevated border border-border shadow-sm truncate">
                         <div className="flex items-center space-x-2 truncate">
                           <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/40 truncate">{sector.name}</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-foreground/40 truncate">{sector.name}</span>
                         </div>
-                        <span className="text-[10px] font-black text-[#F0F0FB] flex-shrink-0 ml-1">{sector.value}%</span>
+                        <span className="text-[10px] font-black text-foreground flex-shrink-0 ml-1">{sector.value}%</span>
                       </div>
                     ))}
                   </div>
@@ -271,7 +271,7 @@ export default function AnalyticsPage() {
               </ChartCard>
 
               <ChartCard title="Retention Dynamics" subtitle="Temporal user behavior and active engagement analysis" className="lg:col-span-2">
-                <div className="h-[280px] min-h-[280px] w-full pt-8">
+                <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />

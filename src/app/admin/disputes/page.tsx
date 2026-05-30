@@ -174,7 +174,7 @@ export default function DisputesPage() {
     {
       accessorKey: "id",
       header: "Infrastructure ID",
-      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-[#F0F0FB]/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
+      cell: ({ row }) => <span className="text-[10px] font-black uppercase text-foreground/20 font-mono tracking-tighter">{row.original.id.slice(0, 12)}...</span>,
     },
     {
       accessorKey: "type",
@@ -183,14 +183,14 @@ export default function DisputesPage() {
         <div className="flex items-center space-x-3 py-2">
           <div className={cn(
             "p-2 rounded-xl border shadow-sm flex-shrink-0",
-            row.original.type === "Fraud" ? "bg-accent-orange/10 border-accent-orange/15" : "bg-primary-blue/10 border-primary-blue/15"
+            row.original.type === "Fraud" ? "bg-accent-orange/10 border-accent-orange/15" : "bg-primary/10 border-primary/15"
           )}>
             <AlertTriangle className={cn(
               "w-4 h-4",
-              row.original.type === "Fraud" ? "text-accent-orange" : "text-primary-blue"
+              row.original.type === "Fraud" ? "text-accent-orange" : "text-primary"
             )} />
           </div>
-          <span className="text-[11px] font-black text-[#F0F0FB] uppercase tracking-widest">{row.original.type}</span>
+          <span className="text-[11px] font-black text-foreground uppercase tracking-widest">{row.original.type}</span>
         </div>
       ),
     },
@@ -199,8 +199,8 @@ export default function DisputesPage() {
       header: "Contextual Brief",
       cell: ({ row }) => (
         <div className="space-y-1 min-w-0">
-          <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.campaign}</p>
-          <p className="text-[10px] text-[#F0F0FB]/20 uppercase font-black tracking-widest truncate">{row.original.brand} <span className="mx-1 lowercase opacity-50">vs</span> {row.original.creator}</p>
+          <p className="text-[15px] font-black text-foreground tracking-tight truncate">{row.original.campaign}</p>
+          <p className="text-[10px] text-foreground/20 uppercase font-black tracking-widest truncate">{row.original.brand} <span className="mx-1 lowercase opacity-50">vs</span> {row.original.creator}</p>
         </div>
       ),
     },
@@ -212,8 +212,8 @@ export default function DisputesPage() {
           <span className={cn(
             "text-[9px] font-black uppercase px-3 py-1.5 rounded-xl border tracking-widest",
             row.original.priority === "Critical" ? "bg-accent-orange/10 border-accent-orange/15 text-accent-orange shadow-sm" : 
-            row.original.priority === "High" ? "bg-primary-blue/10 border-primary-blue/15 text-primary-blue shadow-sm" : 
-            "bg-white/[0.02] border-white/[0.08] text-[#F0F0FB]/30 shadow-inner"
+            row.original.priority === "High" ? "bg-primary/10 border-primary/15 text-primary shadow-sm" : 
+            "bg-surface-elevated border-border text-foreground/30 shadow-inner"
           )}>
             {row.original.priority}
           </span>
@@ -237,7 +237,7 @@ export default function DisputesPage() {
     {
       accessorKey: "openedDate",
       header: "Temporal Origin",
-      cell: ({ row }) => <span className="text-[11px] font-black text-[#F0F0FB]/20 tracking-tighter">{row.original.openedDate}</span>,
+      cell: ({ row }) => <span className="text-[11px] font-black text-foreground/20 tracking-tighter">{row.original.openedDate}</span>,
     },
     {
       id: "actions",
@@ -313,7 +313,7 @@ export default function DisputesPage() {
             <button 
               onClick={() => loadDisputes()}
               disabled={isLoading}
-              className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-white/[0.02] border border-white/10 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/[0.08] transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-surface-elevated border border-border text-white text-[11px] font-black uppercase tracking-widest hover:bg-surface-elevated transition-all active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Sync Docket</span>
@@ -336,26 +336,26 @@ export default function DisputesPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-primary-blue" />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-foreground/40 text-xs font-black uppercase tracking-widest">
+            <Filter className="w-4 h-4 text-primary" />
             <span>Docket Filters:</span>
           </div>
 
-          <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-            <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+          <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+            <span className="text-[10px] font-black text-foreground/30 uppercase tracking-widest">Status:</span>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
             >
-              <option value="all" className="bg-[#111827]">All Incidents</option>
-              <option value="active" className="bg-[#111827]">Active Incidents</option>
-              <option value="resolved" className="bg-[#111827]">Resolved Rulings</option>
-              <option value="Open" className="bg-[#111827]">Open Docket</option>
-              <option value="In Review" className="bg-[#111827]">In Arbitration</option>
-              <option value="Resolved" className="bg-[#111827]">Resolved</option>
-              <option value="Closed" className="bg-[#111827]">Closed</option>
+              <option value="all" className="bg-surface">All Incidents</option>
+              <option value="active" className="bg-surface">Active Incidents</option>
+              <option value="resolved" className="bg-surface">Resolved Rulings</option>
+              <option value="Open" className="bg-surface">Open Docket</option>
+              <option value="In Review" className="bg-surface">In Arbitration</option>
+              <option value="Resolved" className="bg-surface">Resolved</option>
+              <option value="Closed" className="bg-surface">Closed</option>
             </select>
           </div>
         </div>
@@ -367,7 +367,7 @@ export default function DisputesPage() {
         ) : isError ? (
           <ErrorState onRetry={loadDisputes} />
         ) : filteredDisputes.length === 0 ? (
-          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 bg-[#0F172A] border border-white/[0.08] rounded-[40px] shadow-sm">
+          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-foreground/30 bg-card-bg border border-border rounded-[40px] shadow-sm">
             No disputes found
           </div>
         ) : (
@@ -390,20 +390,20 @@ export default function DisputesPage() {
           <div className="space-y-12">
             <div className="space-y-10">
                <h4 className="stat-label">Mediation Chronology</h4>
-               <div className="relative pl-10 space-y-12 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-white/[0.08] before:border-dashed before:border-l">
+               <div className="relative pl-10 space-y-12 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-surface-elevated before:border-dashed before:border-l">
                   <div className="relative">
-                     <div className="absolute -left-[37px] top-1 w-5 h-5 rounded-full bg-[#030712] border-4 border-[#F0F0FB]/20 shadow-md" />
-                     <p className="text-base font-black text-[#F0F0FB] tracking-tight leading-none">Dispute Initiated</p>
-                     <p className="text-[13px] font-medium text-[#F0F0FB]/40 mt-3 leading-relaxed">
-                        <span className="font-black text-[#F0F0FB]/20 mr-2 uppercase tracking-widest text-[10px]">{selectedDispute.openedDate}</span>
+                     <div className="absolute -left-[37px] top-1 w-5 h-5 rounded-full bg-background border-4 border-foreground/20 shadow-md" />
+                     <p className="text-base font-black text-foreground tracking-tight leading-none">Dispute Initiated</p>
+                     <p className="text-[13px] font-medium text-foreground/40 mt-3 leading-relaxed">
+                        <span className="font-black text-foreground/20 mr-2 uppercase tracking-widest text-[10px]">{selectedDispute.openedDate}</span>
                         Protocol: Alleged non-fulfillment of fiscal obligations following asset verification.
                      </p>
                   </div>
                   <div className="relative">
-                     <div className="absolute -left-[37px] top-1 w-5 h-5 rounded-full bg-primary-blue border-4 border-[#F0F0FB]/10 shadow-lg shadow-primary-blue/20" />
-                     <p className="text-base font-black text-[#F0F0FB] tracking-tight leading-none">Audit Assignment</p>
-                     <p className="text-[13px] font-medium text-[#F0F0FB]/40 mt-3 leading-relaxed">
-                        <span className="font-black text-[#F0F0FB]/20 mr-2 uppercase tracking-widest text-[10px]">Active</span>
+                     <div className="absolute -left-[37px] top-1 w-5 h-5 rounded-full bg-primary border-4 border-foreground/10 shadow-lg shadow-primary/20" />
+                     <p className="text-base font-black text-foreground tracking-tight leading-none">Audit Assignment</p>
+                     <p className="text-[13px] font-medium text-foreground/40 mt-3 leading-relaxed">
+                        <span className="font-black text-foreground/20 mr-2 uppercase tracking-widest text-[10px]">Active</span>
                         Incident assigned to Senior Arbitrator for multi-stage forensic ledger review.
                      </p>
                   </div>
@@ -418,35 +418,35 @@ export default function DisputesPage() {
                     { name: "Content_Approval_Log.png", size: "840 KB", icon: FileText },
                     { name: "Mediation_Audit_History.csv", size: "45 KB", icon: History }
                   ].map((file) => (
-                    <div key={file.name} className="flex items-center justify-between p-6 rounded-[32px] bg-white/[0.02] border border-white/[0.08] shadow-sm hover:border-primary-blue/20 transition-all cursor-pointer group">
+                    <div key={file.name} className="flex items-center justify-between p-6 rounded-[32px] bg-surface-elevated border border-border shadow-sm hover:border-primary/20 transition-all cursor-pointer group">
                        <div className="flex items-center space-x-5">
-                          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors shadow-inner">
+                          <div className="p-4 rounded-2xl bg-surface-elevated border border-border text-foreground/20 group-hover:text-primary transition-colors shadow-inner">
                             <file.icon className="w-5 h-5" />
                           </div>
                           <div>
-                             <p className="text-sm font-black text-[#F0F0FB] tracking-tight leading-none">{file.name}</p>
+                             <p className="text-sm font-black text-foreground tracking-tight leading-none">{file.name}</p>
                              <p className="stat-label mt-2">{file.size}</p>
                           </div>
                        </div>
-                       <ExternalLink className="w-4 h-4 text-[#F0F0FB]/10 group-hover:text-primary-blue transition-colors mr-2" />
+                       <ExternalLink className="w-4 h-4 text-foreground/10 group-hover:text-primary transition-colors mr-2" />
                     </div>
                   ))}
                </div>
             </div>
 
             {selectedDispute.status !== "Resolved" && selectedDispute.status !== "Closed" && (
-              <div className="pt-12 border-t border-white/[0.08] space-y-8">
-                 <h4 className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.4em]">Final Operational Resolution</h4>
+              <div className="pt-12 border-t border-border space-y-8">
+                 <h4 className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.4em]">Final Operational Resolution</h4>
                  <div className="grid grid-cols-1 gap-4">
                     <button 
                       onClick={() => handleAction(selectedDispute, "resolve")}
-                      className="h-16 rounded-[28px] bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95"
+                      className="h-16 rounded-[28px] bg-primary text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95"
                     >
                       Authorize Asset Release (Favor Creator)
                     </button>
                     <button 
                       onClick={() => handleAction(selectedDispute, "refund")}
-                      className="h-16 rounded-[28px] bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-accent-orange hover:text-white hover:border-accent-orange transition-all active:scale-95 shadow-sm"
+                      className="h-16 rounded-[28px] bg-surface-elevated border border-border text-foreground font-black text-[10px] uppercase tracking-widest hover:bg-accent-orange hover:text-white hover:border-accent-orange transition-all active:scale-95 shadow-sm"
                     >
                       Initiate Refund Protocol (Favor Brand)
                     </button>

@@ -45,7 +45,7 @@ export function ActionDropdown({
         <Button
           variant="ghost"
           className={cn(
-            "h-12 w-12 p-0 rounded-2xl text-[#F0F0FB]/20 hover:text-[#F0F0FB] hover:bg-white/[0.04] transition-all outline-none",
+            "h-12 w-12 p-0 rounded-2xl text-foreground/20 hover:text-foreground hover:bg-surface-elevated hover:bg-foreground/5 transition-all outline-none",
             triggerClassName
           )}
         >
@@ -56,13 +56,13 @@ export function ActionDropdown({
         align={align}
         sideOffset={8}
         collisionPadding={16}
-        className={cn("p-2 bg-[#111827] border border-white/10 rounded-[28px] shadow-2xl z-[110]", menuWidth)}
+        className={cn("p-2 bg-surface border border-border rounded-[28px] shadow-2xl z-[110]", menuWidth)}
       >
         {visibleActions.map((action, index) => (
           <React.Fragment key={index}>
             {action.sectionLabel && (
-              <div className="px-4 py-3 border-b border-white/[0.05] mb-2">
-                <p className="text-[10px] font-black text-[#F0F0FB]/20 uppercase tracking-[0.3em]">
+              <div className="px-4 py-3 border-b border-border mb-2">
+                <p className="text-[10px] font-black text-foreground/20 uppercase tracking-[0.3em]">
                   {action.sectionLabel}
                 </p>
               </div>
@@ -77,8 +77,8 @@ export function ActionDropdown({
                 }, 150);
               }}
               className={cn(
-                "flex items-center space-x-3 p-4 rounded-2xl cursor-pointer transition-all outline-none group focus:bg-primary-blue focus:text-white",
-                action.variant === "blue" ? "text-primary-blue" : "",
+                "flex items-center space-x-3 p-4 rounded-2xl cursor-pointer transition-all outline-none group focus:bg-primary focus:text-white",
+                action.variant === "blue" ? "text-primary" : "",
                 action.variant === "orange" ? "text-accent-orange" : ""
               )}
             >

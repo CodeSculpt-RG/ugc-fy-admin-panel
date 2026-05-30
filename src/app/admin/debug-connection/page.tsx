@@ -101,8 +101,8 @@ export default function DebugConnectionPage() {
   if (loading) return (
     <DashboardShell>
       <div className="p-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-primary-blue border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Probing System Integrity...</p>
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20">Probing System Integrity...</p>
       </div>
     </DashboardShell>
   );
@@ -133,88 +133,88 @@ export default function DebugConnectionPage() {
           <div className="space-y-10">
             {/* Current Session Auth Info */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-               <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] flex items-start space-x-5 shadow-premium relative overflow-hidden">
-                  <div className="w-14 h-14 rounded-[20px] bg-primary-blue/10 flex items-center justify-center border border-primary-blue/15 shrink-0">
-                     <Fingerprint className="w-7 h-7 text-primary-blue" />
+               <div className="p-8 rounded-[32px] bg-surface border border-border flex items-start space-x-5 shadow-premium relative overflow-hidden">
+                  <div className="w-14 h-14 rounded-[20px] bg-primary/10 flex items-center justify-center border border-primary/15 shrink-0">
+                     <Fingerprint className="w-7 h-7 text-primary" />
                   </div>
                   <div className="min-w-0 flex-1">
-                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/20 mb-2">Authenticated Admin</h4>
-                     <p className="text-sm font-black text-[#F0F0FB] tracking-tight leading-none truncate">{admin?.name || "System Node"}</p>
-                     <p className="text-[11px] text-[#F0F0FB]/40 mt-3 truncate">{admin?.email || "No session email"}</p>
+                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/20 mb-2">Authenticated Admin</h4>
+                     <p className="text-sm font-black text-foreground tracking-tight leading-none truncate">{admin?.name || "System Node"}</p>
+                     <p className="text-[11px] text-foreground/40 mt-3 truncate">{admin?.email || "No session email"}</p>
                   </div>
                </div>
 
-               <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] flex items-start space-x-5 shadow-premium relative overflow-hidden">
+               <div className="p-8 rounded-[32px] bg-surface border border-border flex items-start space-x-5 shadow-premium relative overflow-hidden">
                   <div className="w-14 h-14 rounded-[20px] bg-accent-orange/10 flex items-center justify-center border border-accent-orange/15 shrink-0">
                      <Lock className="w-7 h-7 text-accent-orange" />
                   </div>
                   <div className="min-w-0 flex-1">
-                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/20 mb-2">Administrative Role</h4>
+                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/20 mb-2">Administrative Role</h4>
                      <p className="text-sm font-black text-accent-orange tracking-tight leading-none uppercase">{admin?.role || "NO_ROLE"}</p>
-                     <p className="text-[11px] text-[#F0F0FB]/40 mt-3">Platform Authority Level</p>
+                     <p className="text-[11px] text-foreground/40 mt-3">Platform Authority Level</p>
                   </div>
                </div>
 
-               <div className="p-8 rounded-[32px] bg-[#111827] border border-white/[0.08] flex items-start space-x-5 shadow-premium relative overflow-hidden">
+               <div className="p-8 rounded-[32px] bg-surface border border-border flex items-start space-x-5 shadow-premium relative overflow-hidden">
                   <div className="w-14 h-14 rounded-[20px] bg-success-green/10 flex items-center justify-center border border-success-green/15 shrink-0">
                      <ShieldCheck className="w-7 h-7 text-success-green" />
                   </div>
                   <div className="min-w-0 flex-1">
-                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F0F0FB]/20 mb-2">Permissions Hydrated</h4>
+                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/20 mb-2">Permissions Hydrated</h4>
                      <p className="text-sm font-black text-success-green tracking-tight leading-none">{admin?.permissions.length || 0} Vectors Active</p>
                      <div className="flex flex-wrap gap-1 mt-3">
                         {admin?.permissions.slice(0, 3).map(p => (
-                          <span key={p} className="px-2 py-0.5 rounded-md bg-white/[0.05] text-[9px] font-black text-white/40 uppercase tracking-tighter border border-white/[0.05]">{p.split('.')[0]}</span>
+                          <span key={p} className="px-2 py-0.5 rounded-md bg-surface-elevated hover:bg-foreground/5 text-[9px] font-black text-foreground/40 uppercase tracking-tighter border border-border">{p.split('.')[0]}</span>
                         ))}
-                        {(admin?.permissions.length || 0) > 3 && <span className="text-[9px] text-white/20 font-black">+{(admin?.permissions.length || 0) - 3} more</span>}
+                        {(admin?.permissions.length || 0) > 3 && <span className="text-[9px] text-foreground/20 font-black">+{(admin?.permissions.length || 0) - 3} more</span>}
                      </div>
                   </div>
                </div>
             </div>
 
             {/* Supabase Env Status */}
-            <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium">
+            <div className="bg-card-bg border border-border rounded-[32px] p-10 shadow-premium">
               <div className="flex items-center space-x-3 mb-8">
-                <Server className="w-6 h-6 text-primary-blue" />
+                <Server className="w-6 h-6 text-primary" />
                 <h3 className="text-xl font-black text-white tracking-tighter">Supabase Edge Environment</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-6 rounded-2xl bg-[#111827] border border-white/[0.08] flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-widest text-white/60">Supabase URL</span>
+                <div className="p-6 rounded-2xl bg-surface border border-border flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-widest text-foreground/60">Supabase URL</span>
                   <StatusBadge status={envStatus.hasSupabaseUrl ? "CONFIGURED" : "MISSING"} variant={envStatus.hasSupabaseUrl ? "success" : "error"} />
                 </div>
-                <div className="p-6 rounded-2xl bg-[#111827] border border-white/[0.08] flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-widest text-white/60">Client Anon Key</span>
+                <div className="p-6 rounded-2xl bg-surface border border-border flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-widest text-foreground/60">Client Anon Key</span>
                   <StatusBadge status={envStatus.hasAnonKey ? "CONFIGURED" : "MISSING"} variant={envStatus.hasAnonKey ? "success" : "error"} />
                 </div>
-                <div className="p-6 rounded-2xl bg-[#111827] border border-white/[0.08] flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-widest text-white/60">Service Role Key</span>
+                <div className="p-6 rounded-2xl bg-surface border border-border flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-widest text-foreground/60">Service Role Key</span>
                   <StatusBadge status={envStatus.hasServiceRoleKey ? "SECURED" : "MISSING"} variant={envStatus.hasServiceRoleKey ? "success" : "error"} />
                 </div>
               </div>
             </div>
 
             {/* Table Verification Diagnostics */}
-            <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium space-y-8">
+            <div className="bg-card-bg border border-border rounded-[32px] p-10 shadow-premium space-y-8">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-white tracking-tighter">Production Database Table Audit</h3>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Checked: {health?.data?.checkedAt ? new Date(health.data.checkedAt).toLocaleTimeString() : "Live"}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/20">Checked: {health?.data?.checkedAt ? new Date(health.data.checkedAt).toLocaleTimeString() : "Live"}</span>
               </div>
 
               {tables.length === 0 ? (
-                <div className="p-8 text-center bg-white/[0.02] rounded-2xl border border-white/[0.05]">
-                  <p className="text-xs text-white/40 font-bold uppercase tracking-widest">No Table Diagnostics Returned</p>
+                <div className="p-8 text-center bg-surface-elevated rounded-2xl border border-border">
+                  <p className="text-xs text-foreground/40 font-bold uppercase tracking-widest">No Table Diagnostics Returned</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                   {tables.map((t) => (
-                    <div key={t.table} className="p-6 rounded-2xl bg-[#111827] border border-white/[0.08] flex flex-col justify-between space-y-4">
+                    <div key={t.table} className="p-6 rounded-2xl bg-surface border border-border flex flex-col justify-between space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono font-black text-white/80 truncate pr-2" title={t.table}>{t.table}</span>
+                        <span className="text-xs font-mono font-black text-foreground/80 truncate pr-2" title={t.table}>{t.table}</span>
                         <StatusBadge status={t.exists ? "EXISTS" : "MISSING"} variant={t.exists ? "success" : "error"} />
                       </div>
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Total Rows</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Total Rows</p>
                         <p className="text-2xl font-black text-white mt-1">{t.count ?? 0}</p>
                       </div>
                       {!t.exists && t.error && (
@@ -229,25 +229,25 @@ export default function DebugConnectionPage() {
             </div>
 
             {/* Latest Profiles Sync */}
-            <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-10 shadow-premium space-y-6">
+            <div className="bg-card-bg border border-border rounded-[32px] p-10 shadow-premium space-y-6">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-black text-white tracking-tighter">Live Profile Sample Rows</h3>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Table: profiles</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/20">Table: profiles</span>
               </div>
               
               {profilesTableRows.length === 0 ? (
-                <div className="p-12 text-center bg-[#111827] rounded-2xl border border-white/[0.05]">
-                  <p className="text-xs text-white/40 font-bold">No profile rows available in database.</p>
+                <div className="p-12 text-center bg-surface rounded-2xl border border-border">
+                  <p className="text-xs text-foreground/40 font-bold">No profile rows available in database.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-white/20">ID</th>
-                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-white/20">Email</th>
-                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-white/20">Role</th>
-                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-white/20">Status</th>
+                      <tr className="border-b border-border">
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-foreground/20">ID</th>
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-foreground/20">Email</th>
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-foreground/20">Role</th>
+                        <th className="pb-4 text-[10px] font-black uppercase tracking-widest text-foreground/20">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.05]">
@@ -258,9 +258,9 @@ export default function DebugConnectionPage() {
                         const approvalStr = String(p.approval_status ?? "pending_review");
                         return (
                           <tr key={idStr} className="group">
-                            <td className="py-4 text-[10px] font-mono text-white/40 group-hover:text-white/60 transition-colors">{idStr.slice(0, 8)}...</td>
-                            <td className="py-4 text-xs font-black text-white/80">{emailStr}</td>
-                            <td className="py-4 text-[10px] font-black uppercase tracking-widest text-primary-blue">{roleStr}</td>
+                            <td className="py-4 text-[10px] font-mono text-foreground/40 group-hover:text-foreground/60 transition-colors">{idStr.slice(0, 8)}...</td>
+                            <td className="py-4 text-xs font-black text-foreground/80">{emailStr}</td>
+                            <td className="py-4 text-[10px] font-black uppercase tracking-widest text-primary">{roleStr}</td>
                             <td className="py-4">
                                <StatusBadge 
                                  status={approvalStr === "approved" ? "Approved" : approvalStr} 

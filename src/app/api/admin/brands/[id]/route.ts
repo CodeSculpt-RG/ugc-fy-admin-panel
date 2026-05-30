@@ -14,20 +14,47 @@ export async function GET(
     const { id } = await params;
 
     const { data: profile, error: profileError } = await supabaseAdmin
-      .from("users")
+      .from("profiles")
       .select("*")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (profileError || !profile) {
       throw profileError || new Error("Brand profile not found.");
     }
 
-    const { data: bProfile, error: bProfileError } = await supabaseAdmin
+    let bProfile = null;
+    let bProfileError = null;
+
+    const resProfileId = await supabaseAdmin
       .from("brand_profiles")
       .select("*")
-      .eq("id", id)
-      .single();
+      .eq("profile_id", id)
+      .maybeSingle();
+
+    if (resProfileId.error && resProfileId.error.code === '42703') {
+      const resUserId = await supabaseAdmin
+        .from("brand_profiles")
+        .select("*")
+        .eq("user_id", id)
+        .maybeSingle();
+      
+      if (resUserId.error && resUserId.error.code === '42703') {
+        const resId = await supabaseAdmin
+          .from("brand_profiles")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        bProfile = resId.data;
+        bProfileError = resId.error;
+      } else {
+        bProfile = resUserId.data;
+        bProfileError = resUserId.error;
+      }
+    } else {
+      bProfile = resProfileId.data;
+      bProfileError = resProfileId.error;
+    }
 
     if (bProfileError && bProfileError.code !== "PGRST116") {
       throw bProfileError;
@@ -35,7 +62,7 @@ export async function GET(
 
     const data = {
       ...profile,
-      full_name: profile.name || profile.email,
+      full_name: profile.full_name || profile.name || profile.email || "Unnamed Brand",
       brand_profile: bProfile ?? null,
     };
 

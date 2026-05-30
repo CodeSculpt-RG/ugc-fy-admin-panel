@@ -5,18 +5,29 @@ import { requirePermission } from "@/lib/api/requirePermission";
 
 type BrandProfileRow = {
   id: string;
-  user_id: string;
+  user_id?: string;
+  profile_id?: string;
   company_name: string | null;
   brand_name: string | null;
-  website_url: string | null;
+  contact_name: string | null;
   industry: string | null;
-  phone: string | null;
-  location: string | null;
-  business_description: string | null;
-  documents: unknown;
-  created_at: string | null;
-  updated_at: string | null;
+  website_url?: string | null;
+  location?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
+
+function resolveBrandDisplayName(brandProfile: BrandProfileRow | null, profile: any) {
+  return (
+    brandProfile?.company_name ||
+    brandProfile?.brand_name ||
+    brandProfile?.contact_name ||
+    profile?.full_name ||
+    profile?.name ||
+    profile?.email ||
+    "Unnamed Brand"
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +49,8 @@ export async function GET(request: NextRequest) {
         full_name,
         avatar_url,
         approval_status,
+        kyc_status,
+        platform_id,
         profile_completed,
         rejection_reason,
         approved_at,
@@ -61,28 +74,63 @@ export async function GET(request: NextRequest) {
     let brandProfiles: BrandProfileRow[] = [];
 
     if (brandIds.length > 0) {
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from("brand_profiles")
         .select("*")
-        .in("user_id", brandIds);
+        .in("profile_id", brandIds);
 
-      if (error) throw error;
+      if (error && error.code === '42703') {
+        const fallback1 = await supabaseAdmin
+          .from("brand_profiles")
+          .select("*")
+          .in("user_id", brandIds);
+        data = fallback1.data as any;
+        error = fallback1.error;
 
-      brandProfiles = data ?? [];
+        if (error && error.code === '42703') {
+          const fallback2 = await supabaseAdmin
+            .from("brand_profiles")
+            .select("*")
+            .in("id", brandIds);
+          data = fallback2.data as any;
+          error = fallback2.error;
+        }
+      }
+
+      if (error) {
+        console.warn("[admin/brands] failed to fetch brand_profiles, continuing without them:", error);
+      }
+
+      brandProfiles = data as any ?? [];
     }
 
-    const brandProfileMap = new Map(
+    const brandProfileMap = new Map<string, BrandProfileRow>(
       brandProfiles.map((brandProfile) => [
-        brandProfile.user_id,
+        brandProfile.profile_id || brandProfile.user_id || brandProfile.id,
         brandProfile,
       ])
     );
 
-    const brands =
-      profiles?.map((profile) => ({
-        ...profile,
-        profile: brandProfileMap.get(profile.id) ?? null,
-      })) ?? [];
+    const brands = (profiles ?? []).map((profile) => {
+      const brandProfile = brandProfileMap.get(profile.id) ?? null;
+      const resolvedName = resolveBrandDisplayName(brandProfile, profile);
+
+      return {
+        id: profile.id,
+        profile_id: brandProfile?.profile_id || brandProfile?.user_id || profile.id,
+        name: resolvedName,
+        email: profile.email || "No Email Registered",
+        platform_id: profile.platform_id || "",
+        company_name: brandProfile?.company_name || "Unregistered Corp",
+        industry: brandProfile?.industry || "Commercial",
+        active_campaigns: 0,
+        aggregate_gmv: 0,
+        approval_status: profile.approval_status || "pending_review",
+        kyc_status: profile.kyc_status || "not_started",
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+      };
+    });
 
     return NextResponse.json({
       success: true,

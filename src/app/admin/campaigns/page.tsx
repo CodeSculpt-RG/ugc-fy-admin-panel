@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
-import { PageHeader, StatusBadge } from "@/app/components/ui/core";
+import { PageHeader, StatusBadge, formatINR } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { DetailDrawer } from "@/app/components/ui/detail-drawer";
 import { ColumnDef } from "@tanstack/react-table";
@@ -145,12 +145,12 @@ export default function CampaignsPage() {
       header: "Campaign Initiative",
       cell: ({ row }) => (
         <div className="flex items-center space-x-5 py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-accent-orange/10 transition-all duration-500 flex-shrink-0">
-            <FileText className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-accent-orange transition-colors" />
+          <div className="w-14 h-14 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-accent-orange/10 transition-all duration-500 flex-shrink-0">
+            <FileText className="w-5 h-5 text-foreground/20 group-hover:text-accent-orange transition-colors" />
           </div>
           <div className="space-y-0.5 min-w-0">
-            <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.title}</p>
-            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest truncate">{row.original.brand}</p>
+            <p className="text-[15px] font-black text-foreground tracking-tight truncate">{row.original.title}</p>
+            <p className="text-[11px] font-black text-foreground/20 uppercase tracking-widest truncate">{row.original.brand}</p>
           </div>
         </div>
       ),
@@ -159,9 +159,10 @@ export default function CampaignsPage() {
       accessorKey: "budget",
       header: "Fiscal Allocation",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-1.5">
-          <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
-          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.budget.replace('$', '')}</span>
+        <div className="flex items-center">
+          <span className="text-[15px] font-black text-foreground tracking-tighter">
+            {formatINR(row.original.budget.replace(/[^0-9.]/g, ''))}
+          </span>
         </div>
       ),
     },
@@ -169,7 +170,7 @@ export default function CampaignsPage() {
       accessorKey: "creators",
       header: "Network Density",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-2.5 text-[11px] font-black text-[#F0F0FB]/40 tracking-widest">
+        <div className="flex items-center space-x-2.5 text-[11px] font-black text-foreground/40 tracking-widest">
           <Users className="w-3.5 h-3.5" />
           <span>{row.original.submissions} SUBMISSIONS</span>
         </div>
@@ -182,13 +183,13 @@ export default function CampaignsPage() {
         const progress = Math.min((row.original.submissions / Math.max(row.original.creators, 1)) * 100, 100);
         return (
           <div className="w-40 space-y-2.5">
-            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-[#F0F0FB]/20">
+            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-foreground/20">
               <span>{row.original.submissions}/{row.original.creators} ASSETS</span>
               <span>{Math.round(progress)}%</span>
             </div>
-            <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-surface-elevated hover:bg-foreground/5 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-primary-blue transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(37,99,235,0.4)]" 
+                className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(37,99,235,0.4)]" 
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -200,7 +201,7 @@ export default function CampaignsPage() {
       accessorKey: "deadline",
       header: "Temporal Threshold",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-2.5 text-[11px] font-black text-[#F0F0FB]/40 tracking-tight">
+        <div className="flex items-center space-x-2.5 text-[11px] font-black text-foreground/40 tracking-tight">
           <Calendar className="w-3.5 h-3.5" />
           <span>{row.original.deadline}</span>
         </div>
@@ -266,35 +267,35 @@ export default function CampaignsPage() {
           <button 
             onClick={() => loadCampaigns()}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className="w-4 h-4" />
-            <span>Synchronize Initiatives</span>
+            <span>Sync Data</span>
           </button>
         </PageHeader>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-primary-blue" />
-            <span>Campaign Filters:</span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
+            <Filter className="w-4 h-4 text-primary" />
+            <span>Filters:</span>
           </div>
 
-          <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-            <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+          <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+            <span className="text-xs text-text-secondary">Status:</span>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+              className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
             >
-              <option value="all" className="bg-[#111827]">All Statuses</option>
-              <option value="Active" className="bg-[#111827]">Active</option>
-              <option value="Draft" className="bg-[#111827]">Draft</option>
-              <option value="Pending" className="bg-[#111827]">Pending</option>
-              <option value="Paused" className="bg-[#111827]">Paused</option>
-              <option value="Completed" className="bg-[#111827]">Completed</option>
-              <option value="Rejected" className="bg-[#111827]">Rejected</option>
-              <option value="Disputed" className="bg-[#111827]">Disputed</option>
+              <option value="all" className="bg-surface">All Statuses</option>
+              <option value="Active" className="bg-surface">Active</option>
+              <option value="Draft" className="bg-surface">Draft</option>
+              <option value="Pending" className="bg-surface">Pending</option>
+              <option value="Paused" className="bg-surface">Paused</option>
+              <option value="Completed" className="bg-surface">Completed</option>
+              <option value="Rejected" className="bg-surface">Rejected</option>
+              <option value="Disputed" className="bg-surface">Disputed</option>
             </select>
           </div>
         </div>
@@ -322,23 +323,25 @@ export default function CampaignsPage() {
         {selectedCampaign && (
           <div className="space-y-12">
             {/* Fiscal State */}
-            <div className="p-10 rounded-[40px] bg-[#111827] border border-white/[0.08] space-y-8 shadow-sm relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/20 to-transparent" />
+            <div className="p-10 rounded-[40px] bg-surface border border-border space-y-8 shadow-sm relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
                
               <div className="flex justify-between items-end">
                 <div>
                   <p className="stat-label mb-2">Fiscal Allocation</p>
-                  <span className="text-4xl font-black text-[#F0F0FB] tracking-tighter">{selectedCampaign.budget}</span>
+                  <span className="text-4xl font-black text-foreground tracking-tighter">
+                    {formatINR(selectedCampaign.budget.replace(/[^0-9.]/g, ''))}
+                  </span>
                 </div>
                 <div className="pb-1">
                   <StatusBadge status="Fully Authorized" variant="success" />
                 </div>
               </div>
-              <div className="h-px bg-white/[0.05] w-full" />
+              <div className="h-px bg-surface-elevated hover:bg-foreground/5 w-full" />
 
               <div className="flex justify-between items-center">
                 <span className="stat-label">Escrow Protocol</span>
-                <span className="text-[10px] font-black text-primary-blue bg-primary-blue/10 px-3 py-1.5 rounded-xl border border-primary-blue/15 uppercase tracking-widest shadow-sm">Active</span>
+                <span className="text-[10px] font-black text-primary bg-primary/10 px-3 py-1.5 rounded-xl border border-primary/15 uppercase tracking-widest shadow-sm">Active</span>
               </div>
             </div>
 
@@ -348,16 +351,16 @@ export default function CampaignsPage() {
                <div className="grid grid-cols-1 gap-4">
                   {[
                     { icon: Building, label: "Parent Entity", value: selectedCampaign.brand },
-                    { icon: DollarSign, label: "Operational Overhead (15%)", value: `$${(Number(selectedCampaign.budget.replace(/[^0-9.]/g, '')) * 0.15).toLocaleString("en-US", { minimumFractionDigits: 2 })}` },
+                    { icon: DollarSign, label: "Operational Overhead (15%)", value: formatINR(Number(selectedCampaign.budget.replace(/[^0-9.]/g, '')) * 0.15) },
                     { icon: Users, label: "Assigned Creator", value: selectedCampaign.creator_profile?.full_name || selectedCampaign.creator_profile?.email || "Unassigned Network Node" }
                   ].map((item) => (
-                    <div key={item.label} className="flex items-center space-x-6 p-6 rounded-[28px] bg-white/[0.02] border border-white/[0.08] shadow-sm group cursor-pointer hover:border-primary-blue/20 transition-all min-w-0">
-                      <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-[#F0F0FB]/20 group-hover:text-primary-blue transition-colors flex-shrink-0">
+                    <div key={item.label} className="flex items-center space-x-6 p-6 rounded-[28px] bg-surface-elevated border border-border shadow-sm group cursor-pointer hover:border-primary/20 transition-all min-w-0">
+                      <div className="p-4 rounded-2xl bg-surface-elevated border border-border text-foreground/20 group-hover:text-primary transition-colors flex-shrink-0">
                         <item.icon className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <p className="stat-label leading-none">{item.label}</p>
-                        <p className="text-base font-black text-[#F0F0FB] mt-2 tracking-tight truncate">{item.value}</p>
+                        <p className="text-base font-black text-foreground mt-2 tracking-tight truncate">{item.value}</p>
                       </div>
                     </div>
                   ))}
@@ -369,29 +372,29 @@ export default function CampaignsPage() {
                <h4 className="stat-label">Verified Asset Ledger</h4>
                 <div className="grid grid-cols-2 gap-5">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="aspect-video rounded-[28px] bg-white/[0.02] border border-white/[0.08] overflow-hidden group relative shadow-sm hover:border-primary-blue/20 transition-all cursor-pointer">
-                       <div className="absolute inset-0 flex items-center justify-center bg-primary-blue/10 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md">
-                          <Eye className="w-8 h-8 text-primary-blue" />
+                    <div key={i} className="aspect-video rounded-[28px] bg-surface-elevated border border-border overflow-hidden group relative shadow-sm hover:border-primary/20 transition-all cursor-pointer">
+                       <div className="absolute inset-0 flex items-center justify-center bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-md">
+                          <Eye className="w-8 h-8 text-primary" />
                        </div>
                        <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
-                          <p className="text-[9px] font-black text-[#F0F0FB] uppercase tracking-widest">ASSET_VECTOR_SUB_{i}092</p>
+                          <p className="text-[9px] font-black text-foreground uppercase tracking-widest">ASSET_VECTOR_SUB_{i}092</p>
                        </div>
                     </div>
                   ))}
                </div>
-               <button className="w-full h-16 rounded-[28px] bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all active:scale-95 shadow-sm">
+               <button className="w-full h-16 rounded-[28px] bg-surface-elevated border border-border text-foreground font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all active:scale-95 shadow-sm">
                   Access Full Asset Ledger ({selectedCampaign.submissions})
                </button>
             </div>
 
             {/* Security Protocol */}
-            <div className="pt-12 border-t border-white/[0.08] space-y-8">
+            <div className="pt-12 border-t border-border space-y-8">
                <h4 className="text-[10px] font-black text-error/40 uppercase tracking-[0.4em]">Administrative Security Protocol</h4>
                <div className="grid grid-cols-2 gap-4">
                   {selectedCampaign.status === 'Paused' ? (
                     <button 
                       onClick={() => { setIsDrawerOpen(false); handleAction(selectedCampaign, "resume"); }}
-                      className="h-16 rounded-[28px] bg-primary-blue text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95"
+                      className="h-16 rounded-[28px] bg-primary text-white font-black text-[10px] uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95"
                     >
                       Resume Campaign
                     </button>
@@ -405,7 +408,7 @@ export default function CampaignsPage() {
                   ) : null}
                   <button 
                     onClick={() => { setIsDrawerOpen(false); handleAction(selectedCampaign, "reject"); }}
-                    className="h-16 col-span-2 rounded-[28px] bg-white/[0.02] border border-white/10 text-[#F0F0FB] font-black text-[10px] uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm"
+                    className="h-16 col-span-2 rounded-[28px] bg-surface-elevated border border-border text-foreground font-black text-[10px] uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm"
                   >
                     Terminate Initiative
                   </button>

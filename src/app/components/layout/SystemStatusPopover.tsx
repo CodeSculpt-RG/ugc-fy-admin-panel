@@ -70,12 +70,12 @@ export default function SystemStatusPopover() {
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
-        className="w-72 bg-[#111827] border border-white/10 p-5 rounded-[28px] shadow-2xl"
+        className="w-72 bg-surface border border-border p-5 rounded-[28px] shadow-2xl"
         sideOffset={12}
       >
         <div className="space-y-5">
-          <div className="flex items-center justify-between border-b border-white/[0.05] pb-3">
-            <h4 className="text-[10px] font-black text-[#F0F0FB] uppercase tracking-[0.2em]">System Health</h4>
+          <div className="flex items-center justify-between border-b border-border pb-3">
+            <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em]">System Health</h4>
             <div className="flex items-center space-x-2">
                <span className={cn("text-[10px] font-bold uppercase", isConnected ? "text-success-green" : "text-accent-orange")}>
                  {isConnected ? "Operational" : "Degraded"}
@@ -92,7 +92,7 @@ export default function SystemStatusPopover() {
               { name: "Brand Profiles", status: `${healthData?.brandsCount ?? 0} Records`, color: "green" },
             ].map((service) => (
               <div key={service.name} className="flex items-center justify-between group/item">
-                <span className="text-xs text-[#F0F0FB]/40 group-hover/item:text-[#F0F0FB]/60 transition-colors font-medium">{service.name}</span>
+                <span className="text-xs text-foreground/40 group-hover/item:text-foreground/60 transition-colors font-medium">{service.name}</span>
                 <div className="flex items-center space-x-3">
                   <span className={cn(
                     "text-[9px] font-black uppercase tracking-wider",
@@ -112,9 +112,9 @@ export default function SystemStatusPopover() {
           </div>
         </div>
         
-        <div className="mt-6 pt-4 border-t border-white/[0.05] flex justify-center items-center">
-          <Activity className="w-3 h-3 text-[#F0F0FB]/20 mr-1.5" />
-          <span className="text-[9px] font-black text-[#F0F0FB]/30 uppercase tracking-[0.2em]">
+        <div className="mt-6 pt-4 border-t border-border flex justify-center items-center">
+          <Activity className="w-3 h-3 text-foreground/20 mr-1.5" />
+          <span className="text-[9px] font-black text-foreground/30 uppercase tracking-[0.2em]">
             Sync: {healthData?.timestamp ? new Date(healthData.timestamp).toLocaleTimeString() : 'N/A'}
           </span>
         </div>

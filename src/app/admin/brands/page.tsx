@@ -158,47 +158,38 @@ export default function BrandsPage() {
 
   const columns: ColumnDef<Brand>[] = [
     {
-      accessorKey: "email",
-      header: "Email",
-      enableHiding: true,
-      cell: () => null,
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <span className="text-[14px] font-bold text-[#111827]">{row.original.name}</span>
+      ),
     },
     {
-      accessorKey: "name",
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <span className="text-[14px] text-[#4B5563]">{row.original.email}</span>
+      ),
+    },
+    {
+      accessorKey: "company",
       header: "Corporate Entity",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-5 py-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-accent-orange/10 transition-all duration-500 flex-shrink-0">
-            <Building2 className="w-5 h-5 text-[#F0F0FB]/20 group-hover:text-accent-orange transition-colors" />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <div className="flex items-center space-x-2 min-w-0">
-               <p className="text-[15px] font-black text-[#F0F0FB] tracking-tight truncate">{row.original.name}</p>
-               {(row.original.approvalStatus === "approved" || row.original.status === "Active") && <CheckCircle2 className="w-3.5 h-3.5 text-primary-blue flex-shrink-0" />}
-            </div>
-            <p className="text-[11px] font-black text-[#F0F0FB]/20 uppercase tracking-widest truncate">{row.original.industry}</p>
-          </div>
-        </div>
+        <span className="text-[14px] text-[#4B5563]">{row.original.company}</span>
       ),
     },
     {
       accessorKey: "activeCampaigns",
       header: "Active Initiatives",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-2.5 text-[11px] font-black text-[#F0F0FB]/40 tracking-widest">
-          <Briefcase className="w-3.5 h-3.5" />
-          <span>{row.original.activeCampaigns} ACTIVE</span>
-        </div>
+        <span className="text-[14px] text-[#111827]">{row.original.activeCampaigns} Active</span>
       ),
     },
     {
       accessorKey: "totalSpend",
       header: "Aggregate GMV",
       cell: ({ row }) => (
-        <div className="flex items-center space-x-1.5">
-          <span className="text-[10px] font-black text-primary-blue opacity-40">$</span>
-          <span className="text-[15px] font-black text-[#F0F0FB] tracking-tighter">{row.original.totalSpend.replace('$', '')}</span>
-        </div>
+        <span className="text-[14px] font-bold text-[#111827]">{row.original.totalSpend}</span>
       ),
     },
     {
@@ -264,47 +255,47 @@ export default function BrandsPage() {
           <button 
             onClick={() => loadBrands(selectedStatus)}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
             <Zap className="w-4 h-4 fill-current" />
-            <span>Synchronize Corporate Network</span>
+            <span>Sync Data</span>
           </button>
         </PageHeader>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-[#0F172A] border border-white/[0.08] mb-10 shadow-sm">
-          <div className="flex items-center space-x-3 text-[#F0F0FB]/40 text-xs font-black uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-primary-blue" />
-            <span>Brand Filters:</span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+          <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
+            <Filter className="w-4 h-4 text-primary" />
+            <span>Filters:</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Industry:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-xs text-text-secondary">Industry:</span>
               <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Industries</option>
+                <option value="all" className="bg-surface">All Industries</option>
                 {uniqueIndustries.map(ind => (
-                  <option key={ind} value={ind} className="bg-[#111827]">{ind}</option>
+                  <option key={ind} value={ind} className="bg-surface">{ind}</option>
                 ))}
               </select>
             </div>
 
-            <div className="flex items-center space-x-2 bg-[#111827] border border-white/[0.08] rounded-2xl px-4 py-2">
-              <span className="text-[10px] font-black text-[#F0F0FB]/30 uppercase tracking-widest">Status:</span>
+            <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
+              <span className="text-xs text-text-secondary">Status:</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#F0F0FB] focus:outline-none cursor-pointer pr-2"
+                className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-[#111827]">All Status</option>
-                <option value="approved" className="bg-[#111827]">Approved</option>
-                <option value="pending_review" className="bg-[#111827]">Pending Review</option>
-                <option value="rejected" className="bg-[#111827]">Rejected</option>
-                <option value="blocked" className="bg-[#111827]">Blocked</option>
+                <option value="all" className="bg-surface">All Status</option>
+                <option value="approved" className="bg-surface">Approved</option>
+                <option value="pending_review" className="bg-surface">Pending Review</option>
+                <option value="rejected" className="bg-surface">Rejected</option>
+                <option value="blocked" className="bg-surface">Blocked</option>
               </select>
             </div>
           </div>
@@ -315,7 +306,7 @@ export default function BrandsPage() {
         ) : isError ? (
           <ErrorState onRetry={() => loadBrands(selectedStatus)} />
         ) : filteredBrands.length === 0 ? (
-          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-[#F0F0FB]/30 bg-[#0F172A] border border-white/[0.08] rounded-[40px] shadow-sm">
+          <div className="p-20 text-center text-xs font-black uppercase tracking-[0.3em] text-foreground/30 bg-card-bg border border-border rounded-[40px] shadow-sm">
             {selectedStatus === "approved" ? "No approved brands found" : "No brands found"}
           </div>
         ) : (

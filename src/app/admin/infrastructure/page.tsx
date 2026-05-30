@@ -59,7 +59,7 @@ export default function InfrastructurePage() {
           <button 
             onClick={() => loadHealth()}
             disabled={isLoading}
-            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary-blue text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary-blue/90 transition-all shadow-xl shadow-primary-blue/20 active:scale-95 disabled:opacity-50"
+            className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Probe Cluster</span>
@@ -81,53 +81,53 @@ export default function InfrastructurePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               {/* Cluster Metadata */}
-              <div className="bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-8 space-y-6 shadow-premium">
+              <div className="bg-card-bg border border-border rounded-[32px] p-8 space-y-6 shadow-premium">
                 <div className="flex items-center space-x-3 text-white">
-                  <Server className="w-6 h-6 text-primary-blue" />
+                  <Server className="w-6 h-6 text-primary" />
                   <h3 className="text-xl font-black tracking-tight leading-none">Node Parameters</h3>
                 </div>
                 <div className="space-y-4 pt-2">
-                  <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Active Edge Shards</span>
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Active Edge Shards</span>
                     <span className="text-xs font-black text-white">{data.activeNodes} Nodes</span>
                   </div>
-                  <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Geographic Region</span>
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Geographic Region</span>
                     <div className="flex items-center space-x-2 text-xs font-black text-white">
-                      <Globe className="w-3.5 h-3.5 text-primary-blue" />
+                      <Globe className="w-3.5 h-3.5 text-primary" />
                       <span>{data.region}</span>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between py-3 border-b border-white/[0.05]">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Postgres Kernel</span>
-                    <span className="text-[10px] font-mono text-white/80">{data.databaseVersion.slice(0, 30)}...</span>
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Postgres Kernel</span>
+                    <span className="text-[10px] font-mono text-foreground/80">{data.databaseVersion.slice(0, 30)}...</span>
                   </div>
                   <div className="flex items-center justify-between py-3">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Last Telemetry Sync</span>
-                    <span className="text-[10px] font-mono text-primary-blue">{new Date(data.lastVerifiedAt).toLocaleTimeString()}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Last Telemetry Sync</span>
+                    <span className="text-[10px] font-mono text-primary">{new Date(data.lastVerifiedAt).toLocaleTimeString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* Table Health Matrix */}
-              <div className="lg:col-span-2 bg-[#0F172A] border border-white/[0.08] rounded-[32px] p-8 shadow-premium flex flex-col min-w-0">
+              <div className="lg:col-span-2 bg-card-bg border border-border rounded-[32px] p-8 shadow-premium flex flex-col min-w-0">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center space-x-3 text-white">
-                    <Database className="w-6 h-6 text-primary-blue flex-shrink-0" />
+                    <Database className="w-6 h-6 text-primary flex-shrink-0" />
                     <h3 className="text-xl font-black tracking-tight leading-none">Database Table Shard Status</h3>
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Exact Row Density</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-foreground/20">Exact Row Density</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto max-h-[360px] pr-2 space-y-3 custom-scrollbar">
                   {data.tableStatuses.map((table) => (
-                    <div key={table.tableName} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] transition-colors">
+                    <div key={table.tableName} className="flex items-center justify-between p-4 rounded-2xl bg-surface-elevated border border-border hover:bg-surface-elevated hover:bg-foreground/5 transition-colors">
                       <div className="flex items-center space-x-3 min-w-0">
-                        <Terminal className="w-4 h-4 text-white/20 flex-shrink-0" />
+                        <Terminal className="w-4 h-4 text-foreground/20 flex-shrink-0" />
                         <span className="text-xs font-black text-white font-mono tracking-tighter truncate">{table.tableName}</span>
                       </div>
                       <div className="flex items-center space-x-6 flex-shrink-0 ml-4">
-                        <span className="text-xs font-black text-white/60 font-mono">{table.recordsCount.toLocaleString()} rows</span>
+                        <span className="text-xs font-black text-foreground/60 font-mono">{table.recordsCount.toLocaleString()} rows</span>
                         <div className="flex items-center space-x-2">
                           {table.status === "Nominal" ? (
                             <>
