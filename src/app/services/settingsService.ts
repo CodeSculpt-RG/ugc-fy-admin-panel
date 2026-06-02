@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { adminFetch } from "@/app/services/adminApiClient";
 
 export type PlatformSettingRow = {
   id: string;
@@ -17,6 +17,9 @@ export type SettingsApiResponse = {
   success: boolean;
   source?: string;
   data?: PlatformSettingRow[];
+  isMissingTable?: boolean;
+  tableName?: string;
+  migrationSql?: string;
   error?: {
     message?: string;
     code?: string;
@@ -25,37 +28,32 @@ export type SettingsApiResponse = {
   };
 };
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
+export class SettingsMissingTableError extends Error {
+  tableName: string;
+  migrationSql: string;
 
-  if (error) {
-    throw new Error(error.message);
+  constructor(tableName: string, migrationSql: string) {
+    super(`Missing required table: ${tableName}`);
+    this.name = "SettingsMissingTableError";
+    this.tableName = tableName;
+    this.migrationSql = migrationSql;
   }
-
-  if (!session?.access_token) {
-    throw new Error("Admin session missing. Please login again.");
-  }
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-  };
 }
 
 export const settingsService = {
-  async getSettings(): Promise<PlatformSettingRow[]> {
-    const response = await fetch("/api/admin/settings", {
+  async getSettings(signal?: AbortSignal): Promise<PlatformSettingRow[]> {
+    const response = await adminFetch("/api/admin/settings", {
       method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
+      signal,
     });
 
     const payload = (await response
       .json()
       .catch((): null => null)) as SettingsApiResponse | null;
+
+    if (payload?.isMissingTable && payload.tableName && payload.migrationSql) {
+      throw new SettingsMissingTableError(payload.tableName, payload.migrationSql);
+    }
 
     if (!response.ok || !payload?.success) {
       const message =
@@ -80,10 +78,10 @@ export const settingsService = {
   },
 
   async updateSetting(key: string, value: Record<string, unknown>): Promise<PlatformSettingRow> {
-    const response = await fetch("/api/admin/settings", {
+    const response = await adminFetch("/api/admin/settings", {
       method: "PATCH",
-      headers: await getAuthHeaders(),
       body: JSON.stringify({ key, value }),
+      dedupe: false,
     });
 
     const payload = (await response

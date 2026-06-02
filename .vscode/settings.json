@@ -1,3 +1,19 @@
 {
-  "css.lint.unknownAtRules": "ignore"
+  "css.lint.unknownAtRules": "ignore",
+  "files.exclude": {
+    "**/package-lock.json": true,
+    "**/package-lock*.json": true
+  },
+  "files.watcherExclude": {
+    "**/.next/**": true,
+    "**/node_modules/**": true,
+    "**/package-lock.json": true,
+    "**/package-lock*.json": true
+  },
+  "search.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/package-lock.json": true,
+    "**/package-lock*.json": true
+  }
 }

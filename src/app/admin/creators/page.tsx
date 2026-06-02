@@ -8,9 +8,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { 
   Eye, 
   CheckCircle2, 
-  User as UserIcon,
-  Star,
-  TrendingUp,
   Ban,
   Filter,
   Zap
@@ -81,14 +78,15 @@ export default function CreatorsPage() {
     return String(error || "Failed to load creators.");
   }
 
-  const loadCreators = useCallback(async (statusOverride?: string) => {
+  const loadCreators = useCallback(async (statusOverride?: string, signal?: AbortSignal) => {
     setIsLoading(true);
     setIsError(false);
     setErrorMsg(null);
     try {
-      const data = await creatorService.getCreators(statusOverride);
+      const data = await creatorService.getCreators(statusOverride, signal);
       setCreators(data);
     } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       const message = getErrorMessage(error);
       setErrorMsg(message);
 
@@ -115,7 +113,17 @@ export default function CreatorsPage() {
       return;
     }
 
-    loadCreators(selectedStatus);
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadCreators(selectedStatus, controller.signal);
+      }
+    });
+    return () => {
+      if (!controller.signal.aborted) {
+        controller.abort(new DOMException("Creator request cancelled", "AbortError"));
+      }
+    };
   }, [authLoading, session, selectedStatus, loadCreators]);
 
   const uniqueNiches = useMemo(() => {
@@ -253,7 +261,7 @@ export default function CreatorsPage() {
       accessorKey: "kycStatus",
       header: "KYC",
       cell: ({ row }) => {
-        const kyc = (row.original as any).kycStatus || (row.original as any).kyc_status || "not_started";
+        const kyc = row.original.kycStatus || row.original.kyc_status || "not_started";
         const kycLabels: Record<string, string> = {
           not_started: "Not Started",
           submitted: "Submitted",

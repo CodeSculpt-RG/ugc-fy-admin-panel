@@ -7,9 +7,7 @@ import { DataTable } from "@/app/components/ui/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { 
   Eye, 
-  Building2, 
   CheckCircle2, 
-  Briefcase,
   Filter,
   Ban,
   Zap
@@ -23,6 +21,34 @@ import { brandService } from "@/app/services/brandService";
 import { approvalService } from "@/app/services/approvalService";
 import { normalizeError } from "@/lib/api/normalizeError";
 import { useToast } from "@/app/hooks/useToast";
+
+const COPY = {
+  syncData: "Sync Data",
+  filters: "Filters:",
+  industry: "Industry:",
+  allIndustries: "All Industries",
+  status: "Status:",
+  allStatus: "All Status",
+  approved: "Approved",
+  pendingReview: "Pending Review",
+  rejected: "Rejected",
+  blocked: "Blocked",
+} as const;
+
+function getApprovalStatusForAction(
+  actionType: "approve" | "reject" | "block" | ""
+): "approved" | "rejected" | "blocked" | "pending_review" {
+  switch (actionType) {
+    case "approve":
+      return "approved";
+    case "reject":
+      return "rejected";
+    case "block":
+      return "blocked";
+    default:
+      return "pending_review";
+  }
+}
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -55,14 +81,15 @@ export default function BrandsPage() {
     actionType: ""
   });
 
-  const loadBrands = useCallback(async (statusOverride?: string) => {
+  const loadBrands = useCallback(async (statusOverride?: string, signal?: AbortSignal) => {
     const statusToFetch = statusOverride ?? selectedStatus;
     setIsLoading(true);
     setIsError(false);
     try {
-      const data = await brandService.getBrands(statusToFetch);
+      const data = await brandService.getBrands(statusToFetch, signal);
       setBrands(data);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("[BrandsPage] Failed to load brands:", normalizeError(err));
       setIsError(true);
       showToast("Corporate infrastructure synchronization failed.", "error");
@@ -72,8 +99,13 @@ export default function BrandsPage() {
   }, [showToast, selectedStatus]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadBrands(selectedStatus);
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadBrands(selectedStatus, controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Brands request cancelled", "AbortError"));
   }, [selectedStatus, loadBrands]);
 
   const uniqueIndustries = useMemo(() => {
@@ -132,16 +164,9 @@ export default function BrandsPage() {
     if (!selectedBrand) return;
     setActionLoading(true);
     try {
-      const statusMap: Record<string, "approved" | "rejected" | "blocked" | "pending_review"> = {
-        approve: "approved",
-        reject: "rejected",
-        block: "blocked",
-        "": "pending_review"
-      };
-
       await approvalService.updateApprovalStatus(
         selectedBrand.id, 
-        statusMap[modalConfig.actionType] || "pending_review",
+        getApprovalStatusForAction(modalConfig.actionType),
         reason
       );
 
@@ -258,7 +283,7 @@ export default function BrandsPage() {
             className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
             <Zap className="w-4 h-4 fill-current" />
-            <span>Sync Data</span>
+            <span>{COPY.syncData}</span>
           </button>
         </PageHeader>
 
@@ -266,18 +291,18 @@ export default function BrandsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
           <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
             <Filter className="w-4 h-4 text-primary" />
-            <span>Filters:</span>
+            <span>{COPY.filters}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
-              <span className="text-xs text-text-secondary">Industry:</span>
+              <span className="text-xs text-text-secondary">{COPY.industry}</span>
               <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
                 className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-surface">All Industries</option>
+                <option value="all" className="bg-surface">{COPY.allIndustries}</option>
                 {uniqueIndustries.map(ind => (
                   <option key={ind} value={ind} className="bg-surface">{ind}</option>
                 ))}
@@ -285,17 +310,17 @@ export default function BrandsPage() {
             </div>
 
             <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
-              <span className="text-xs text-text-secondary">Status:</span>
+              <span className="text-xs text-text-secondary">{COPY.status}</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-surface">All Status</option>
-                <option value="approved" className="bg-surface">Approved</option>
-                <option value="pending_review" className="bg-surface">Pending Review</option>
-                <option value="rejected" className="bg-surface">Rejected</option>
-                <option value="blocked" className="bg-surface">Blocked</option>
+                <option value="all" className="bg-surface">{COPY.allStatus}</option>
+                <option value="approved" className="bg-surface">{COPY.approved}</option>
+                <option value="pending_review" className="bg-surface">{COPY.pendingReview}</option>
+                <option value="rejected" className="bg-surface">{COPY.rejected}</option>
+                <option value="blocked" className="bg-surface">{COPY.blocked}</option>
               </select>
             </div>
           </div>

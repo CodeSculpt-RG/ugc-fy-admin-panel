@@ -1,11 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { dashboardService } from "@/app/services/dashboardService";
+import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
 
 export const useDashboardStats = () => {
+  const auth = useAdminAuthOptional();
+
   return useQuery({
     queryKey: ["dashboard-stats"],
-    queryFn: async () => {
-      const data = await dashboardService.getStats();
+    enabled: Boolean(auth?.session?.access_token),
+    queryFn: async ({ signal }) => {
+      const data = await dashboardService.getStats(signal);
       return {
         totalCreators: data.totalCreators.toLocaleString(),
         totalBrands: data.totalBrands.toLocaleString(),
@@ -15,6 +19,8 @@ export const useDashboardStats = () => {
         velocity: "+12.4%",
       };
     },
-    refetchInterval: 30000,
+    staleTime: 120000,
+    refetchInterval: 120000,
+    refetchIntervalInBackground: false,
   });
 };

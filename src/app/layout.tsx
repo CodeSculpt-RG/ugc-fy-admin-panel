@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import React from "react";
-
-const plusJakartaSans = Plus_Jakarta_Sans({ 
-  subsets: ["latin"],
-  variable: "--font-plus-jakarta-sans",
-});
 
 export const metadata: Metadata = {
   title: "UGC FY | Admin Console",
@@ -24,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`h-full antialiased light ${plusJakartaSans.variable}`} suppressHydrationWarning>
+    <html lang="en" className="h-full antialiased light" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -40,7 +34,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary font-sans" style={{ fontFamily: "var(--font-plus-jakarta-sans)" }}>
+      <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary font-sans">
         <QueryProvider>
           <ThemeProvider>
             <AdminAuthProvider>

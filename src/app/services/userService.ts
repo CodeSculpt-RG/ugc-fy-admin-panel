@@ -1,18 +1,33 @@
-import { supabase } from "@/lib/supabase/client";
 import { User, UserStatus, RiskLevel } from "@/app/types";
+import { adminFetch } from "@/app/services/adminApiClient";
+
+type BrandProfileMin = {
+  company_name?: string | null;
+  brand_name?: string | null;
+  contact_name?: string | null;
+};
+
+type CreatorProfileMin = {
+  full_name?: string | null;
+  username?: string | null;
+  creator_name?: string | null;
+  display_name?: string | null;
+};
 
 export type UserInternal = {
   id: string;
   email: string;
   role: "creator" | "brand" | "admin";
   full_name: string | null;
+  name?: string | null;
   approval_status: "pending_review" | "approved" | "rejected" | "blocked";
   is_verified: boolean | null;
   updated_at: string;
+  created_at?: string;
   phone?: string | null;
   platform_id?: string | null;
-  brand_profiles?: Record<string, unknown> | Record<string, unknown>[];
-  creator_profiles?: Record<string, unknown> | Record<string, unknown>[];
+  brand_profiles?: BrandProfileMin | BrandProfileMin[];
+  creator_profiles?: CreatorProfileMin | CreatorProfileMin[];
 };
 
 type ApiError = {
@@ -28,26 +43,6 @@ type UserApiResponse = {
   data?: UserInternal[];
   error?: ApiError;
 };
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!session?.access_token) {
-    throw new Error("Admin session missing. Please login again.");
-  }
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-  };
-}
 
 function getApiErrorMessage(
   response: Response,
@@ -75,14 +70,14 @@ function normalizeApiError(error: unknown) {
   return String(error);
 }
 
-function getDisplayName(internal: any): string {
+function getDisplayName(internal: UserInternal): string {
   let subName: string | undefined;
   if (internal.role === 'brand') {
     const bp = Array.isArray(internal.brand_profiles) ? internal.brand_profiles[0] : internal.brand_profiles;
-    subName = bp?.company_name || bp?.brand_name || bp?.contact_name;
+    subName = bp?.company_name || bp?.brand_name || bp?.contact_name || undefined;
   } else if (internal.role === 'creator') {
     const cp = Array.isArray(internal.creator_profiles) ? internal.creator_profiles[0] : internal.creator_profiles;
-    subName = cp?.full_name || cp?.username || cp?.creator_name || cp?.display_name;
+    subName = cp?.full_name || cp?.username || cp?.creator_name || cp?.display_name || undefined;
   }
 
   return (
@@ -95,7 +90,7 @@ function getDisplayName(internal: any): string {
   );
 }
 
-const mapInternalToUser = (internal: any): User => ({
+const mapInternalToUser = (internal: UserInternal): User => ({
   id: internal.id,
   name: getDisplayName(internal),
   email: internal.email,
@@ -108,7 +103,7 @@ const mapInternalToUser = (internal: any): User => ({
   platformId: internal.platform_id || undefined,
   phone: internal.phone || undefined,
   createdAt: internal.created_at || internal.updated_at || undefined,
-} as any);
+});
 
 export type UserDetailsData = {
   profile: Record<string, unknown> | null;
@@ -118,12 +113,11 @@ export type UserDetailsData = {
 };
 
 export const userService = {
-  async getUsers(): Promise<User[]> {
+  async getUsers(signal?: AbortSignal): Promise<User[]> {
     try {
-      const response = await fetch("/api/admin/users", {
+      const response = await adminFetch("/api/admin/users", {
         method: "GET",
-        headers: await getAuthHeaders(),
-        cache: "no-store",
+        signal,
       });
 
       const payload = (await response
@@ -142,12 +136,11 @@ export const userService = {
     }
   },
 
-  async getPendingUsers(): Promise<User[]> {
+  async getPendingUsers(signal?: AbortSignal): Promise<User[]> {
     try {
-      const response = await fetch("/api/admin/users/pending", {
+      const response = await adminFetch("/api/admin/users/pending", {
         method: "GET",
-        headers: await getAuthHeaders(),
-        cache: "no-store",
+        signal,
       });
 
       const payload = (await response
@@ -166,12 +159,11 @@ export const userService = {
     }
   },
 
-  async getUserDetails(userId: string): Promise<UserDetailsData> {
+  async getUserDetails(userId: string, signal?: AbortSignal): Promise<UserDetailsData> {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/details`, {
+      const response = await adminFetch(`/api/admin/users/${userId}/details`, {
         method: "GET",
-        headers: await getAuthHeaders(),
-        cache: "no-store",
+        signal,
       });
 
       const payload = (await response
@@ -190,4 +182,3 @@ export const userService = {
     }
   },
 };
-

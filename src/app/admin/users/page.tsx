@@ -12,7 +12,6 @@ import {
   ShieldCheck, 
   ShieldAlert, 
   Ban, 
-  User as UserIcon,
   Filter
 } from "lucide-react";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
@@ -24,6 +23,20 @@ import { useToast } from "@/app/hooks/useToast";
 import { userService } from "@/app/services/userService";
 import { approvalService } from "@/app/services/approvalService";
 import { User } from "@/app/types";
+
+const COPY = {
+  syncData: "Sync Data",
+  filters: "Filters:",
+  role: "Role:",
+  allRoles: "All Roles",
+  creator: "Creator",
+  brand: "Brand",
+  status: "Status:",
+  allStatus: "All Status",
+  active: "Active",
+  pending: "Pending",
+  restricted: "Restricted",
+} as const;
 
 export default function UsersPage() {
   const { hasPermission } = useAdminAuth();
@@ -59,14 +72,15 @@ export default function UsersPage() {
     actionType: null
   });
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setIsError(false);
     setErrorMsg(null);
     try {
-      const data = await userService.getUsers();
+      const data = await userService.getUsers(signal);
       setLocalUsers(data);
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("[UsersPage] Failed to fetch identity protocols:", err instanceof Error ? err.message : JSON.stringify(err));
       setIsError(true);
       const friendlyMsg = "Failed to load users. Please check backend connection and permissions.";
@@ -78,8 +92,13 @@ export default function UsersPage() {
   }, [showToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    loadUsers();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadUsers(controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Users request cancelled", "AbortError"));
   }, [loadUsers]);
 
   const filteredUsers = useMemo(() => {
@@ -233,7 +252,7 @@ export default function UsersPage() {
       accessorKey: "created_at",
       header: "Created",
       cell: ({ row }) => {
-        const dateStr = (row.original as any).createdAt || row.original.lastActive;
+        const dateStr = row.original.createdAt || row.original.created_at || row.original.lastActive;
         return (
           <span className="text-[14px] text-[#4B5563]">
             {dateStr ? new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
@@ -305,11 +324,11 @@ export default function UsersPage() {
           subtitle="Enterprise-grade management of platform entities and security vectors."
         >
           <button 
-            onClick={() => loadUsers()}
+            onClick={() => void loadUsers()}
             disabled={isLoading}
             className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
-            <span>Sync Data</span>
+            <span>{COPY.syncData}</span>
           </button>
         </PageHeader>
 
@@ -317,34 +336,34 @@ export default function UsersPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
           <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
             <Filter className="w-4 h-4 text-primary" />
-            <span>Filters:</span>
+            <span>{COPY.filters}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
-              <span className="text-xs text-text-secondary">Role:</span>
+              <span className="text-xs text-text-secondary">{COPY.role}</span>
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
                 className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-surface">All Roles</option>
-                <option value="creator" className="bg-surface">Creator</option>
-                <option value="brand" className="bg-surface">Brand</option>
+                <option value="all" className="bg-surface">{COPY.allRoles}</option>
+                <option value="creator" className="bg-surface">{COPY.creator}</option>
+                <option value="brand" className="bg-surface">{COPY.brand}</option>
               </select>
             </div>
 
             <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
-              <span className="text-xs text-text-secondary">Status:</span>
+              <span className="text-xs text-text-secondary">{COPY.status}</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-surface">All Status</option>
-                <option value="active" className="bg-surface">Active</option>
-                <option value="pending" className="bg-surface">Pending</option>
-                <option value="restricted" className="bg-surface">Restricted</option>
+                <option value="all" className="bg-surface">{COPY.allStatus}</option>
+                <option value="active" className="bg-surface">{COPY.active}</option>
+                <option value="pending" className="bg-surface">{COPY.pending}</option>
+                <option value="restricted" className="bg-surface">{COPY.restricted}</option>
               </select>
             </div>
           </div>

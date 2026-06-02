@@ -8,7 +8,13 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { cn } from "@/app/lib/utils";
-import { supabase } from "@/lib/supabase/client";
+import { adminFetch, isAbortError, isAdminSessionExpiredError } from "@/app/services/adminApiClient";
+import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
+
+const COPY = {
+  systemHealth: "System Health",
+  sync: "Sync:",
+} as const;
 
 interface HealthData {
   success: boolean;
@@ -21,33 +27,44 @@ interface HealthData {
 }
 
 export default function SystemStatusPopover() {
+  const auth = useAdminAuthOptional();
   const [healthData, setHealthData] = useState<HealthData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
+    if (!auth?.session?.access_token) {
+      return;
+    }
 
-        const res = await fetch("/api/admin/health", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
+    const controller = new AbortController();
+    const fetchHealth = async () => {
+      setLoading(true);
+      try {
+        const res = await adminFetch("/api/admin/health", {
+          signal: controller.signal,
         });
         const data = await res.json();
         if (data.success) {
           setHealthData(data);
         }
       } catch (err) {
+        if (isAbortError(err)) return;
+        if (isAdminSessionExpiredError(err)) return;
         console.error("Failed to sync system status:", err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchHealth();
-  }, []);
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void fetchHealth();
+      }
+    });
+    return () => controller.abort(new DOMException("System status request cancelled", "AbortError"));
+  }, [auth?.session?.access_token]);
 
   const isConnected = healthData?.supabaseConnected ?? true;
 
@@ -75,7 +92,7 @@ export default function SystemStatusPopover() {
       >
         <div className="space-y-5">
           <div className="flex items-center justify-between border-b border-border pb-3">
-            <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em]">System Health</h4>
+            <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em]">{COPY.systemHealth}</h4>
             <div className="flex items-center space-x-2">
                <span className={cn("text-[10px] font-bold uppercase", isConnected ? "text-success-green" : "text-accent-orange")}>
                  {isConnected ? "Operational" : "Degraded"}
@@ -115,7 +132,7 @@ export default function SystemStatusPopover() {
         <div className="mt-6 pt-4 border-t border-border flex justify-center items-center">
           <Activity className="w-3 h-3 text-foreground/20 mr-1.5" />
           <span className="text-[9px] font-black text-foreground/30 uppercase tracking-[0.2em]">
-            Sync: {healthData?.timestamp ? new Date(healthData.timestamp).toLocaleTimeString() : 'N/A'}
+            {COPY.sync} {healthData?.timestamp ? new Date(healthData.timestamp).toLocaleTimeString() : 'N/A'}
           </span>
         </div>
       </DropdownMenuContent>

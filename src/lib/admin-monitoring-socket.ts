@@ -55,9 +55,26 @@ export type AdminMonitoringSocket = Socket<
   ClientToServerEvents
 >;
 
+let monitoringSocket: AdminMonitoringSocket | null = null;
+let monitoringSocketToken: string | null = null;
+
 export function createAdminMonitoringSocket(
   adminToken: string
 ): AdminMonitoringSocket | null {
+  if (
+    monitoringSocket &&
+    monitoringSocketToken === adminToken &&
+    monitoringSocket.connected
+  ) {
+    return monitoringSocket;
+  }
+
+  if (monitoringSocket && monitoringSocketToken !== adminToken) {
+    monitoringSocket.removeAllListeners();
+    monitoringSocket.disconnect();
+    monitoringSocket = null;
+  }
+
   const socketUrl =
     process.env.NEXT_PUBLIC_BACKEND_SOCKET_URL;
 
@@ -69,7 +86,8 @@ export function createAdminMonitoringSocket(
     return null;
   }
 
-  return io(
+  monitoringSocketToken = adminToken;
+  monitoringSocket = io(
     `${socketUrl}/admin-monitoring`,
     {
       auth: {
@@ -87,4 +105,13 @@ export function createAdminMonitoringSocket(
       reconnectionDelay: 1000,
     }
   );
+
+  monitoringSocket.on("disconnect", () => {
+    if (!monitoringSocket?.connected) {
+      monitoringSocket = null;
+      monitoringSocketToken = null;
+    }
+  });
+
+  return monitoringSocket;
 }

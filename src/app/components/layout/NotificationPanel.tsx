@@ -18,34 +18,63 @@ import {
 import { cn } from "@/app/lib/utils";
 import { notificationService, AdminNotification } from "@/app/services/notificationService";
 import { useToast } from "@/app/hooks/useToast";
+import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
+import { isAdminSessionExpiredError } from "@/app/services/adminApiClient";
+
+const COPY = {
+  intelFeed: "Intel Feed",
+  realtimeAlerts: "Real-time administrative alerts",
+  synchronizingFeed: "Synchronizing Feed...",
+  retrySync: "Retry Sync",
+  noNotifications: "No notifications yet",
+  nominalFeed: "Your system operations feed is currently nominal.",
+  refreshFeed: "Refresh Feed",
+  close: "Close",
+} as const;
 
 export function NotificationPanel({ onClose }: { onClose?: () => void }) {
   const router = useRouter();
   const { showToast } = useToast();
+  const auth = useAdminAuthOptional();
 
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadNotifications = useCallback(async () => {
+  const loadNotifications = useCallback(async (signal?: AbortSignal) => {
+    if (!auth?.session?.access_token) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const res = await notificationService.getNotifications();
+      const res = await notificationService.getNotifications(signal);
       setNotifications(res.data);
       setUnreadCount(res.unreadCount);
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (isAdminSessionExpiredError(err)) return;
       const msg = err instanceof Error ? err.message : "Failed to load notifications.";
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [auth?.session?.access_token]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    void loadNotifications();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadNotifications(controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Notification panel request cancelled", "AbortError"));
   }, [loadNotifications]);
 
   const handleMarkAsRead = async (id: string, href?: string | null) => {
@@ -96,8 +125,8 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
             <Bell className="w-4 h-4 text-primary animate-pulse" />
           </div>
           <div>
-            <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em]">Intel Feed</h3>
-            <p className="text-[10px] text-foreground/40 font-medium">Real-time administrative alerts</p>
+            <h3 className="text-xs font-black text-foreground uppercase tracking-[0.2em]">{COPY.intelFeed}</h3>
+            <p className="text-[10px] text-foreground/40 font-medium">{COPY.realtimeAlerts}</p>
           </div>
         </div>
         {unreadCount > 0 && (
@@ -113,24 +142,24 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
           <div className="py-16 text-center flex flex-col items-center justify-center space-y-3">
             <RefreshCw className="w-5 h-5 text-primary animate-spin" />
             <span className="text-xs font-black uppercase tracking-widest text-foreground/40">
-              Synchronizing Feed...
+              {COPY.synchronizingFeed}
             </span>
           </div>
         ) : error ? (
           <div className="py-12 text-center space-y-4">
             <p className="text-xs font-semibold text-error px-4">{error}</p>
             <button
-              onClick={loadNotifications}
+              onClick={() => void loadNotifications()}
               className="px-4 py-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-[10px] font-black uppercase tracking-widest text-white border border-border transition-all"
             >
-              Retry Sync
+              {COPY.retrySync}
             </button>
           </div>
         ) : notifications.length === 0 ? (
           <div className="py-16 text-center space-y-2">
             <Info className="w-8 h-8 text-foreground/20 mx-auto" />
-            <p className="text-xs font-black uppercase tracking-widest text-foreground/40">No notifications yet</p>
-            <p className="text-[10px] font-medium text-foreground/20">Your system operations feed is currently nominal.</p>
+            <p className="text-xs font-black uppercase tracking-widest text-foreground/40">{COPY.noNotifications}</p>
+            <p className="text-[10px] font-medium text-foreground/20">{COPY.nominalFeed}</p>
           </div>
         ) : (
           notifications.map((notification) => (
@@ -182,7 +211,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
           className="flex items-center space-x-2 text-[10px] font-black text-foreground/40 hover:text-white uppercase tracking-widest transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
-          <span>Refresh Feed</span>
+          <span>{COPY.refreshFeed}</span>
         </button>
         {onClose && (
           <button
@@ -190,7 +219,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
             className="flex items-center space-x-1.5 text-[10px] font-black text-foreground/40 hover:text-white uppercase tracking-widest transition-colors"
           >
             <X className="w-3.5 h-3.5" />
-            <span>Close</span>
+            <span>{COPY.close}</span>
           </button>
         )}
       </div>

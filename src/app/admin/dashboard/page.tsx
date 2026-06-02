@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { 
@@ -24,6 +24,7 @@ import { AdminDonutChart, AdminBarChart } from "@/app/components/ui/charts";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
 import { cn } from "@/app/lib/utils";
 import { useToast } from "@/app/hooks/useToast";
+import { isAbortError } from "@/app/services/adminApiClient";
 import { dashboardService, DashboardStats } from "@/app/services/dashboardService";
 import { approvalService } from "@/app/services/approvalService";
 import { LucideIcon } from "lucide-react";
@@ -40,6 +41,30 @@ interface DynamicStat {
   action: () => void;
 }
 
+const COPY = {
+  welcome: "Welcome back, Admin 👋",
+  subtitle:
+    "Here's what's happening with your UGC-FY marketplace today. Monitor active campaigns, creator approvals, and platform revenue.",
+  settings: "Settings",
+  systemLive: "System Live & Connected",
+  supabaseHealthy: "Supabase: Healthy",
+  apiNormal: "API Status: Normal",
+  syncingLedger: "Synchronizing Intelligence Ledger...",
+  infrastructureDesync: "Infrastructure Desync",
+  secureHandshake: "Unable to establish a secure handshake with the administrative API.",
+  retryHandshake: "Retry Handshake",
+  noUserData: "No user data available yet.",
+  recentRegistrations: "Recent Registrations",
+  onboardingStream: "Live entity onboarding stream",
+  viewAllUsers: "View All Users",
+  noRecentEntities: "No recent entities found in ledger.",
+  approvalQueue: "Approval Queue",
+  pendingVerification: "Pending verification",
+  approvalQueueEmpty: "Approval queue is empty.",
+  approve: "Approve",
+  reject: "Reject",
+} as const;
+
 export default function DashboardPage() {
 
   const [statsData, setStatsData] = useState<DashboardStats | null>(null);
@@ -51,20 +76,16 @@ export default function DashboardPage() {
 
   const { showToast } = useToast();
   const router = useRouter();
+  const realtimeRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadStats = useCallback(async (silent = false) => {
+  const loadStats = useCallback(async (silent = false, signal?: AbortSignal) => {
     if (!silent) setIsLoading(true);
     setIsError(false);
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        router.push("/admin/login", { scroll: false });
-        return;
-      }
-
-      const data = await dashboardService.getStats();
+      const data = await dashboardService.getStats(signal);
       setStatsData(data);
     } catch (err: unknown) {
+      if (isAbortError(err)) return;
       const normalizedError = normalizeError(err);
       console.error("[DashboardPage] Failed to load stats:", normalizedError);
       setIsError(true);
@@ -72,13 +93,19 @@ export default function DashboardPage() {
         showToast(normalizedError.message, "error");
       }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  }, [router, showToast]);
+  }, [showToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    loadStats();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadStats(false, controller.signal);
+      }
+    });
 
     const channel = supabase
       .channel('schema-db-changes')
@@ -90,12 +117,22 @@ export default function DashboardPage() {
           table: 'profiles',
         },
         () => {
-          loadStats(true);
+          if (realtimeRefreshRef.current) {
+            clearTimeout(realtimeRefreshRef.current);
+          }
+          realtimeRefreshRef.current = setTimeout(() => {
+            void loadStats(true);
+          }, 750);
         }
       )
       .subscribe();
 
     return () => {
+      controller.abort(new DOMException("Dashboard request cancelled", "AbortError"));
+      if (realtimeRefreshRef.current) {
+        clearTimeout(realtimeRefreshRef.current);
+        realtimeRefreshRef.current = null;
+      }
       supabase.removeChannel(channel);
     };
   }, [loadStats]);
@@ -220,10 +257,10 @@ export default function DashboardPage() {
           
           <div className="space-y-4 relative z-10">
             <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
-              Welcome back, Admin 👋
+              {COPY.welcome}
             </h1>
             <p className="text-white/80 text-sm md:text-base max-w-xl">
-              Here is what&apos;s happening with your UGC-FY marketplace today. Monitor active campaigns, creator approvals, and platform revenue.
+              {COPY.subtitle}
             </p>
           </div>
 
@@ -241,7 +278,7 @@ export default function DashboardPage() {
               className="flex items-center space-x-2 px-6 py-3.5 rounded-2xl bg-white text-primary font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
             >
               <Settings className="w-4 h-4" />
-              <span>Settings</span>
+              <span>{COPY.settings}</span>
             </button>
           </div>
         </div>
@@ -255,18 +292,18 @@ export default function DashboardPage() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-success" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest">System Live & Connected</p>
+                <p className="text-xs font-bold uppercase tracking-widest">{COPY.systemLive}</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-6 text-[11px] font-bold uppercase tracking-widest">
               <div className="flex items-center space-x-2">
                 <Database className="w-4 h-4 opacity-70" />
-                <span>Supabase: Healthy</span>
+                <span>{COPY.supabaseHealthy}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Activity className="w-4 h-4 opacity-70" />
-                <span>API Status: Normal</span>
+                <span>{COPY.apiNormal}</span>
               </div>
             </div>
           </div>
@@ -275,7 +312,7 @@ export default function DashboardPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20">Synchronizing Intelligence Ledger...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20">{COPY.syncingLedger}</p>
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-6">
@@ -283,14 +320,14 @@ export default function DashboardPage() {
                <AlertCircle className="w-12 h-12" />
             </div>
             <div className="text-center space-y-2">
-              <p className="text-lg font-black text-foreground">Infrastructure Desync</p>
-              <p className="text-sm text-foreground/40">Unable to establish a secure handshake with the administrative API.</p>
+              <p className="text-lg font-black text-foreground">{COPY.infrastructureDesync}</p>
+              <p className="text-sm text-foreground/40">{COPY.secureHandshake}</p>
             </div>
             <button 
               onClick={() => loadStats()}
               className="h-12 px-8 rounded-2xl bg-surface-elevated border border-border text-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:border-primary transition-all active:scale-95"
             >
-              Retry Handshake
+              {COPY.retryHandshake}
             </button>
           </div>
         ) : (
@@ -298,9 +335,13 @@ export default function DashboardPage() {
             {/* Stats Grid */}
             <div className="dashboard-grid">
               {dynamicStats.map((stat, i) => (
-                <StatCard 
+                <StatCard
                   key={stat.label}
-                  {...stat}
+                  label={stat.label}
+                  value={stat.value}
+                  trend={stat.trend}
+                  up={stat.up}
+                  icon={stat.icon}
                   delay={i * 0.1}
                   color={stat.color}
                   onClick={stat.action}
@@ -320,7 +361,7 @@ export default function DashboardPage() {
               <div className="mt-8">
                 {totalRoles === 0 ? (
                   <div className="h-[240px] flex items-center justify-center text-foreground/40 text-sm font-semibold">
-                    No user data available yet.
+                    {COPY.noUserData}
                   </div>
                 ) : (
                   <AdminDonutChart data={roleData} height={240} />
@@ -348,21 +389,21 @@ export default function DashboardPage() {
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
                 <div className="space-y-1">
-                  <h3 className="text-2xl font-black text-foreground tracking-tighter">Recent Registrations</h3>
-                  <p className="stat-label">Live entity onboarding stream</p>
+                  <h3 className="text-2xl font-black text-foreground tracking-tighter">{COPY.recentRegistrations}</h3>
+                  <p className="stat-label">{COPY.onboardingStream}</p>
                 </div>
                 <button 
                   onClick={() => router.push("/admin/users", { scroll: false })}
                   className="px-6 py-3 rounded-2xl bg-surface-elevated border border-border text-[10px] font-black text-foreground/40 hover:bg-white hover:text-black transition-all flex items-center space-x-3 uppercase tracking-widest group/btn shadow-sm"
                 >
-                  <span>View All Users</span>
+                  <span>{COPY.viewAllUsers}</span>
                   <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
                 </button>
               </div>
 
               <div className="space-y-4">
                 {statsData.recentUsers.length === 0 ? (
-                  <p className="text-center py-12 text-foreground/20 text-xs font-black uppercase tracking-widest">No recent entities found in ledger.</p>
+                  <p className="text-center py-12 text-foreground/20 text-xs font-black uppercase tracking-widest">{COPY.noRecentEntities}</p>
                 ) : (
                   statsData.recentUsers.map((user) => (
                     <div 
@@ -404,8 +445,8 @@ export default function DashboardPage() {
                 
                 <div className="flex items-center justify-between mb-10">
                   <div className="space-y-1">
-                    <h3 className="text-xl font-black text-foreground tracking-tighter">Approval Queue</h3>
-                    <p className="stat-label">Pending verification</p>
+                    <h3 className="text-xl font-black text-foreground tracking-tighter">{COPY.approvalQueue}</h3>
+                    <p className="stat-label">{COPY.pendingVerification}</p>
                   </div>
                   <button 
                     onClick={() => router.push("/admin/users?status=pending_review", { scroll: false })}
@@ -417,7 +458,7 @@ export default function DashboardPage() {
 
                 <div className="space-y-6">
                   {statsData.pendingApprovalQueue.length === 0 ? (
-                    <p className="text-center py-10 text-foreground/20 text-xs font-black uppercase tracking-widest">Approval queue is empty.</p>
+                    <p className="text-center py-10 text-foreground/20 text-xs font-black uppercase tracking-widest">{COPY.approvalQueueEmpty}</p>
                   ) : (
                     statsData.pendingApprovalQueue.map((item) => (
                       <div key={item.id} className="space-y-4 group/mod p-5 rounded-2xl bg-surface-elevated border border-border hover:border-border transition-all shadow-sm">
@@ -436,7 +477,7 @@ export default function DashboardPage() {
                             className="py-3 rounded-2xl bg-success-green text-white text-[10px] font-black uppercase tracking-widest hover:bg-success-green/90 transition-all shadow-lg shadow-success-green/20 active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-1"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Approve</span>
+                            <span>{COPY.approve}</span>
                           </button>
                           <button 
                             onClick={() => setSelectedRejectId(item.id)}
@@ -444,7 +485,7 @@ export default function DashboardPage() {
                             className="py-3 rounded-2xl bg-surface-elevated border border-border text-foreground/60 text-[10px] font-black uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm disabled:opacity-50 flex items-center justify-center space-x-1"
                           >
                             <XCircle className="w-3.5 h-3.5" />
-                            <span>Reject</span>
+                            <span>{COPY.reject}</span>
                           </button>
                         </div>
                       </div>

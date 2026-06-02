@@ -1,6 +1,5 @@
-import { supabase } from "@/lib/supabase/client";
-
 import { Brand, UserStatus } from "@/app/types";
+import { adminFetch } from "@/app/services/adminApiClient";
 
 export type ApprovalStatus =
   | "pending_review"
@@ -17,16 +16,19 @@ type ApiError = {
 
 type BrandApiResponseRow = {
   id: string;
+  profile_id?: string;
+  name?: string | null;
   email?: string | null;
-  full_name?: string | null;
-  approval_status?: ApprovalStatus | string;
-  rejection_reason?: string | null;
+  platform_id?: string | null;
+  company_name?: string | null;
+  industry?: string | null;
+  active_campaigns?: number | null;
+  aggregate_gmv?: number | null;
+  approval_status?: string | null;
+  kyc_status?: string | null;
+  created_at?: string | null;
   updated_at?: string | null;
-  profile?: {
-    id: string;
-    company_name?: string | null;
-    industry?: string | null;
-  } | null;
+  rejection_reason?: string | null;
 };
 
 type BrandsApiResponse = {
@@ -35,26 +37,6 @@ type BrandsApiResponse = {
   data?: BrandApiResponseRow[];
   error?: ApiError;
 };
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!session?.access_token) {
-    throw new Error("Admin session missing. Please login again.");
-  }
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-  };
-}
 
 function getApiErrorMessage(
   response: Response,
@@ -68,12 +50,11 @@ function getApiErrorMessage(
 }
 
 export const brandService = {
-  async getBrands(status?: string): Promise<Brand[]> {
+  async getBrands(status?: string, signal?: AbortSignal): Promise<Brand[]> {
     const url = status && status !== "all" ? `/api/admin/brands?approval_status=${status}` : "/api/admin/brands";
-    const response = await fetch(url, {
+    const response = await adminFetch(url, {
       method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
+      signal,
     });
 
     const payload = (await response
@@ -96,7 +77,7 @@ export const brandService = {
 
     const data = payload.data ?? [];
     
-    return data.map((item: any): Brand => {
+    return data.map((item: BrandApiResponseRow): Brand => {
       const approvalStatus = (item.approval_status as ApprovalStatus) || "pending_review";
       
       return {

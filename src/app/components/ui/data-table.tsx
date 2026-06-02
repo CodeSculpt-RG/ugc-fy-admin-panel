@@ -72,6 +72,11 @@ export function DataTable<TData, TValue>({
       globalFilter,
       columnVisibility: hasSearchKey && searchKey ? { [searchKey]: false } : {},
     },
+    initialState: {
+      pagination: {
+        pageSize: 25,
+      },
+    },
   });
 
   return (

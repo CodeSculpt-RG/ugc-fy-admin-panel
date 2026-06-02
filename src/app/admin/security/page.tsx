@@ -20,6 +20,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
+import { isAbortError } from "@/app/services/adminApiClient";
 import { securityService, SecurityPayload } from "@/app/services/securityService";
 import { useToast } from "@/app/hooks/useToast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
@@ -44,7 +45,7 @@ export default function SecurityPage() {
   const canRead = hasPermission("security.read");
   const canWrite = hasPermission("security.write");
 
-  const loadSecurity = useCallback(async () => {
+  const loadSecurity = useCallback(async (signal?: AbortSignal) => {
     if (authLoading) return;
     if (!canRead) {
       setIsUnauthorized(true);
@@ -57,13 +58,15 @@ export default function SecurityPage() {
     setIsUnauthorized(false);
     setMissingTableInfo({ isMissing: false, name: "", sql: "" });
     try {
-      const res = await securityService.getSecurityStatus();
+      const res = await securityService.getSecurityStatus(signal);
       if (res.isMissingTable && res.tableName && res.migrationSql) {
+        setData(null);
         setMissingTableInfo({ isMissing: true, name: res.tableName, sql: res.migrationSql });
       } else {
         setData(res);
       }
     } catch (error: unknown) {
+      if (isAbortError(error)) return;
       const msg = error instanceof Error ? error.message : "Failed to fetch security status";
       console.error("[SecurityPage] Failed to fetch security status:", msg);
       if (msg.includes("permission") || msg.includes("unauthorized") || msg.includes("DENIED")) {
@@ -73,13 +76,20 @@ export default function SecurityPage() {
         showToast("Infrastructure synchronization failed.", "error");
       }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [authLoading, canRead, showToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    loadSecurity();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadSecurity(controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Security request cancelled", "AbortError"));
   }, [loadSecurity]);
 
   const handleVerifyIntegrity = async () => {

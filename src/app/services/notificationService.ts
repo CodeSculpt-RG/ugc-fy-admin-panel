@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { adminFetch } from "@/app/services/adminApiClient";
 
 export type AdminNotification = {
   id: string;
@@ -19,32 +19,11 @@ export type NotificationsResponse = {
   unreadCount: number;
 };
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(`Auth error: ${error.message}`);
-  }
-
-  if (!session?.access_token) {
-    throw new Error("Administrative session required.");
-  }
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-  };
-}
-
 export const notificationService = {
-  getNotifications: async (): Promise<NotificationsResponse> => {
-    const response = await fetch("/api/admin/notifications", {
+  getNotifications: async (signal?: AbortSignal): Promise<NotificationsResponse> => {
+    const response = await adminFetch("/api/admin/notifications", {
       method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
+      signal,
     });
 
     const payload = (await response
@@ -73,10 +52,10 @@ export const notificationService = {
   },
 
   markAsRead: async (id: string): Promise<{ success: boolean; data?: AdminNotification }> => {
-    const response = await fetch(`/api/admin/notifications/${id}/read`, {
+    const response = await adminFetch(`/api/admin/notifications/${id}/read`, {
       method: "PATCH",
-      headers: await getAuthHeaders(),
       body: JSON.stringify({ is_read: true }),
+      dedupe: false,
     });
 
     const payload = (await response

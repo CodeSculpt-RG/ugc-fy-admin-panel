@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { adminFetch, isAbortError } from "@/app/services/adminApiClient";
 
 export type DashboardStats = {
   totalUsers: number;
@@ -70,25 +70,14 @@ type StatsApiResponse = {
 };
 
 export const dashboardService = {
-  getStats: async (): Promise<DashboardStats> => {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      throw new Error(`Authentication session error: ${sessionError.message}`);
-    }
-    if (!session?.access_token) {
-      throw new Error("Administrative session required. Please authenticate.");
-    }
-
+  getStats: async (signal?: AbortSignal): Promise<DashboardStats> => {
     let response: Response;
     try {
-      response = await fetch("/api/admin/dashboard/stats", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
+      response = await adminFetch("/api/admin/dashboard/stats", {
+        signal,
       });
     } catch (err: unknown) {
+      if (isAbortError(err)) throw err;
       const msg = err instanceof Error ? err.message : String(err);
       throw new Error(`Network failure: unable to connect to dashboard API. Details: ${msg}`);
     }

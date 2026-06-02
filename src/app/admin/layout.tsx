@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect } from "react";
-import DashboardShell from "@/app/components/layout/DashboardShell";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/store/authStore";
 
@@ -16,9 +15,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [user, pathname, router]);
 
-  if (pathname === "/admin/login") {
-    return <>{children}</>;
-  }
-
-  return <DashboardShell>{children}</DashboardShell>;
+  return <>{children}</>;
 }

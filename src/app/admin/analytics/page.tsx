@@ -26,6 +26,13 @@ import { analyticsService, AnalyticsPayload } from "@/app/services/analyticsServ
 import { useToast } from "@/app/hooks/useToast";
 
 const COLORS = ["#2563EB", "#F97316", "#F0F0FB", "#6366F1", "#EC4899", "#10B981", "#8B5CF6"];
+const responsiveChartProps = {
+  width: "100%",
+  height: "100%",
+  minWidth: 1,
+  minHeight: 1,
+  initialDimension: { width: 1, height: 1 },
+} as const;
 
 export default function AnalyticsPage() {
   const { showToast } = useToast();
@@ -163,7 +170,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
               <ChartCard title="Entity Acquisition" subtitle="Entity growth lifecycle analysis (Creators vs Corporate)">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer {...responsiveChartProps}>
                     <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorCreators" x1="0" y1="0" x2="0" y2="1">
@@ -201,7 +208,7 @@ export default function AnalyticsPage() {
 
               <ChartCard title="Revenue Yield (GMV)" subtitle="Weekly transaction volume and platform yield metrics">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer {...responsiveChartProps}>
                     <BarChart data={revData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} dy={15} />
@@ -229,7 +236,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <ChartCard title="Sector Distribution" subtitle="Ecosystem segmentation by industry vector" className="lg:col-span-1">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer {...responsiveChartProps}>
                     <PieChart>
                       <Pie
                         data={sectors}
@@ -272,7 +279,7 @@ export default function AnalyticsPage() {
 
               <ChartCard title="Retention Dynamics" subtitle="Temporal user behavior and active engagement analysis" className="lg:col-span-2">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer {...responsiveChartProps}>
                     <LineChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} dy={15} />

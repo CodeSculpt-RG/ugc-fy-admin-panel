@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { MessageSquare, AlertTriangle } from "lucide-react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
-import { supabase } from "@/lib/supabase/client";
 import { useRef } from "react";
+import { adminFetch, getAdminAuthHeaders, isAdminSessionExpiredError } from "@/app/services/adminApiClient";
 import {
   createAdminMonitoringSocket,
   type AdminMonitoringSocket,
@@ -17,6 +17,17 @@ interface Conversation {
   updated_at: string;
 }
 
+const COPY = {
+  description: "Monitor brand-creator conversations for safety, fraud prevention, and policy enforcement.",
+  privacyNotice: "Privacy Notice",
+  privacyBody:
+    "Chat monitoring is used strictly for safety, fraud prevention, dispute resolution, and policy enforcement. All actions are logged.",
+  noConversations: "No conversations found",
+  noConversationsBody: "There are currently no active conversations to monitor.",
+  conversation: "Conversation",
+  status: "Status:",
+} as const;
+
 export default function ChatMonitoringPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,23 +38,16 @@ export default function ChatMonitoringPage() {
   const [socketConnected, setSocketConnected] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchConversations() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session?.access_token) {
-          setError("Admin session missing. Please login again.");
-          setLoading(false);
-          return;
-        }
+        const headers = await getAdminAuthHeaders();
+        const token = headers.Authorization.replace("Bearer ", "");
+        setAdminToken(token);
 
-        setAdminToken(session.access_token);
-
-        const res = await fetch("/api/admin/chat-monitoring", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`
-          }
+        const res = await adminFetch("/api/admin/chat-monitoring", {
+          signal: controller.signal,
         });
         
         const json = await res.json();
@@ -52,13 +56,17 @@ export default function ChatMonitoringPage() {
         } else {
           setError(json.error?.message || "Failed to load");
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (isAdminSessionExpiredError(err)) return;
         setError("Network error");
       } finally {
         setLoading(false);
       }
     }
-    fetchConversations();
+    void fetchConversations();
+
+    return () => controller.abort(new DOMException("Chat monitoring request cancelled", "AbortError"));
   }, []);
 
   useEffect(() => {
@@ -108,6 +116,7 @@ export default function ChatMonitoringPage() {
 
     return () => {
       newSocket.emit('admin:leave-monitoring');
+      newSocket.removeAllListeners();
       newSocket.disconnect();
       socketRef.current = null;
     };
@@ -122,7 +131,7 @@ export default function ChatMonitoringPage() {
             Chat Monitoring
           </h1>
           <p className="text-foreground/60 mt-2">
-            Monitor brand-creator conversations for safety, fraud prevention, and policy enforcement.
+            {COPY.description}
           </p>
         </div>
         <div className={`px-4 py-2 rounded-full text-sm font-medium border ${
@@ -136,9 +145,9 @@ export default function ChatMonitoringPage() {
       <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 flex items-start space-x-4">
         <AlertTriangle className="w-6 h-6 text-red-400 shrink-0" />
         <div>
-          <h4 className="text-red-400 font-medium">Privacy Notice</h4>
+          <h4 className="text-red-400 font-medium">{COPY.privacyNotice}</h4>
           <p className="text-red-400/80 text-sm mt-1">
-            Chat monitoring is used strictly for safety, fraud prevention, dispute resolution, and policy enforcement. All actions are logged.
+            {COPY.privacyBody}
           </p>
         </div>
       </div>
@@ -153,8 +162,8 @@ export default function ChatMonitoringPage() {
         ) : conversations.length === 0 ? (
           <div className="text-center py-16 flex flex-col items-center">
             <MessageSquare className="w-12 h-12 text-foreground/20 mb-4" />
-            <h3 className="text-white font-medium text-lg">No conversations found</h3>
-            <p className="text-foreground/40 mt-2">There are currently no active conversations to monitor.</p>
+            <h3 className="text-white font-medium text-lg">{COPY.noConversations}</h3>
+            <p className="text-foreground/40 mt-2">{COPY.noConversationsBody}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -162,8 +171,8 @@ export default function ChatMonitoringPage() {
               <div key={conv.id} className="p-4 border border-border rounded-xl hover:bg-foreground/5 cursor-pointer transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-white font-medium">Conversation {conv.id.split('-')[0]}...</h4>
-                    <p className="text-foreground/40 text-sm mt-1">Status: {conv.status}</p>
+                    <h4 className="text-white font-medium">{COPY.conversation} {conv.id.split('-')[0]}...</h4>
+                    <p className="text-foreground/40 text-sm mt-1">{COPY.status} {conv.status}</p>
                   </div>
                   <div className="text-right">
                     <span className="text-xs text-foreground/40">

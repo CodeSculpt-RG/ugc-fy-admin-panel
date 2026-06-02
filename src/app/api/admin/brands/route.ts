@@ -17,7 +17,10 @@ type BrandProfileRow = {
   updated_at?: string | null;
 };
 
-function resolveBrandDisplayName(brandProfile: BrandProfileRow | null, profile: any) {
+function resolveBrandDisplayName(
+  brandProfile: BrandProfileRow | null,
+  profile: { full_name?: string | null; name?: string | null; email?: string | null } | null
+) {
   return (
     brandProfile?.company_name ||
     brandProfile?.brand_name ||
@@ -84,7 +87,7 @@ export async function GET(request: NextRequest) {
           .from("brand_profiles")
           .select("*")
           .in("user_id", brandIds);
-        data = fallback1.data as any;
+        data = fallback1.data as BrandProfileRow[] | null;
         error = fallback1.error;
 
         if (error && error.code === '42703') {
@@ -92,7 +95,7 @@ export async function GET(request: NextRequest) {
             .from("brand_profiles")
             .select("*")
             .in("id", brandIds);
-          data = fallback2.data as any;
+          data = fallback2.data as BrandProfileRow[] | null;
           error = fallback2.error;
         }
       }
@@ -101,7 +104,7 @@ export async function GET(request: NextRequest) {
         console.warn("[admin/brands] failed to fetch brand_profiles, continuing without them:", error);
       }
 
-      brandProfiles = data as any ?? [];
+      brandProfiles = (data as BrandProfileRow[]) ?? [];
     }
 
     const brandProfileMap = new Map<string, BrandProfileRow>(

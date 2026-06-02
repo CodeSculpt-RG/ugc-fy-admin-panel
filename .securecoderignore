@@ -1,0 +1,15 @@
+# Generated dependency artifacts. Direct dependency versions are pinned in
+# package.json; package-lock.json also contains upstream transitive and peer
+# dependency ranges from package manifests, so scanning it for range syntax
+# produces false positives.
+package-lock.json
+/package-lock.json
+admin_panel/package-lock.json
+**/package-lock.json
+**/package-lock*.json
+package-lock*.json
+node_modules/**
+.next/**
+dist/**
+build/**
+coverage/**

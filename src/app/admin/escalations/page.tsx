@@ -62,6 +62,19 @@ function normalizeError(error: unknown): string {
 }
 
 function formatIssueType(type: string): string {
+  const labels: Record<string, string> = {
+    behaviour: "Behaviour",
+    payment: "Payment",
+    deliverables: "Deliverables",
+    safety_concern: "Safety Concern",
+    payment_delay: "Payment Delay",
+    approval_delay: "Approval Delay",
+    safety_issue: "Safety Issue",
+    inappropriate_message: "Inappropriate Message",
+    content_delivery_issue: "Content Delivery Issue",
+    other: "Other",
+  };
+  if (labels[type]) return labels[type];
   if (!type) return "General Issue";
   return type
     .split("_")
@@ -75,6 +88,72 @@ interface StatsType {
   resolved: number;
   urgent: number;
 }
+
+const COPY = {
+  filter: "Filter",
+  export: "Export",
+  sync: "Sync",
+  tableMissingTitle: "Escalations table missing in current Supabase project",
+  tableMissingPrefix: "The database table",
+  tableMissingName: "public.chat_escalations",
+  tableMissingSuffix:
+    "could not be found. Please ensure that all schema migrations are applied and the Supabase PostgREST schema cache is reloaded.",
+  openEscalations: "Open Escalations",
+  underReview: "Under Review",
+  resolvedCases: "Resolved Cases",
+  urgentPriority: "Urgent Priority",
+  allStatuses: "All Statuses",
+  open: "Open",
+  resolved: "Resolved",
+  rejected: "Rejected",
+  allPriorities: "All Priorities",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
+  allIssueTypes: "All Issue Types",
+  behaviour: "Behaviour",
+  payment: "Payment",
+  deliverables: "Deliverables",
+  safetyConcern: "Safety Concern",
+  paymentDelay: "Payment Delay",
+  approvalDelay: "Approval Delay",
+  safetyIssue: "Safety Issue",
+  inappropriateMessage: "Inappropriate Message",
+  contentDeliveryIssue: "Content Delivery Issue",
+  other: "Other",
+  allDates: "All Dates",
+  today: "Today",
+  past7Days: "Past 7 Days",
+  past30Days: "Past 30 Days",
+  issue: "Issue",
+  raisedBy: "Raised By",
+  against: "Against",
+  priority: "Priority",
+  status: "Status",
+  created: "Created",
+  actions: "Actions",
+  noEscalations: "No escalations yet",
+  noEscalationsBody: "New chat reports will appear here when users raise an issue.",
+  view: "View",
+  detailsTitle: "Escalation Report Details",
+  rolePrefix: "Role:",
+  noProfileLinked: "No profile linked",
+  incidentContext: "Incident Context",
+  campaignLink: "Campaign Link",
+  conversationId: "Conversation ID",
+  attachedMedia: "Attached Media",
+  viewFile: "View File",
+  controlProtocol: "Incident Control Protocol",
+  priorityRating: "Priority Rating",
+  investigationStatus: "Investigation Status",
+  auditLog: "Investigation Audit Log",
+  saveNotes: "Save Notes",
+  openChat: "Open Chat",
+  noChatLink: "No Chat Link",
+  reject: "Reject",
+  resolveCase: "Resolve Case",
+} as const;
 
 export default function EscalationsPage() {
   const [escalations, setEscalations] = useState<EscalationRecord[]>([]);
@@ -91,16 +170,22 @@ export default function EscalationsPage() {
   const [adminNotesText, setAdminNotesText] = useState("");
   const { showToast } = useToast();
 
-  const fetchEscalations = useCallback(async () => {
+  const fetchEscalations = useCallback(async (signal?: AbortSignal) => {
     try {
       setIsLoading(true);
       setIsError(false);
       setIsTableMissing(false);
       
-      const { data: escalationsData, error: escalationsError } = await supabase
+      let escalationQuery = supabase
         .from('chat_escalations')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (signal) {
+        escalationQuery = escalationQuery.abortSignal(signal);
+      }
+
+      const { data: escalationsData, error: escalationsError } = await escalationQuery;
         
       if (escalationsError) throw escalationsError;
       
@@ -141,17 +226,23 @@ export default function EscalationsPage() {
         if (esc.against_profile_id) profileIds.add(esc.against_profile_id);
       });
 
-      const profilesMap: Record<string, ProfileLink> = {};
+      const profilesMap = new Map<string, ProfileLink>();
       if (profileIds.size > 0) {
-        const { data: profilesData } = await supabase
+        let profilesQuery = supabase
           .from('profiles')
           .select('id, email, platform_id, role, full_name')
           .in('id', Array.from(profileIds));
 
+        if (signal) {
+          profilesQuery = profilesQuery.abortSignal(signal);
+        }
+
+        const { data: profilesData } = await profilesQuery;
+
         if (profilesData) {
           const castedProfiles = profilesData as unknown as ProfileLink[];
           castedProfiles.forEach(p => {
-            profilesMap[p.id] = p;
+            profilesMap.set(p.id, p);
           });
         }
       }
@@ -159,12 +250,13 @@ export default function EscalationsPage() {
       // Map profiles onto escalations
       const mapped = normalizedRecords.map(esc => ({
         ...esc,
-        raised_by: esc.raised_by_profile_id ? profilesMap[esc.raised_by_profile_id] : null,
-        against: esc.against_profile_id ? profilesMap[esc.against_profile_id] : null,
+        raised_by: esc.raised_by_profile_id ? profilesMap.get(esc.raised_by_profile_id) ?? null : null,
+        against: esc.against_profile_id ? profilesMap.get(esc.against_profile_id) ?? null : null,
       }));
 
       setEscalations(mapped);
     } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       const errMsg = normalizeError(e);
       const isMissing = errMsg.includes("PGRST205") || 
                        errMsg.includes("42P01") || 
@@ -185,16 +277,13 @@ export default function EscalationsPage() {
   }, [showToast]);
 
   useEffect(() => {
-    let active = true;
-    const run = async () => {
-      if (active) {
-        await fetchEscalations();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void fetchEscalations(controller.signal);
       }
-    };
-    run();
-    return () => {
-      active = false;
-    };
+    });
+    return () => controller.abort(new DOMException("Escalations request cancelled", "AbortError"));
   }, [fetchEscalations]);
 
   const selectEscalation = (esc: EscalationRecord) => {
@@ -392,7 +481,7 @@ export default function EscalationsPage() {
               }`}
             >
               <SlidersHorizontal className="w-4 h-4" />
-              <span>Filter</span>
+              <span>{COPY.filter}</span>
             </button>
             <button 
               onClick={exportToCSV}
@@ -400,15 +489,15 @@ export default function EscalationsPage() {
               className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-surface border border-border text-foreground text-xs font-bold hover:bg-foreground/5 transition-all active:scale-95 disabled:opacity-40"
             >
               <Download className="w-4 h-4" />
-              <span>Export</span>
+              <span>{COPY.export}</span>
             </button>
             <button 
-              onClick={fetchEscalations}
+              onClick={() => void fetchEscalations()}
               disabled={isLoading}
               className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/10 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-              <span>Sync</span>
+              <span>{COPY.sync}</span>
             </button>
           </div>
         </PageHeader>
@@ -419,9 +508,9 @@ export default function EscalationsPage() {
               <ShieldAlert className="w-6 h-6" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-base font-bold text-foreground">Escalations table missing in current Supabase project</h3>
+              <h3 className="text-base font-bold text-foreground">{COPY.tableMissingTitle}</h3>
               <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
-                The database table <code>public.chat_escalations</code> could not be found. Please ensure that all schema migrations are applied and the Supabase PostgREST schema cache is reloaded.
+                {COPY.tableMissingPrefix} <code>{COPY.tableMissingName}</code> {COPY.tableMissingSuffix}
               </p>
             </div>
           </div>
@@ -432,7 +521,7 @@ export default function EscalationsPage() {
             {/* Stats Dashboard Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="p-6 rounded-[28px] bg-surface border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Open Escalations</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{COPY.openEscalations}</span>
                 <div className="flex items-baseline justify-between mt-4">
                   <span className="text-3xl font-black text-foreground">{stats.open}</span>
                   <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary">
@@ -442,7 +531,7 @@ export default function EscalationsPage() {
               </div>
 
               <div className="p-6 rounded-[28px] bg-surface border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Under Review</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{COPY.underReview}</span>
                 <div className="flex items-baseline justify-between mt-4">
                   <span className="text-3xl font-black text-foreground">{stats.underReview}</span>
                   <div className="p-2.5 rounded-xl bg-foreground/5 border border-border text-foreground/60">
@@ -452,7 +541,7 @@ export default function EscalationsPage() {
               </div>
 
               <div className="p-6 rounded-[28px] bg-surface border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Resolved Cases</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{COPY.resolvedCases}</span>
                 <div className="flex items-baseline justify-between mt-4">
                   <span className="text-3xl font-black text-foreground">{stats.resolved}</span>
                   <div className="p-2.5 rounded-xl bg-foreground/5 border border-border text-foreground/40">
@@ -462,7 +551,7 @@ export default function EscalationsPage() {
               </div>
 
               <div className="p-6 rounded-[28px] bg-surface border border-border shadow-sm flex flex-col justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Urgent Priority</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">{COPY.urgentPriority}</span>
                 <div className="flex items-baseline justify-between mt-4">
                   <span className="text-3xl font-black text-primary">{stats.urgent}</span>
                   <div className="p-2.5 rounded-xl bg-primary text-white shadow-md shadow-primary/20">
@@ -492,11 +581,11 @@ export default function EscalationsPage() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer"
                   >
-                    <option value="all">All Statuses</option>
-                    <option value="open">Open</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="all">{COPY.allStatuses}</option>
+                    <option value="open">{COPY.open}</option>
+                    <option value="under_review">{COPY.underReview}</option>
+                    <option value="resolved">{COPY.resolved}</option>
+                    <option value="rejected">{COPY.rejected}</option>
                   </select>
                 </div>
 
@@ -506,11 +595,11 @@ export default function EscalationsPage() {
                     onChange={(e) => setPriorityFilter(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer"
                   >
-                    <option value="all">All Priorities</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="all">{COPY.allPriorities}</option>
+                    <option value="low">{COPY.low}</option>
+                    <option value="medium">{COPY.medium}</option>
+                    <option value="high">{COPY.high}</option>
+                    <option value="urgent">{COPY.urgent}</option>
                   </select>
                 </div>
 
@@ -520,13 +609,17 @@ export default function EscalationsPage() {
                     onChange={(e) => setIssueTypeFilter(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer"
                   >
-                    <option value="all">All Issue Types</option>
-                    <option value="payment_delay">Payment Delay</option>
-                    <option value="approval_delay">Approval Delay</option>
-                    <option value="safety_issue">Safety Issue</option>
-                    <option value="inappropriate_message">Inappropriate Message</option>
-                    <option value="content_delivery_issue">Content Delivery Issue</option>
-                    <option value="other">Other</option>
+                    <option value="all">{COPY.allIssueTypes}</option>
+                    <option value="behaviour">{COPY.behaviour}</option>
+                    <option value="payment">{COPY.payment}</option>
+                    <option value="deliverables">{COPY.deliverables}</option>
+                    <option value="safety_concern">{COPY.safetyConcern}</option>
+                    <option value="payment_delay">{COPY.paymentDelay}</option>
+                    <option value="approval_delay">{COPY.approvalDelay}</option>
+                    <option value="safety_issue">{COPY.safetyIssue}</option>
+                    <option value="inappropriate_message">{COPY.inappropriateMessage}</option>
+                    <option value="content_delivery_issue">{COPY.contentDeliveryIssue}</option>
+                    <option value="other">{COPY.other}</option>
                   </select>
                 </div>
 
@@ -536,10 +629,10 @@ export default function EscalationsPage() {
                     onChange={(e) => setDateRangeFilter(e.target.value)}
                     className="w-full px-4 py-3 bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer"
                   >
-                    <option value="all">All Dates</option>
-                    <option value="today">Today</option>
-                    <option value="week">Past 7 Days</option>
-                    <option value="month">Past 30 Days</option>
+                    <option value="all">{COPY.allDates}</option>
+                    <option value="today">{COPY.today}</option>
+                    <option value="week">{COPY.past7Days}</option>
+                    <option value="month">{COPY.past30Days}</option>
                   </select>
                 </div>
               </div>
@@ -551,13 +644,13 @@ export default function EscalationsPage() {
                 <table className="w-full text-left text-sm border-collapse">
                   <thead className="bg-surface border-b border-border text-[9px] uppercase tracking-widest text-text-secondary">
                     <tr>
-                      <th className="px-8 py-5 font-black">Issue</th>
-                      <th className="px-8 py-5 font-black">Raised By</th>
-                      <th className="px-8 py-5 font-black">Against</th>
-                      <th className="px-8 py-5 font-black">Priority</th>
-                      <th className="px-8 py-5 font-black">Status</th>
-                      <th className="px-8 py-5 font-black">Created</th>
-                      <th className="px-8 py-5 font-black text-right">Actions</th>
+                      <th className="px-8 py-5 font-black">{COPY.issue}</th>
+                      <th className="px-8 py-5 font-black">{COPY.raisedBy}</th>
+                      <th className="px-8 py-5 font-black">{COPY.against}</th>
+                      <th className="px-8 py-5 font-black">{COPY.priority}</th>
+                      <th className="px-8 py-5 font-black">{COPY.status}</th>
+                      <th className="px-8 py-5 font-black">{COPY.created}</th>
+                      <th className="px-8 py-5 font-black text-right">{COPY.actions}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -574,9 +667,9 @@ export default function EscalationsPage() {
                             <div className="p-5 rounded-[24px] bg-foreground/[0.03] border border-border">
                               <HelpCircle className="w-8 h-8 text-text-secondary" />
                             </div>
-                            <h3 className="text-base font-bold text-foreground">No escalations yet</h3>
+                            <h3 className="text-base font-bold text-foreground">{COPY.noEscalations}</h3>
                             <p className="text-xs text-text-secondary leading-relaxed">
-                              New chat reports will appear here when users raise an issue.
+                              {COPY.noEscalationsBody}
                             </p>
                           </div>
                         </td>
@@ -649,7 +742,7 @@ export default function EscalationsPage() {
                             </td>
                             <td className="px-8 py-5 text-right">
                               <button className="px-3.5 py-1.5 bg-surface-elevated border border-border hover:border-primary/40 rounded-xl transition-all font-bold text-[10px] uppercase tracking-wider text-text-secondary hover:text-foreground active:scale-95">
-                                View
+                                {COPY.view}
                               </button>
                             </td>
                           </tr>
@@ -675,7 +768,7 @@ export default function EscalationsPage() {
             <div className="flex items-center justify-between p-6 border-b border-border">
               <div className="flex items-center space-x-3">
                 <ShieldAlert className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Escalation Report Details</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest text-foreground">{COPY.detailsTitle}</h3>
               </div>
               <button 
                 onClick={() => setSelectedEscalation(null)}
@@ -704,62 +797,62 @@ export default function EscalationsPage() {
                 <div className="p-4 rounded-xl bg-surface-elevated border border-border flex flex-col justify-between">
                   <div className="flex items-center space-x-2 text-text-secondary mb-2">
                     <User className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Raised By</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">{COPY.raisedBy}</span>
                   </div>
                   {selectedEscalation.raised_by ? (
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-foreground truncate">{selectedEscalation.raised_by.full_name || "Platform User"}</p>
                       <p className="text-[10px] text-text-secondary font-medium truncate">{selectedEscalation.raised_by.email}</p>
-                      <p className="text-[9px] text-text-secondary font-mono mt-1 uppercase tracking-wide">Role: {selectedEscalation.raised_by.role}</p>
+                      <p className="text-[9px] text-text-secondary font-mono mt-1 uppercase tracking-wide">{COPY.rolePrefix} {selectedEscalation.raised_by.role}</p>
                     </div>
                   ) : (
-                    <p className="text-xs font-semibold text-text-secondary italic">No profile linked</p>
+                    <p className="text-xs font-semibold text-text-secondary italic">{COPY.noProfileLinked}</p>
                   )}
                 </div>
 
                 <div className="p-4 rounded-xl bg-surface-elevated border border-border flex flex-col justify-between">
                   <div className="flex items-center space-x-2 text-text-secondary mb-2">
                     <User className="w-3.5 h-3.5" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Against</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">{COPY.against}</span>
                   </div>
                   {selectedEscalation.against ? (
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-foreground truncate">{selectedEscalation.against.full_name || "Platform User"}</p>
                       <p className="text-[10px] text-text-secondary font-medium truncate">{selectedEscalation.against.email}</p>
-                      <p className="text-[9px] text-text-secondary font-mono mt-1 uppercase tracking-wide">Role: {selectedEscalation.against.role}</p>
+                      <p className="text-[9px] text-text-secondary font-mono mt-1 uppercase tracking-wide">{COPY.rolePrefix} {selectedEscalation.against.role}</p>
                     </div>
                   ) : (
-                    <p className="text-xs font-semibold text-text-secondary italic">No profile linked</p>
+                    <p className="text-xs font-semibold text-text-secondary italic">{COPY.noProfileLinked}</p>
                   )}
                 </div>
               </div>
 
               {/* Linked Metadata Context */}
               <div className="space-y-3">
-                <h5 className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Incident Context</h5>
+                <h5 className="text-[9px] font-black uppercase tracking-widest text-text-secondary">{COPY.incidentContext}</h5>
                 <div className="space-y-2">
                   {selectedEscalation.campaign_id && (
                     <div className="flex justify-between items-center py-2 px-4 bg-surface-elevated border border-border rounded-xl text-xs font-medium text-foreground">
-                      <span className="text-text-secondary text-[10px]">Campaign Link</span>
+                      <span className="text-text-secondary text-[10px]">{COPY.campaignLink}</span>
                       <span className="font-mono text-[10px] text-foreground/80">{selectedEscalation.campaign_id}</span>
                     </div>
                   )}
                   {selectedEscalation.conversation_id && (
                     <div className="flex justify-between items-center py-2 px-4 bg-surface-elevated border border-border rounded-xl text-xs font-medium text-foreground">
-                      <span className="text-text-secondary text-[10px]">Conversation ID</span>
+                      <span className="text-text-secondary text-[10px]">{COPY.conversationId}</span>
                       <span className="font-mono text-[10px] text-foreground/80">{selectedEscalation.conversation_id}</span>
                     </div>
                   )}
                   {selectedEscalation.attachment_url && (
                     <div className="flex justify-between items-center py-2.5 px-4 bg-surface-elevated border border-border rounded-xl text-xs font-medium">
-                      <span className="text-text-secondary text-[10px]">Attached Media</span>
+                      <span className="text-text-secondary text-[10px]">{COPY.attachedMedia}</span>
                       <a 
                         href={selectedEscalation.attachment_url} 
                         target="_blank" 
                         rel="noreferrer"
                         className="inline-flex items-center space-x-1 text-primary hover:text-primary/95 text-[10px] font-bold uppercase tracking-wider"
                       >
-                        <span>View File</span>
+                        <span>{COPY.viewFile}</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
@@ -769,34 +862,34 @@ export default function EscalationsPage() {
 
               {/* Resolution Protocol & Control Suite */}
               <div className="border-t border-border pt-6 space-y-4">
-                <h5 className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Incident Control Protocol</h5>
+                <h5 className="text-[9px] font-black uppercase tracking-widest text-text-secondary">{COPY.controlProtocol}</h5>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2 flex flex-col">
-                    <span className="text-[10px] font-bold text-foreground">Priority Rating</span>
+                    <span className="text-[10px] font-bold text-foreground">{COPY.priorityRating}</span>
                     <select 
                       value={selectedEscalation.priority}
                       onChange={(e) => updatePriority(selectedEscalation.id, e.target.value)}
                       className="px-4 py-3 bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer transition-all"
                     >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
+                      <option value="low">{COPY.low}</option>
+                      <option value="medium">{COPY.medium}</option>
+                      <option value="high">{COPY.high}</option>
+                      <option value="urgent">{COPY.urgent}</option>
                     </select>
                   </div>
 
                   <div className="space-y-2 flex flex-col">
-                    <span className="text-[10px] font-bold text-foreground">Investigation Status</span>
+                    <span className="text-[10px] font-bold text-foreground">{COPY.investigationStatus}</span>
                     <select 
                       value={selectedEscalation.status}
                       onChange={(e) => updateStatus(selectedEscalation.id, e.target.value)}
                       className="px-4 py-3 bg-surface-elevated border border-border rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary cursor-pointer transition-all"
                     >
-                      <option value="open">Open</option>
-                      <option value="under_review">Under Review</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="rejected">Rejected</option>
+                      <option value="open">{COPY.open}</option>
+                      <option value="under_review">{COPY.underReview}</option>
+                      <option value="resolved">{COPY.resolved}</option>
+                      <option value="rejected">{COPY.rejected}</option>
                     </select>
                   </div>
                 </div>
@@ -805,12 +898,12 @@ export default function EscalationsPage() {
               {/* Admin Internal Investigation Notes */}
               <div className="border-t border-border pt-6 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary">Investigation Audit Log</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary">{COPY.auditLog}</span>
                   <button 
                     onClick={() => updateNotes(selectedEscalation.id)}
                     className="px-4 py-1.5 bg-foreground text-background hover:bg-foreground/90 transition-all font-bold text-[9px] uppercase tracking-wider rounded-lg"
                   >
-                    Save Notes
+                    {COPY.saveNotes}
                   </button>
                 </div>
                 <textarea 
@@ -831,12 +924,12 @@ export default function EscalationsPage() {
                   className="inline-flex items-center space-x-2 px-5 py-3.5 bg-foreground hover:bg-foreground/90 text-background rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>Open Chat</span>
+                  <span>{COPY.openChat}</span>
                 </a>
               ) : (
                 <div className="flex items-center space-x-2 text-text-secondary bg-surface border border-border px-4 py-2.5 rounded-xl">
                   <Info className="w-3.5 h-3.5" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest">No Chat Link</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest">{COPY.noChatLink}</span>
                 </div>
               )}
 
@@ -845,13 +938,13 @@ export default function EscalationsPage() {
                   onClick={() => updateStatus(selectedEscalation.id, "rejected")}
                   className="px-5 py-3.5 border border-border hover:border-primary/40 rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-foreground transition-all active:scale-95"
                 >
-                  Reject
+                  {COPY.reject}
                 </button>
                 <button 
                   onClick={() => updateStatus(selectedEscalation.id, "resolved")}
                   className="px-5 py-3.5 bg-primary text-white hover:bg-primary/90 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20 active:scale-95"
                 >
-                  Resolve Case
+                  {COPY.resolveCase}
                 </button>
               </div>
             </div>

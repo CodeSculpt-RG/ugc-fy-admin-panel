@@ -95,11 +95,26 @@ interface MissingTableStateProps {
 
 export function MissingTableState({ tableName, migrationSql, className }: MissingTableStateProps) {
   const [copied, setCopied] = React.useState(false);
+  const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) {
+        clearTimeout(copiedTimerRef.current);
+      }
+    };
+  }, []);
 
   const copySql = () => {
     navigator.clipboard.writeText(migrationSql);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copiedTimerRef.current) {
+      clearTimeout(copiedTimerRef.current);
+    }
+    copiedTimerRef.current = setTimeout(() => {
+      setCopied(false);
+      copiedTimerRef.current = null;
+    }, 2000);
   };
 
   const isEscalations = tableName === "chat_escalations";
@@ -138,4 +153,3 @@ export function MissingTableState({ tableName, migrationSql, className }: Missin
     </div>
   );
 }
-

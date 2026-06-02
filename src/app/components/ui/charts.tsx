@@ -4,6 +4,14 @@ import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart as RechartsLineChart, Line } from "recharts";
 import { ChartCard } from "./chart-card";
 
+const responsiveChartProps = {
+  width: "100%",
+  height: "100%",
+  minWidth: 1,
+  minHeight: 1,
+  initialDimension: { width: 1, height: 1 },
+} as const;
+
 // Re-export AdminChartCard as an alias for ChartCard or customized version
 export function AdminChartCard({ title, subtitle, children, className, headerAction }: {
   title: string;
@@ -83,7 +91,7 @@ export function AdminDonutChart({ data, height = 240 }: { data: { name: string; 
   return (
     <div className="flex flex-col items-center justify-center w-full">
       <div className="relative w-full min-w-0" style={{ height: `${height}px`, minHeight: `${height}px` }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer {...responsiveChartProps}>
           <PieChart>
             <Pie
               data={data}
@@ -139,7 +147,7 @@ export function AdminBarChart({ data, xKey, yKey, color = "#ff6a00", height = 24
 
   return (
     <div className="w-full min-w-0" style={{ height: `${height}px`, minHeight: `${height}px` }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer {...responsiveChartProps}>
         <RechartsBarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis 
@@ -190,7 +198,7 @@ export function AdminLineChart({ data, xKey, yKey, color = "#ff6a00", height = 2
 
   return (
     <div className="w-full min-w-0" style={{ height: `${height}px`, minHeight: `${height}px` }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer {...responsiveChartProps}>
         <RechartsLineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis 

@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { adminFetch } from "@/app/services/adminApiClient";
 
 type ApprovalStatus = "pending_review" | "approved" | "rejected" | "blocked" | "on_hold" | "pending" | "deleted";
 
@@ -27,14 +27,8 @@ type ApprovalApiResponse<T> = {
 
 export const approvalService = {
   getApprovals: async () => {
-    // Logic to fetch users/entities needing approval
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Administrative session expired.");
-
-    const response = await fetch("/api/admin/users/pending", {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+    const response = await adminFetch("/api/admin/users/pending", {
+      method: "GET",
     });
 
     const payload = await response.json() as ApprovalApiResponse<PendingUser[]>;
@@ -46,16 +40,10 @@ export const approvalService = {
     status: ApprovalStatus, 
     reason?: string
   ): Promise<PendingUser> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) throw new Error("Administrative session expired.");
-
-    const response = await fetch(`/api/admin/users/${userId}/approval`, {
+    const response = await adminFetch(`/api/admin/users/${userId}/approval`, {
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.access_token}`,
-      },
       body: JSON.stringify({ status, reason }),
+      dedupe: false,
     });
 
     const payload = await response.json() as ApprovalApiResponse<PendingUser>;

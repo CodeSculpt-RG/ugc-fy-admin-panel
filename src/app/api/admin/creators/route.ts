@@ -22,7 +22,10 @@ type CreatorProfileRow = {
   updated_at?: string | null;
 };
 
-function resolveCreatorDisplayName(creatorProfile: CreatorProfileRow | null, profile: any) {
+function resolveCreatorDisplayName(
+  creatorProfile: CreatorProfileRow | null,
+  profile: { full_name?: string | null; name?: string | null; email?: string | null } | null
+) {
   return (
     creatorProfile?.full_name ||
     creatorProfile?.username ||

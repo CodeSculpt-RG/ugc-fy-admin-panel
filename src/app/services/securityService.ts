@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase/client";
+import { adminFetch } from "@/app/services/adminApiClient";
 
 export type SecurityEventItem = {
   id: string;
@@ -30,32 +30,11 @@ export type SecurityPayload = {
   migrationSql?: string;
 };
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!session?.access_token) {
-    throw new Error("Admin session missing. Please login again.");
-  }
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${session.access_token}`,
-  };
-}
-
 export const securityService = {
-  getSecurityStatus: async (): Promise<SecurityPayload> => {
-    const response = await fetch("/api/admin/security", {
+  getSecurityStatus: async (signal?: AbortSignal): Promise<SecurityPayload> => {
+    const response = await adminFetch("/api/admin/security", {
       method: "GET",
-      headers: await getAuthHeaders(),
-      cache: "no-store",
+      signal,
     });
 
     const payload = (await response
@@ -64,6 +43,9 @@ export const securityService = {
       success?: boolean;
       source?: string;
       data?: SecurityPayload;
+      isMissingTable?: boolean;
+      tableName?: string;
+      migrationSql?: string;
       error?: { message?: string; code?: string; details?: string | null; hint?: string | null };
     } | null;
 
@@ -87,17 +69,22 @@ export const securityService = {
       throw new Error("Empty security payload data received.");
     }
 
-    return payload.data;
+    return {
+      ...payload.data,
+      isMissingTable: payload.data.isMissingTable ?? payload.isMissingTable,
+      tableName: payload.data.tableName ?? payload.tableName,
+      migrationSql: payload.data.migrationSql ?? payload.migrationSql,
+    };
   },
 
   executeAction: async (
     action: "verify_integrity" | "enforce_lifecycle_rotation" | "resolve_event",
     bodyPayload?: Record<string, unknown>
   ): Promise<{ success: boolean; data?: unknown }> => {
-    const response = await fetch("/api/admin/security/actions", {
+    const response = await adminFetch("/api/admin/security/actions", {
       method: "POST",
-      headers: await getAuthHeaders(),
       body: JSON.stringify({ action, ...bodyPayload }),
+      dedupe: false,
     });
 
     const payload = (await response

@@ -9,23 +9,38 @@ import {
 } from "@/app/components/ui/dropdown-menu";
 import { NotificationPanel } from "./NotificationPanel";
 import { notificationService } from "@/app/services/notificationService";
+import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
+import { isAdminSessionExpiredError } from "@/app/services/adminApiClient";
 
 export default function NotificationDropdown() {
+  const auth = useAdminAuthOptional();
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-  const checkUnread = useCallback(async () => {
+  const checkUnread = useCallback(async (signal?: AbortSignal) => {
+    if (!auth?.session?.access_token) {
+      setUnreadCount(0);
+      return;
+    }
+
     try {
-      const res = await notificationService.getNotifications();
+      const res = await notificationService.getNotifications(signal);
       setUnreadCount(res.unreadCount);
     } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (isAdminSessionExpiredError(e)) return;
       console.error("[NotificationDropdown] Failed unread check", e);
     }
-  }, []);
+  }, [auth?.session?.access_token]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    void checkUnread();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void checkUnread(controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Notification count request cancelled", "AbortError"));
   }, [checkUnread]);
 
   return (
@@ -33,7 +48,7 @@ export default function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           onClick={() => {
-            if (!isOpen) checkUnread();
+            if (!isOpen) void checkUnread();
           }}
           className="relative p-3.5 rounded-2xl bg-surface-elevated border border-border text-foreground/30 hover:text-foreground hover:bg-white/[0.06] hover:border-border transition-all group outline-none active:scale-90"
         >

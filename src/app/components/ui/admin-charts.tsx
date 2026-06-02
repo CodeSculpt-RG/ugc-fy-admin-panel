@@ -8,6 +8,13 @@ import { cn } from "@/app/lib/utils";
 type ChartData = any;
 
 const COLORS = ["#2563EB", "#10B981", "#F97316", "#EC4899", "#8B5CF6", "#14B8A6"];
+const responsiveChartProps = {
+  width: "100%",
+  height: "100%",
+  minWidth: 1,
+  minHeight: 1,
+  initialDimension: { width: 1, height: 1 },
+} as const;
 
 export const AdminChartEmptyState = ({ message = "No data available." }: { message?: string }) => (
   <div className="h-full flex items-center justify-center text-foreground/40 text-sm font-semibold">
@@ -77,7 +84,7 @@ export const AdminDonutChart = ({ data, emptyMessage = "No user data available y
   return (
     <div className="flex flex-col h-full w-full">
       <div className="h-[320px] min-h-[320px] w-full min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer {...responsiveChartProps}>
           <PieChart>
             <Pie
               data={chartData}
@@ -133,7 +140,7 @@ export const AdminBarChart = ({ data, emptyMessage = "No data available." }: { d
 
   return (
     <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer {...responsiveChartProps}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 700 }} dy={15} />
@@ -179,7 +186,7 @@ export const AdminLineChart = ({ data, lines, emptyMessage = "No data available.
 
   return (
     <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer {...responsiveChartProps}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 700 }} dy={15} />

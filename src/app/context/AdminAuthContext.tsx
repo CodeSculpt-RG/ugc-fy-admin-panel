@@ -11,6 +11,10 @@ import { supabase } from "@/lib/supabase/client";
 import type { AdminPermission, AdminRole } from "@/lib/api/adminPermissions";
 import type { AuthAdminUser } from "@/app/store/authStore";
 import { useAuthStore } from "@/app/store/authStore";
+import {
+  onAdminSessionExpired,
+  resetAdminSessionExpiredNotice,
+} from "@/app/services/adminApiClient";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,7 +43,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<{ access_token: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshAdmin = useCallback(async (currentSession?: { access_token: string } | null) => {
+  const refreshAdmin = useCallback(async (
+    currentSession?: { access_token: string } | null,
+    signal?: AbortSignal
+  ) => {
     try {
       const activeSession = currentSession !== undefined ? currentSession : (await supabase.auth.getSession()).data.session;
       if (!activeSession?.access_token) {
@@ -49,9 +56,13 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
       const response = await fetch("/api/admin/me", {
         headers: { Authorization: `Bearer ${activeSession.access_token}` },
+        signal,
       });
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          logout();
+        }
         setLoading(false);
         return;
       }
@@ -69,14 +80,22 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         setAuth(freshAdmin, activeSession.access_token);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       console.error("[AdminAuthContext] refreshAdmin failed:", err);
     } finally {
       setLoading(false);
     }
-  }, [setAuth]);
+  }, [setAuth, logout]);
 
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
+    const stopSessionExpiredListener = onAdminSessionExpired(() => {
+      if (!mounted) return;
+      setSession(null);
+      logout();
+      setLoading(false);
+    });
 
     supabase.auth.getSession().then(({ data, error }) => {
       if (!mounted) return;
@@ -89,7 +108,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
       setSession(data.session ?? null);
       if (data.session?.access_token) {
-        refreshAdmin(data.session).finally(() => {
+        refreshAdmin(data.session, controller.signal).finally(() => {
           if (mounted) setLoading(false);
         });
       } else {
@@ -103,7 +122,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       setSession(nextSession ?? null);
       if (nextSession?.access_token) {
-        refreshAdmin(nextSession);
+        resetAdminSessionExpiredNotice();
+        refreshAdmin(nextSession, controller.signal);
       } else {
         logout();
       }
@@ -112,6 +132,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      controller.abort(new DOMException("Admin auth request cancelled", "AbortError"));
+      stopSessionExpiredListener();
       subscription.unsubscribe();
     };
   }, [refreshAdmin, logout]);

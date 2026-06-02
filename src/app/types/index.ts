@@ -18,6 +18,8 @@ export interface Creator {
   approvedBy?: string;
   rejectionReason?: string;
   platformId?: string;
+  kycStatus?: string;
+  kyc_status?: string;
 }
 
 export interface Brand {
@@ -50,6 +52,8 @@ export interface User {
   riskLevel: RiskLevel;
   platformId?: string;
   phone?: string;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface ModerationItem {

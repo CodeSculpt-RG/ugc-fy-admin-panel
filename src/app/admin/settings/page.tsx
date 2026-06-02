@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader } from "@/app/components/ui/core";
-import { LoadingState, ErrorState } from "@/app/components/ui/shared-states";
+import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
 import {
   Globe,
   Shield,
@@ -16,7 +16,8 @@ import {
   Lock,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
-import { settingsService, PlatformSettingRow } from "@/app/services/settingsService";
+import { isAbortError } from "@/app/services/adminApiClient";
+import { settingsService, PlatformSettingRow, SettingsMissingTableError } from "@/app/services/settingsService";
 import { useToast } from "@/app/hooks/useToast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 
@@ -164,11 +165,26 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [missingTableInfo, setMissingTableInfo] = useState<{ isMissing: boolean; name: string; sql: string }>({
+    isMissing: false,
+    name: "",
+    sql: "",
+  });
 
   const canRead = hasPermission("settings.read");
   const canWrite = hasPermission("settings.write");
 
-  const loadSettings = useCallback(async () => {
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (typeof window === "undefined") return;
+      const tab = new URLSearchParams(window.location.search).get("tab");
+      if (tab === "security") {
+        setActiveSection("security_settings");
+      }
+    });
+  }, []);
+
+  const loadSettings = useCallback(async (signal?: AbortSignal) => {
     if (authLoading) return;
     if (!canRead) {
       setIsUnauthorized(true);
@@ -179,11 +195,17 @@ export default function SettingsPage() {
     setIsLoading(true);
     setIsError(false);
     setIsUnauthorized(false);
+    setMissingTableInfo({ isMissing: false, name: "", sql: "" });
     try {
-      const rows = await settingsService.getSettings();
+      const rows = await settingsService.getSettings(signal);
       const normalized = normalizeSettingsForm(rows);
       setForm(normalized);
     } catch (error: unknown) {
+      if (isAbortError(error)) return;
+      if (error instanceof SettingsMissingTableError) {
+        setMissingTableInfo({ isMissing: true, name: error.tableName, sql: error.migrationSql });
+        return;
+      }
       const msg = error instanceof Error ? error.message : "Failed to load settings";
       console.error("[SettingsPage] Sync failed:", msg);
       if (msg.includes("permission") || msg.includes("unauthorized") || msg.includes("DENIED")) {
@@ -193,13 +215,20 @@ export default function SettingsPage() {
         showToast("Infrastructure synchronization failed.", "error");
       }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [authLoading, canRead, showToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    loadSettings();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadSettings(controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Settings request cancelled", "AbortError"));
   }, [loadSettings]);
 
   const handleSave = async () => {
@@ -392,6 +421,8 @@ export default function SettingsPage() {
           <div className="xl:col-span-3 space-y-10">
             {isLoading ? (
               <LoadingState message="Synchronizing Platform Configuration Core..." />
+            ) : missingTableInfo.isMissing ? (
+              <MissingTableState tableName={missingTableInfo.name} migrationSql={missingTableInfo.sql} />
             ) : isError ? (
               <ErrorState onRetry={loadSettings} />
             ) : (
