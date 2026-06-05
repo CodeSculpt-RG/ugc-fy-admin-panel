@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { AdminPermission, AdminRole } from "@/lib/api/adminPermissions";
@@ -42,6 +43,9 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const { user, setAuth, logout } = useAuthStore();
   const [session, setSession] = useState<{ access_token: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Initialization lock to prevent duplicate API requests
+  const activeTokenRef = useRef<string | null>(null);
 
   const refreshAdmin = useCallback(async (
     currentSession?: { access_token: string } | null,
@@ -51,8 +55,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       const activeSession = currentSession !== undefined ? currentSession : (await supabase.auth.getSession()).data.session;
       if (!activeSession?.access_token) {
         setLoading(false);
+        activeTokenRef.current = null;
         return;
       }
+
+      // Lock check: prevent fetching again if we already have the state for this token
+      if (activeTokenRef.current === activeSession.access_token) {
+        setLoading(false);
+        return;
+      }
+      activeTokenRef.current = activeSession.access_token;
 
       const response = await fetch("/api/admin/me", {
         headers: { Authorization: `Bearer ${activeSession.access_token}` },
@@ -76,6 +88,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           name: payload.data.fullName || payload.data.email,
           permissions: payload.data.permissions as AdminPermission[],
           isActive: payload.data.isActive,
+          mustChangePassword: payload.data.mustChangePassword,
         };
         setAuth(freshAdmin, activeSession.access_token);
       }

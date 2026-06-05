@@ -20,7 +20,7 @@ export default function Navbar() {
         {/* Mobile Hamburger (Visible < 1024px) */}
         <button 
           onClick={toggleMobileMenu}
-          className="lg:hidden p-4 rounded-2xl bg-surface-elevated border border-border text-foreground/20 hover:text-foreground hover:bg-foreground/5 transition-all active:scale-90"
+          className="lg:hidden p-4 rounded-2xl bg-surface-elevated border border-border text-slate-400 hover:text-white hover:bg-foreground/5 transition-all active:scale-90"
         >
           <Menu className="w-6 h-6" />
         </button>
@@ -33,7 +33,7 @@ export default function Navbar() {
         )}>
           <div className={cn(
             "absolute left-6 top-1/2 -translate-y-1/2 flex items-center pointer-events-none transition-all duration-500",
-            isSearchFocused ? "text-primary scale-125" : "text-foreground/10"
+            isSearchFocused ? "text-primary scale-125" : "text-slate-500"
           )}>
             <Search className="w-4.5 h-4.5 stroke-[3]" />
           </div>
@@ -44,21 +44,21 @@ export default function Navbar() {
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             className={cn(
-              "w-full bg-surface-elevated border border-border rounded-full py-3.5 pl-16 pr-8 text-xs font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background focus:border-primary/20 transition-all duration-700",
+              "w-full bg-surface-elevated border border-border rounded-full py-3.5 pl-16 pr-8 text-xs font-medium text-foreground placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background focus:border-primary/20 transition-all duration-700",
               isSearchFocused ? "max-lg:h-14 shadow-sm" : "max-lg:w-0 max-lg:p-0 max-lg:border-0 max-lg:bg-transparent"
             )}
           />
 
           {!isSearchFocused && (
             <div className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 items-center space-x-2 px-3 py-2 rounded-xl bg-surface-elevated border border-border group-hover:border-border transition-all duration-500">
-              <span className="text-[10px] font-black text-foreground/10">⌘</span>
-              <span className="text-[10px] font-black text-foreground/10">K</span>
+              <span className="text-[10px] font-black text-slate-500">⌘</span>
+              <span className="text-[10px] font-black text-slate-500">K</span>
             </div>
 
           )}
           {isSearchFocused && (
             <button 
-              className="lg:hidden absolute right-12 top-1/2 -translate-y-1/2 text-foreground/20 p-4"
+              className="lg:hidden absolute right-12 top-1/2 -translate-y-1/2 text-slate-400 p-4"
               onClick={() => setIsSearchFocused(false)}
             >
               <X className="w-7 h-7" />

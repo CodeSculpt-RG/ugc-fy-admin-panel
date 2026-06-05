@@ -99,14 +99,21 @@ export async function adminFetch(
     ...(await getAdminAuthHeaders()),
     ...(options.headers || {}),
   };
+  // AbortSignal Guard Clause
+  let validSignal: AbortSignal | undefined = undefined;
+  if (options.signal && typeof AbortSignal !== 'undefined' && options.signal instanceof AbortSignal) {
+    validSignal = options.signal;
+  }
+
   const init: RequestInit = {
     ...fetchOptions,
     method,
     headers,
     cache: options.cache ?? "no-store",
+    signal: validSignal,
   };
 
-  if (init.signal?.aborted) {
+  if (validSignal?.aborted) {
     throw new DOMException("Administrative request cancelled", "AbortError");
   }
 

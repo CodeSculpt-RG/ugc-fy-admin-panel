@@ -212,35 +212,35 @@ export default function CreatorsPage() {
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => (
-        <span className="text-[14px] font-bold text-[#111827]">{row.original.name}</span>
+        <span className="text-[14px] font-bold text-[#111827] dark:text-white">{row.original.name}</span>
       ),
     },
     {
       accessorKey: "email",
       header: "Email",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#4B5563]">{row.original.email}</span>
+        <span className="text-[14px] text-[#4B5563] dark:text-white">{row.original.email}</span>
       ),
     },
     {
       accessorKey: "platformId",
       header: "Platform ID",
       cell: ({ row }) => (
-        <span className="text-[14px] font-mono text-[#4B5563]">{row.original.platformId || "CN000000"}</span>
+        <span className="text-[14px] font-mono text-[#4B5563] dark:text-white">{row.original.platformId || "CN000000"}</span>
       ),
     },
     {
       accessorKey: "niche",
       header: "Category",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#4B5563]">{row.original.niche}</span>
+        <span className="text-[14px] text-[#4B5563] dark:text-white">{row.original.niche}</span>
       ),
     },
     {
       accessorKey: "followers",
       header: "Followers",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#111827]">{row.original.followers}</span>
+        <span className="text-[14px] text-[#111827] dark:text-white">{row.original.followers}</span>
       ),
     },
     {

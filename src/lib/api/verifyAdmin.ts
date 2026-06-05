@@ -82,7 +82,7 @@ export async function verifyAdmin(request: Request): Promise<VerifyAdminResult> 
   // Load the admin_profiles record (bypasses RLS via service role)
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("admin_profiles")
-    .select("id, email, full_name, role, is_active, invited_by")
+    .select("id, email, full_name, role, is_active, invited_by, must_change_password")
     .eq("id", user.id)
     .single();
 
@@ -161,6 +161,7 @@ export async function verifyAdmin(request: Request): Promise<VerifyAdminResult> 
     permissions,
     isActive: profile.is_active,
     fullName: profile.full_name ?? null,
+    mustChangePassword: profile.must_change_password ?? false,
   };
 
   return { success: true, status: 200, admin, user: admin };

@@ -33,7 +33,7 @@ export default function ChatMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adminToken, setAdminToken] = useState<string | null>(null);
-  
+
   const socketRef = useRef<AdminMonitoringSocket | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
 
@@ -49,7 +49,7 @@ export default function ChatMonitoringPage() {
         const res = await adminFetch("/api/admin/chat-monitoring", {
           signal: controller.signal,
         });
-        
+
         const json = await res.json();
         if (json.success) {
           setConversations(json.data);
@@ -116,8 +116,10 @@ export default function ChatMonitoringPage() {
 
     return () => {
       newSocket.emit('admin:leave-monitoring');
-      newSocket.removeAllListeners();
-      newSocket.disconnect();
+      newSocket.off('connect');
+      newSocket.off('disconnect');
+      newSocket.off('connect_error');
+      newSocket.off('chat:new-message');
       socketRef.current = null;
     };
   }, [adminToken]);
@@ -126,22 +128,21 @@ export default function ChatMonitoringPage() {
     <DashboardShell>
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
             <MessageSquare className="w-8 h-8 text-primary" />
             Chat Monitoring
           </h1>
-          <p className="text-foreground/60 mt-2">
+          <p className="text-gray-600 dark:text-foreground/60 mt-2">
             {COPY.description}
           </p>
         </div>
-        <div className={`px-4 py-2 rounded-full text-sm font-medium border ${
-          socketConnected ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
+        <div className={`px-4 py-2 rounded-full text-sm font-medium border ${socketConnected ? 'bg-green-500/10 text-green-400 border-green-500/20' :
           'bg-red-500/10 text-red-400 border-red-500/20'
-        }`}>
+          }`}>
           ● {socketConnected ? 'Live' : 'Offline'} Monitoring
         </div>
       </div>
-      
+
       <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 flex items-start space-x-4">
         <AlertTriangle className="w-6 h-6 text-red-400 shrink-0" />
         <div>
@@ -155,15 +156,15 @@ export default function ChatMonitoringPage() {
       <div className="bg-sidebar-bg border border-border rounded-2xl p-6 min-h-[400px]">
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
           </div>
         ) : error ? (
           <div className="text-red-400 text-center py-8">{error}</div>
         ) : conversations.length === 0 ? (
           <div className="text-center py-16 flex flex-col items-center">
             <MessageSquare className="w-12 h-12 text-foreground/20 mb-4" />
-            <h3 className="text-white font-medium text-lg">{COPY.noConversations}</h3>
-            <p className="text-foreground/40 mt-2">{COPY.noConversationsBody}</p>
+            <h3 className="text-gray-900 dark:text-white font-medium text-lg">{COPY.noConversations}</h3>
+            <p className="text-gray-500 dark:text-foreground/40 mt-2">{COPY.noConversationsBody}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -171,11 +172,11 @@ export default function ChatMonitoringPage() {
               <div key={conv.id} className="p-4 border border-border rounded-xl hover:bg-foreground/5 cursor-pointer transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-white font-medium">{COPY.conversation} {conv.id.split('-')[0]}...</h4>
-                    <p className="text-foreground/40 text-sm mt-1">{COPY.status} {conv.status}</p>
+                    <h4 className="text-gray-900 dark:text-white font-medium">{COPY.conversation} {conv.id.split('-')[0]}...</h4>
+                    <p className="text-gray-500 dark:text-foreground/40 text-sm mt-1">{COPY.status} {conv.status}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-foreground/40">
+                    <span className="text-xs text-gray-500 dark:text-foreground/40">
                       {new Date(conv.updated_at).toLocaleDateString()}
                     </span>
                   </div>

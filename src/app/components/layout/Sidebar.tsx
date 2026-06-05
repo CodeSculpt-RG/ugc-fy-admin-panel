@@ -30,9 +30,10 @@ import { useSidebar } from "@/app/context/SidebarContext";
 import { useAuthStore } from "@/app/store/authStore";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { ROUTE_PERMISSIONS } from "@/lib/api/adminPermissions";
-import { deleteCookie } from "cookies-next";
-import { useRouter } from "next/navigation";
-
+const COPY = {
+  brandName: "UGC FY",
+  platform: "Platform",
+} as const;
 
 const menuItems = [
   {
@@ -68,15 +69,12 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { isCollapsed, isMobileOpen, setIsMobileOpen } = useSidebar();
   const { logout } = useAuthStore();
   const { admin, hasPermission } = useAdminAuth();
 
   const handleLogout = () => {
-    deleteCookie("admin-token");
     logout();
-    router.push("/admin/login");
   };
 
   // Filter menu items based on permissions
@@ -86,8 +84,9 @@ export default function Sidebar() {
     return menuItems.map(group => ({
       ...group,
       items: group.items.filter(item => {
-        const requiredPermission = ROUTE_PERMISSIONS[item.href];
-        if (!requiredPermission) return true; // Allow if no permission defined (e.g. Dashboard if it's open)
+        const entry = Object.entries(ROUTE_PERMISSIONS).find(([route]) => route === item.href);
+        const requiredPermission = entry ? entry[1] : undefined;
+        if (!requiredPermission) return true; // Allow if no permission defined (e.g. Dashboard)
         return hasPermission(requiredPermission);
       })
     })).filter(group => group.items.length > 0);
@@ -120,14 +119,14 @@ export default function Sidebar() {
               className="flex flex-col"
             >
           <span className="text-2xl font-black tracking-tighter text-foreground leading-none whitespace-nowrap">
-                UGC FY<span className="text-primary">/</span>
+                {COPY.brandName}<span className="text-primary">/</span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20 mt-1">Platform</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mt-1">{COPY.platform}</span>
             </motion.div>
           )}
         </Link>
         {isMobileOpen && (
-          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-foreground/20 hover:text-foreground transition-all">
+          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-slate-400 hover:text-white transition-all">
             <X className="w-6 h-6" />
           </button>
         )}
@@ -139,7 +138,7 @@ export default function Sidebar() {
         {filteredMenuItems.map((group) => (
           <div key={group.group} className="space-y-8">
             {(!isCollapsed || isMobileOpen) && (
-              <h3 className="px-5 text-[10px] font-black text-foreground/10 uppercase tracking-[0.5em]">
+              <h3 className="px-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
                 {group.group}
               </h3>
             )}
@@ -184,7 +183,7 @@ export default function Sidebar() {
                     {(!isCollapsed || isMobileOpen) && (
                       <ChevronRight className={cn(
                         "w-4 h-4 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 relative z-10",
-                        isActive ? "text-foreground/40" : "text-foreground/5"
+                        isActive ? "text-slate-300" : "text-slate-600/30"
                       )} />
                     )}
                   </Link>

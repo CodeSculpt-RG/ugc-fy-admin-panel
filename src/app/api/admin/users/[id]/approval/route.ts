@@ -29,6 +29,7 @@ export async function PATCH(
 
     const updatePayload: Record<string, unknown> = {
       approval_status: status,
+      kyc_status: status,
       updated_at: new Date().toISOString(),
     };
 

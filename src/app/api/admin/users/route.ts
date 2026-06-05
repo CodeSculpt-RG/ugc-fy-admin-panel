@@ -25,8 +25,8 @@ export async function GET(request: Request) {
         updated_at,
         platform_id,
         is_visible_publicly,
-        brand_profiles(*),
-        creator_profiles(*)
+        brand_profiles!brand_profiles_profile_id_fkey(*),
+        creator_profiles!creator_profiles_id_fkey(*)
       `, { count: "exact" })
       .in('role', ['brand', 'creator'])
       .order("created_at", { ascending: false });

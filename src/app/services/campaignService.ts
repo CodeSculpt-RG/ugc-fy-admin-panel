@@ -80,31 +80,51 @@ export const campaignService = {
     status: string,
     reason?: string
   ): Promise<Campaign[]> {
-    const response = await fetch(`/api/admin/campaigns/${id}/status`, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ status, reason }),
-    });
-
-    const payload = (await response
-      .json()
-      .catch((): null => null)) as CampaignApiResponse | null;
-
-    if (!response.ok || !payload?.success) {
-      const message =
-        payload?.error?.message ||
-        `Directive rejected: unable to update campaign status. HTTP ${response.status}`;
-
-      console.error("[CampaignService] Status Update Error:", {
-        id,
-        status,
-        apiError: payload?.error ?? null,
-        message,
+    try {
+      const response = await fetch(`/api/admin/campaigns/${id}/status`, {
+        method: "PATCH",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ status, reason }),
       });
 
-      throw new Error(message);
-    }
+      const payload = (await response
+        .json()
+        .catch((): null => null)) as CampaignApiResponse | null;
 
-    return Array.isArray(payload?.data) ? payload.data : payload?.data ? [payload.data as unknown as Campaign] : [];
+      if (!response.ok || !payload?.success) {
+        const message =
+          payload?.error?.message ||
+          payload?.error?.details ||
+          `Directive rejected: unable to update campaign status. HTTP ${response.status}`;
+
+        console.error("[CampaignService] Status Update Error:", {
+          id,
+          status,
+          httpStatus: response.status,
+          apiError: payload?.error ?? null,
+          message,
+        });
+
+        throw new Error(message);
+      }
+
+      return Array.isArray(payload?.data)
+        ? payload.data
+        : payload?.data
+        ? [payload.data as unknown as Campaign]
+        : [];
+    } catch (err: unknown) {
+      // Normalize: if already an Error (from throw above), re-throw as-is.
+      // Otherwise safely serialize to avoid logging {} for non-Error throws.
+      if (err instanceof Error) {
+        throw err;
+      }
+      const errorMessage =
+        typeof err === "string"
+          ? err
+          : JSON.stringify(err, Object.getOwnPropertyNames(err as object));
+      console.error("[CampaignService] Unexpected Status Update Error:", errorMessage);
+      throw new Error(errorMessage || "An unexpected error occurred while updating campaign status.");
+    }
   },
 };

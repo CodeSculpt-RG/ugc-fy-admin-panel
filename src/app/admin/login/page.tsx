@@ -11,9 +11,22 @@ import { adminService } from "@/app/services/systemServices";
 import { useAuthStore } from "@/app/store/authStore";
 
 
+const TEXT = {
+  invalidEmail: "Invalid enterprise email",
+  invalidPassword: "Security protocol requires 6+ characters",
+  loginTitle: "Admin Login",
+  platformName: "UGC FY Platform",
+  setupSuccess: "Admin password created successfully. You can now login to the UGC FY Admin Panel.",
+  emailPlaceholder: "Enterprise Identifier",
+  passwordPlaceholder: "Security Credential",
+  authFailed: "Authentication protocol failed",
+  authorize: "Authorize Access",
+  footerText: "Restricted System. Unauthorized access attempts are monitored and recorded under security protocol 14-B.",
+};
+
 const loginSchema = z.object({
-  email: z.string().email("Invalid enterprise email"),
-  password: z.string().min(6, "Security protocol requires 6+ characters"),
+  email: z.string().email(TEXT.invalidEmail),
+  password: z.string().min(6, TEXT.invalidPassword),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -55,13 +68,15 @@ export default function AdminLoginPage() {
         router.push("/admin/dashboard");
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Authentication protocol failed";
+      const errorMessage = err instanceof Error ? err.message : TEXT.authFailed;
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
+  const { name: emailName, ref: emailRef, onChange: emailOnChange, onBlur: emailOnBlur } = register("email");
+  const { name: passwordName, ref: passwordRef, onChange: passwordOnChange, onBlur: passwordOnBlur } = register("password");
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6 selection:bg-primary/30 selection:text-primary">
@@ -72,15 +87,15 @@ export default function AdminLoginPage() {
           <div className="w-20 h-20 bg-primary/10 rounded-[30px] border border-primary/20 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/10 animate-pulse">
             <Shield className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-3">Admin Login</h1>
-          <p className="text-text-secondary text-sm font-semibold uppercase tracking-widest">UGC FY Platform</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-3">{TEXT.loginTitle}</h1>
+          <p className="text-text-secondary text-sm font-semibold uppercase tracking-widest">{TEXT.platformName}</p>
         </div>
 
         {setupSuccess && (
           <div className="mb-6 p-4 rounded-2xl bg-success-green/10 border border-success-green/20 flex items-center space-x-3 shadow-md shadow-success-green/5">
             <CheckCircle className="w-5 h-5 text-success-green shrink-0" />
             <p className="text-[11px] font-black text-success-green uppercase tracking-widest leading-normal">
-              Admin password created successfully. You can now login to the UGC FY Admin Panel.
+              {TEXT.setupSuccess}
             </p>
           </div>
         )}
@@ -95,8 +110,11 @@ export default function AdminLoginPage() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <input
-                  {...register("email")}
-                  placeholder="Enterprise Identifier"
+                  name={emailName}
+                  ref={emailRef}
+                  onChange={emailOnChange}
+                  onBlur={emailOnBlur}
+                  placeholder={TEXT.emailPlaceholder}
                   className="w-full h-16 bg-surface-elevated border border-border rounded-2xl pl-14 pr-6 text-foreground text-[13px] font-black tracking-tight focus:outline-none focus:border-primary/50 focus:bg-surface-elevated hover:bg-foreground/5 transition-all placeholder:text-foreground/10 shadow-inner"
                 />
                 {errors.email && (
@@ -109,9 +127,12 @@ export default function AdminLoginPage() {
                   <Lock className="w-5 h-5" />
                 </div>
                 <input
-                  {...register("password")}
+                  name={passwordName}
+                  ref={passwordRef}
+                  onChange={passwordOnChange}
+                  onBlur={passwordOnBlur}
                   type="password"
-                  placeholder="Security Credential"
+                  placeholder={TEXT.passwordPlaceholder}
                   className="w-full h-16 bg-surface-elevated border border-border rounded-2xl pl-14 pr-6 text-foreground text-[13px] font-black tracking-tight focus:outline-none focus:border-primary/50 focus:bg-surface-elevated hover:bg-foreground/5 transition-all placeholder:text-foreground/10 shadow-inner"
                 />
                 {errors.password && (
@@ -132,14 +153,14 @@ export default function AdminLoginPage() {
               disabled={loading}
               className="w-full h-16 bg-primary text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-primary/90 transition-all shadow-xl shadow-primary/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Authorize Access"}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : TEXT.authorize}
             </button>
           </form>
         </div>
 
         <div className="mt-12 pt-12 border-t border-border text-center">
           <p className="text-[9px] font-black text-foreground/20 uppercase tracking-[0.3em] leading-relaxed max-w-[300px] mx-auto">
-            Restricted System. Unauthorized access attempts are monitored and recorded under security protocol 14-B.
+            {TEXT.footerText}
           </p>
         </div>
       </div>

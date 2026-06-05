@@ -61,22 +61,8 @@ let monitoringSocketToken: string | null = null;
 export function createAdminMonitoringSocket(
   adminToken: string
 ): AdminMonitoringSocket | null {
-  if (
-    monitoringSocket &&
-    monitoringSocketToken === adminToken &&
-    monitoringSocket.connected
-  ) {
-    return monitoringSocket;
-  }
-
-  if (monitoringSocket && monitoringSocketToken !== adminToken) {
-    monitoringSocket.removeAllListeners();
-    monitoringSocket.disconnect();
-    monitoringSocket = null;
-  }
-
   const socketUrl =
-    process.env.NEXT_PUBLIC_BACKEND_SOCKET_URL;
+    process.env.NEXT_PUBLIC_BACKEND_SOCKET_URL || 'ws://localhost:3000';
 
   if (!socketUrl) {
     console.error(
@@ -84,6 +70,20 @@ export function createAdminMonitoringSocket(
     );
 
     return null;
+  }
+
+  // Singleton instance checks
+  if (monitoringSocket) {
+    if (monitoringSocketToken === adminToken) {
+      if (!monitoringSocket.connected) {
+        monitoringSocket.connect();
+      }
+      return monitoringSocket;
+    }
+
+    // Token changed, destroy existing socket connection first
+    monitoringSocket.disconnect();
+    monitoringSocket = null;
   }
 
   monitoringSocketToken = adminToken;
@@ -94,24 +94,21 @@ export function createAdminMonitoringSocket(
         token: adminToken,
       },
 
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
 
       autoConnect: true,
 
       reconnection: true,
 
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 100, // tolerance for server restarts
 
       reconnectionDelay: 1000,
+      
+      reconnectionDelayMax: 10000,
+      
+      randomizationFactor: 0.5,
     }
   );
-
-  monitoringSocket.on("disconnect", () => {
-    if (!monitoringSocket?.connected) {
-      monitoringSocket = null;
-      monitoringSocketToken = null;
-    }
-  });
 
   return monitoringSocket;
 }

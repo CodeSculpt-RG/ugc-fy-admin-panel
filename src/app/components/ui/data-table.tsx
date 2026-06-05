@@ -26,6 +26,16 @@ import { Input } from "@/app/components/ui/input";
 import { ChevronLeft, ChevronRight, Search, Loader2 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 
+const COPY = {
+  synchronizing: "Synchronizing Secure Data...",
+  noData: "No matching operational data found.",
+  displaying: "Displaying",
+  of: "of",
+  entries: "entries",
+  prev: "Prev",
+  next: "Next",
+} as const;
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -131,8 +141,8 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-80 text-center">
                   <div className="flex flex-col items-center space-y-6">
-                    <Loader2 className="w-10 h-10 animate-spin text-primary opacity-50" />
-                    <span className="text-[11px] font-black text-foreground/20 uppercase tracking-[0.4em]">Synchronizing Secure Data...</span>
+                    <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                    <span className="text-[11px] font-black text-black dark:text-white uppercase tracking-[0.4em]">{COPY.synchronizing}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -156,12 +166,12 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-80 text-center text-foreground/20 italic font-black uppercase tracking-[0.4em] text-[11px]">
+                <TableCell colSpan={columns.length} className="h-80 text-center italic font-black uppercase tracking-[0.4em] text-[11px]">
                   <div className="flex flex-col items-center space-y-6">
                     <div className="p-6 rounded-[28px] bg-surface-elevated border border-border shadow-inner">
-                      <Search className="w-10 h-10 opacity-20" />
+                      <Search className="w-10 h-10 text-black dark:text-white opacity-30" />
                     </div>
-                    <span>No matching operational data found.</span>
+                    <span className="text-black dark:text-white">{COPY.noData}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -173,7 +183,7 @@ export function DataTable<TData, TValue>({
       <div className="flex items-center justify-between px-8 py-2">
         <div className="flex flex-col space-y-1">
           <p className="text-sm text-text-secondary">
-            Displaying <span className="font-bold text-foreground">{table.getRowModel().rows.length}</span> of <span className="font-bold text-foreground">{data.length}</span> entries
+            {COPY.displaying} <span className="font-bold text-foreground">{table.getRowModel().rows.length}</span> {COPY.of} <span className="font-bold text-foreground">{data.length}</span> {COPY.entries}
           </p>
         </div>
 
@@ -186,7 +196,7 @@ export function DataTable<TData, TValue>({
             className="rounded-xl h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-border bg-surface hover:bg-surface-elevated hover:text-foreground"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
-            Prev
+            {COPY.prev}
           </Button>
           <Button
             variant="outline"
@@ -195,7 +205,7 @@ export function DataTable<TData, TValue>({
             disabled={!table.getCanNextPage()}
             className="rounded-xl h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-border bg-surface hover:bg-surface-elevated hover:text-foreground"
           >
-            Next
+            {COPY.next}
             <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         </div>

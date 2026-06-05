@@ -4,9 +4,10 @@ import { verifyAdmin, handleApiError } from '@/app/lib/apiUtils';
 
 export async function GET(request: Request) {
   const auth = await verifyAdmin(request);
-  if (auth.error) {
+  if (!auth.success) {
     return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
   }
+
 
   try {
     const supabaseAdmin = getSupabaseAdmin();

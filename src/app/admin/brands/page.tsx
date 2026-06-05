@@ -186,35 +186,35 @@ export default function BrandsPage() {
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => (
-        <span className="text-[14px] font-bold text-[#111827]">{row.original.name}</span>
+        <span className="text-[14px] font-bold text-[#111827] dark:text-white">{row.original.name}</span>
       ),
     },
     {
       accessorKey: "email",
       header: "Email",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#4B5563]">{row.original.email}</span>
+        <span className="text-[14px] text-[#4B5563] dark:text-white">{row.original.email}</span>
       ),
     },
     {
       accessorKey: "company",
       header: "Corporate Entity",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#4B5563]">{row.original.company}</span>
+        <span className="text-[14px] text-[#4B5563] dark:text-white">{row.original.company}</span>
       ),
     },
     {
       accessorKey: "activeCampaigns",
       header: "Active Initiatives",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#111827]">{row.original.activeCampaigns} Active</span>
+        <span className="text-[14px] text-[#111827] dark:text-white">{row.original.activeCampaigns} Active</span>
       ),
     },
     {
       accessorKey: "totalSpend",
       header: "Aggregate GMV",
       cell: ({ row }) => (
-        <span className="text-[14px] font-bold text-[#111827]">{row.original.totalSpend}</span>
+        <span className="text-[14px] font-bold text-[#111827] dark:text-white">{row.original.totalSpend}</span>
       ),
     },
     {

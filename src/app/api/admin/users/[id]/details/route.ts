@@ -39,73 +39,41 @@ export async function GET(
 
     let creator_profile = null;
     let brand_profile = null;
-
-    if (profile.role === "creator") {
-      let data = null;
-      try {
-        const res = await supabaseAdmin
-          .from("creator_profiles")
-          .select("*")
-          .eq("user_id", id)
-          .single();
-        data = res.data;
-      } catch {
-        // ignore fallback
-      }
-      if (data) {
-        creator_profile = data;
-      } else {
-        try {
-          const res = await supabaseAdmin
-            .from("creator_profiles")
-            .select("*")
-            .eq("id", id)
-            .single();
-          if (res.data) creator_profile = res.data;
-        } catch {
-          // ignore fallback
-        }
-      }
-    } else if (profile.role === "brand") {
-      let data = null;
-      try {
-        const res = await supabaseAdmin
-          .from("brand_profiles")
-          .select("*")
-          .eq("user_id", id)
-          .single();
-        data = res.data;
-      } catch {
-        // ignore fallback
-      }
-      if (data) {
-        brand_profile = data;
-      } else {
-        try {
-          const res = await supabaseAdmin
-            .from("brand_profiles")
-            .select("*")
-            .eq("id", id)
-            .single();
-          if (res.data) brand_profile = res.data;
-        } catch {
-          // ignore fallback
-        }
-      }
-    }
-
-    // Fetch audit logs targeting this id
     let audit_logs = [];
-    try {
-      const { data: logs } = await supabaseAdmin
+
+    // Parallelize role profile fetch and audit logs fetch
+    const roleFetchPromise = async () => {
+      if (profile.role === "creator") {
+        const { data } = await supabaseAdmin.from("creator_profiles").select("*").eq("user_id", id).single();
+        if (data) return { type: 'creator', data };
+        const { data: fallback } = await supabaseAdmin.from("creator_profiles").select("*").eq("id", id).single();
+        return { type: 'creator', data: fallback };
+      } else if (profile.role === "brand") {
+        const { data } = await supabaseAdmin.from("brand_profiles").select("*").eq("user_id", id).single();
+        if (data) return { type: 'brand', data };
+        const { data: fallback } = await supabaseAdmin.from("brand_profiles").select("*").eq("id", id).single();
+        return { type: 'brand', data: fallback };
+      }
+      return null;
+    };
+
+    const auditFetchPromise = async () => {
+      const { data } = await supabaseAdmin
         .from("admin_audit_logs")
         .select("*, actor:admin_profiles(id, full_name, email)")
         .eq("target_id", id)
         .order("created_at", { ascending: false });
-      if (logs) audit_logs = logs;
-    } catch {
-      // ignore audit log fetch failure if table or relationship has issues
-    }
+      return data || [];
+    };
+
+    const [roleResult, logsResult] = await Promise.all([
+      roleFetchPromise().catch(() => null),
+      auditFetchPromise().catch(() => [])
+    ]);
+
+    if (roleResult?.type === 'creator') creator_profile = roleResult.data;
+    if (roleResult?.type === 'brand') brand_profile = roleResult.data;
+    if (logsResult) audit_logs = logsResult as any[];
 
     return NextResponse.json({
       success: true,

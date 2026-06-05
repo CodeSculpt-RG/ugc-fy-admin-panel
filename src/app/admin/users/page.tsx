@@ -214,28 +214,28 @@ export default function UsersPage() {
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => (
-        <span className="text-[14px] font-bold text-[#111827]">{row.original.name}</span>
+        <span className="text-[14px] font-bold text-[#111827] dark:text-white">{row.original.name}</span>
       ),
     },
     {
       accessorKey: "email",
       header: "Email",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#4B5563]">{row.original.email}</span>
+        <span className="text-[14px] text-[#4B5563] dark:text-white">{row.original.email}</span>
       ),
     },
     {
       accessorKey: "platformId",
       header: "Platform ID",
       cell: ({ row }) => (
-        <span className="text-[14px] font-mono text-[#4B5563]">{row.original.platformId || "CN000000"}</span>
+        <span className="text-[14px] font-mono text-[#4B5563] dark:text-white">{row.original.platformId || "CN000000"}</span>
       ),
     },
     {
       accessorKey: "role",
       header: "Role",
       cell: ({ row }) => (
-        <span className="text-[14px] text-[#4B5563] capitalize">{row.original.role}</span>
+        <span className="text-[14px] text-[#4B5563] dark:text-white capitalize">{row.original.role}</span>
       ),
     },
     {
@@ -254,7 +254,7 @@ export default function UsersPage() {
       cell: ({ row }) => {
         const dateStr = row.original.createdAt || row.original.created_at || row.original.lastActive;
         return (
-          <span className="text-[14px] text-[#4B5563]">
+          <span className="text-[14px] text-[#4B5563] dark:text-white">
             {dateStr ? new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
           </span>
         );

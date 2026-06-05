@@ -1,8 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis, LineChart, Line } from "recharts";
 import { cn } from "@/app/lib/utils";
+
+class ChartErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean}> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Chart Crash:", error, errorInfo); }
+  render() {
+    if (this.state.hasError) {
+      return <div className="flex h-full w-full items-center justify-center text-red-500 font-medium text-sm">Chart failed to load</div>;
+    }
+    return this.props.children;
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ChartData = any;
@@ -75,16 +87,17 @@ export const AdminDonutChart = ({ data, emptyMessage = "No user data available y
 
   if (!mounted) {
     return (
-      <div className="h-[320px] min-h-[320px] w-full flex items-center justify-center text-foreground/20 text-xs uppercase tracking-widest font-black">
-        Loading Chart...
+      <div className="h-[320px] min-h-[320px] w-full flex items-center justify-center bg-muted/20 animate-pulse rounded-xl">
+        <div className="w-8 h-8 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
-      <div className="h-[320px] min-h-[320px] w-full min-w-0">
-        <ResponsiveContainer {...responsiveChartProps}>
+    <ChartErrorBoundary>
+      <div className="flex flex-col h-full w-full">
+        <div className="h-[320px] min-h-[320px] w-full min-w-0">
+          <ResponsiveContainer {...responsiveChartProps}>
           <PieChart>
             <Pie
               data={chartData}
@@ -117,6 +130,7 @@ export const AdminDonutChart = ({ data, emptyMessage = "No user data available y
       </div>
       <AdminChartLegend data={chartData} total={total} />
     </div>
+    </ChartErrorBoundary>
   );
 };
 
@@ -132,13 +146,14 @@ export const AdminBarChart = ({ data, emptyMessage = "No data available." }: { d
 
   if (!mounted) {
     return (
-      <div className="h-[320px] min-h-[320px] w-full flex items-center justify-center text-foreground/20 text-xs uppercase tracking-widest font-black">
-        Loading Chart...
+      <div className="h-[320px] min-h-[320px] w-full flex items-center justify-center bg-muted/20 animate-pulse rounded-xl">
+        <div className="w-8 h-8 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     );
   }
 
   return (
+    <ChartErrorBoundary>
     <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
       <ResponsiveContainer {...responsiveChartProps}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -163,6 +178,7 @@ export const AdminBarChart = ({ data, emptyMessage = "No data available." }: { d
         </BarChart>
       </ResponsiveContainer>
     </div>
+    </ChartErrorBoundary>
   );
 };
 
@@ -178,13 +194,14 @@ export const AdminLineChart = ({ data, lines, emptyMessage = "No data available.
 
   if (!mounted) {
     return (
-      <div className="h-[320px] min-h-[320px] w-full flex items-center justify-center text-foreground/20 text-xs uppercase tracking-widest font-black">
-        Loading Chart...
+      <div className="h-[320px] min-h-[320px] w-full flex items-center justify-center bg-muted/20 animate-pulse rounded-xl">
+        <div className="w-8 h-8 rounded-full border-4 border-muted border-t-primary animate-spin" />
       </div>
     );
   }
 
   return (
+    <ChartErrorBoundary>
     <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
       <ResponsiveContainer {...responsiveChartProps}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -215,5 +232,6 @@ export const AdminLineChart = ({ data, lines, emptyMessage = "No data available.
         </LineChart>
       </ResponsiveContainer>
     </div>
+    </ChartErrorBoundary>
   );
 };

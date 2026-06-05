@@ -60,6 +60,7 @@ export interface VerifiedAdmin {
   permissions: AdminPermission[];
   isActive: boolean;
   fullName: string | null;
+  mustChangePassword?: boolean;
 }
 
 /**

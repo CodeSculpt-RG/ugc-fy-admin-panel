@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { 
@@ -232,20 +232,20 @@ export default function DashboardPage() {
     },
   ];
 
-  const roleData = [
+  const roleData = useMemo(() => [
     { name: "Creators", count: statsData?.roleBreakdown?.creators || 0, color: "#2563EB" },
     { name: "Brands", count: statsData?.roleBreakdown?.brands || 0, color: "#10B981" },
     { name: "Admins", count: statsData?.roleBreakdown?.admins || 0, color: "#F97316" },
-  ];
+  ], [statsData?.roleBreakdown]);
 
-  const totalRoles = roleData.reduce((acc, curr) => acc + curr.count, 0);
+  const totalRoles = roleData.reduce((acc: number, curr: { count: number }) => acc + curr.count, 0);
 
-  const approvalData = [
+  const approvalData = useMemo(() => [
     { name: "Approved", count: statsData?.approvalBreakdown?.approved || 0, color: "#10B981" },
     { name: "Pending", count: statsData?.approvalBreakdown?.pending || 0, color: "#F97316" },
     { name: "Rejected", count: statsData?.approvalBreakdown?.rejected || 0, color: "#EF4444" },
     { name: "Blocked", count: statsData?.approvalBreakdown?.blocked || 0, color: "#9CA3AF" },
-  ];
+  ], [statsData?.approvalBreakdown]);
 
   return (
     <DashboardShell>
@@ -310,10 +310,7 @@ export default function DashboardPage() {
         )}
 
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/20">{COPY.syncingLedger}</p>
-          </div>
+          <DashboardSkeletonGrid />
         ) : isError ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-6">
             <div className="p-6 rounded-[32px] bg-error/10 border border-error/20 text-error">
@@ -510,5 +507,24 @@ export default function DashboardPage() {
         loading={actionLoading}
       />
     </DashboardShell>
+  );
+}
+
+function DashboardSkeletonGrid() {
+  return (
+    <div className="dashboard-grid">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="bg-surface-elevated rounded-3xl p-6 border border-border shadow-sm flex flex-col justify-between h-[160px] animate-pulse">
+          <div className="flex justify-between items-start">
+            <div className="w-24 h-4 bg-foreground/5 rounded-md" />
+            <div className="w-10 h-10 bg-foreground/5 rounded-xl" />
+          </div>
+          <div>
+            <div className="w-16 h-8 bg-foreground/10 rounded-lg mb-2" />
+            <div className="w-32 h-3 bg-foreground/5 rounded-md" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

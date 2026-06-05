@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         fullName: admin.fullName,
         permissions: admin.permissions,
         isActive: admin.isActive,
+        mustChangePassword: admin.mustChangePassword,
       },
     });
   } catch (error: unknown) {
