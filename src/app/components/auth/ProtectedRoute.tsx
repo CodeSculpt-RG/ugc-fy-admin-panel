@@ -47,7 +47,7 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
         </p>
         <button 
           onClick={() => router.push("/admin/dashboard")}
-          className="mt-10 h-12 px-8 rounded-2xl bg-surface-elevated border border-border text-foreground font-black text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all active:scale-95"
+          className="mt-10 h-12 px-8 rounded-2xl bg-surface-elevated border border-border text-foreground font-black text-[10px] uppercase tracking-widest hover:bg-foreground hover:text-background transition-all active:scale-95"
         >
           Return to Command Center
         </button>

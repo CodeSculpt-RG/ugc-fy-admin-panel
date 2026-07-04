@@ -109,8 +109,8 @@ export default function Sidebar() {
       <div className={cn("shrink-0 p-12 mb-6 flex items-center justify-between", isCollapsed && !isMobileOpen ? "px-6" : "p-12")}>
         <Link href="/admin/dashboard" scroll={false} className="flex items-center space-x-5 group">
           <div className="w-14 h-14 bg-primary rounded-[20px] flex items-center justify-center shadow-glow group-hover:scale-110 transition-all duration-700 flex-shrink-0 relative overflow-hidden">
-            <Lock className="text-white w-6 h-6 relative z-10" />
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
+            <Lock className="text-primary-foreground w-6 h-6 relative z-10" />
+            <div className="absolute inset-0 bg-background opacity-0 group-hover:opacity-20 transition-opacity" />
           </div>
           {(!isCollapsed || isMobileOpen) && (
             <motion.div
@@ -121,12 +121,12 @@ export default function Sidebar() {
           <span className="text-2xl font-black tracking-tighter text-foreground leading-none whitespace-nowrap">
                 {COPY.brandName}<span className="text-primary">/</span>
               </span>
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mt-1">{COPY.platform}</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/40 mt-1">{COPY.platform}</span>
             </motion.div>
           )}
         </Link>
         {isMobileOpen && (
-          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-slate-400 hover:text-white transition-all">
+          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-muted-foreground hover:text-foreground transition-all">
             <X className="w-6 h-6" />
           </button>
         )}
@@ -138,7 +138,7 @@ export default function Sidebar() {
         {filteredMenuItems.map((group) => (
           <div key={group.group} className="space-y-8">
             {(!isCollapsed || isMobileOpen) && (
-              <h3 className="px-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">
+              <h3 className="px-5 text-[10px] font-black text-foreground/40 uppercase tracking-[0.5em]">
                 {group.group}
               </h3>
             )}
@@ -154,7 +154,7 @@ export default function Sidebar() {
                     className={cn(
                       "group flex items-center justify-between px-6 py-4 rounded-[20px] transition-all relative overflow-hidden border border-transparent",
                       isActive
-                        ? "bg-primary text-white border-primary dark:bg-primary/10 dark:text-primary dark:border-primary/50 shadow-[0_4px_12px_rgba(108,92,231,0.2)] dark:shadow-[0_0_15px_rgba(108,92,231,0.15)] font-bold"
+                        ? "bg-primary text-primary-foreground border-primary dark:bg-primary/10 dark:text-primary dark:border-primary/50 shadow-[0_4px_12px_rgba(229,132,35,0.2)] dark:shadow-[0_0_15px_rgba(229,132,35,0.15)] font-bold"
                         : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated",
                       isCollapsed && !isMobileOpen && "justify-center px-0"
                     )}
@@ -163,12 +163,12 @@ export default function Sidebar() {
                     <div className="flex items-center space-x-4 relative z-10">
                       <item.icon className={cn(
                         "w-5 h-5 transition-all duration-300 flex-shrink-0 stroke-[2.5]",
-                        isActive ? "text-white dark:text-primary scale-110" : "text-text-secondary group-hover:text-primary group-hover:scale-110"
+                        isActive ? "text-primary-foreground dark:text-primary scale-110" : "text-text-secondary group-hover:text-primary group-hover:scale-110"
                       )} />
                       {(!isCollapsed || isMobileOpen) && (
                         <span className={cn(
                           "text-[13px] font-semibold whitespace-nowrap transition-colors",
-                          isActive ? "text-white dark:text-primary font-bold" : "text-text-secondary group-hover:text-text-primary"
+                          isActive ? "text-primary-foreground dark:text-primary font-bold" : "text-text-secondary group-hover:text-text-primary"
                         )}>
                           {item.name}
                         </span>
@@ -177,13 +177,13 @@ export default function Sidebar() {
                     {isActive && (
                       <motion.div
                         layoutId="active-indicator"
-                        className="absolute left-0 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_10px_rgba(108,92,231,0.4)]"
+                        className="absolute left-0 w-1 h-8 bg-primary rounded-r-full shadow-[0_0_10px_rgba(229,132,35,0.4)]"
                       />
                     )}
                     {(!isCollapsed || isMobileOpen) && (
                       <ChevronRight className={cn(
                         "w-4 h-4 opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1 relative z-10",
-                        isActive ? "text-slate-300" : "text-slate-600/30"
+                        isActive ? "text-foreground/60" : "text-foreground/20"
                       )} />
                     )}
                   </Link>
@@ -202,22 +202,27 @@ export default function Sidebar() {
           isCollapsed && !isMobileOpen ? "flex-col items-center gap-3 px-2 py-4" : "flex-row gap-3"
         )}>
           {/* Left / Top Side: Avatar & Info */}
-          <div className={cn(
-            "flex items-center gap-3 min-w-0",
+          <Link href="/admin/profile" className={cn(
+            "flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity",
             isCollapsed && !isMobileOpen ? "flex-col text-center" : "flex-row"
           )}>
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center text-xs font-black text-primary flex-shrink-0 shadow-sm">
-              {admin?.name?.slice(0, 2)?.toUpperCase() || "AD"}
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-primary/10 border border-primary/15 flex items-center justify-center text-xs font-black text-primary flex-shrink-0 shadow-sm relative">
+              {admin?.avatarUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={admin.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                admin?.full_name?.slice(0, 2)?.toUpperCase() || admin?.name?.slice(0, 2)?.toUpperCase() || "AD"
+              )}
             </div>
             {(!isCollapsed || isMobileOpen) && (
               <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
-                <p className="text-xs font-black text-foreground truncate leading-none mb-1">{admin?.name || "Admin Name"}</p>
+                <p className="text-xs font-black text-foreground truncate leading-none mb-1">{admin?.full_name || admin?.name || admin?.email || "Admin Name"}</p>
                 <span className="inline-flex px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[8px] font-black uppercase tracking-wider w-max">
                   {admin?.role === "owner" ? "OWNER" : "ADMIN"}
                 </span>
               </div>
             )}
-          </div>
+          </Link>
 
           {/* Right / Bottom Side: Logout button */}
           <button 

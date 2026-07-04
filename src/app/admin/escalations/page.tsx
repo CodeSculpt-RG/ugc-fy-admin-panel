@@ -503,8 +503,8 @@ export default function EscalationsPage() {
         </PageHeader>
 
         {isTableMissing ? (
-          <div className="p-8 rounded-[32px] bg-red-500/10 border border-red-500/20 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center mx-auto text-red-500">
+          <div className="p-8 rounded-[32px] bg-error/10 border border-error/20 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-error/20 flex items-center justify-center mx-auto text-error">
               <ShieldAlert className="w-6 h-6" />
             </div>
             <div className="space-y-2">

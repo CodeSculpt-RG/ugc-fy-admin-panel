@@ -11,6 +11,7 @@ import { NotificationPanel } from "./NotificationPanel";
 import { notificationService } from "@/app/services/notificationService";
 import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
 import { isAdminSessionExpiredError } from "@/app/services/adminApiClient";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 
 export default function NotificationDropdown() {
   const auth = useAdminAuthOptional();
@@ -43,6 +44,21 @@ export default function NotificationDropdown() {
     return () => controller.abort(new DOMException("Notification count request cancelled", "AbortError"));
   }, [checkUnread]);
 
+  const handleNotificationPayload = useCallback(() => {
+    if (auth?.session?.access_token) {
+      console.log('[Realtime] New notification count update');
+      void checkUnread();
+    }
+  }, [auth?.session?.access_token, checkUnread]);
+
+  useSupabaseRealtime({
+    channelName: 'notifications_dropdown',
+    table: 'notifications',
+    event: '*',
+    enabled: Boolean(auth?.session?.access_token),
+    onPayload: handleNotificationPayload,
+  });
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -50,7 +66,7 @@ export default function NotificationDropdown() {
           onClick={() => {
             if (!isOpen) void checkUnread();
           }}
-          className="relative p-3.5 rounded-2xl bg-surface-elevated border border-border text-foreground/30 hover:text-foreground hover:bg-white/[0.06] hover:border-border transition-all group outline-none active:scale-90"
+          className="relative p-3.5 rounded-2xl bg-surface-elevated border border-border text-foreground/30 hover:text-foreground hover:bg-foreground/[0.06] hover:border-border transition-all group outline-none active:scale-90"
         >
           <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
           {unreadCount > 0 && (

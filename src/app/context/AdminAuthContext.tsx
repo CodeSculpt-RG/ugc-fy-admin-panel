@@ -9,6 +9,7 @@ import React, {
   useRef,
 } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { usePathname } from "next/navigation";
 import type { AdminPermission, AdminRole } from "@/lib/api/adminPermissions";
 import type { AuthAdminUser } from "@/app/store/authStore";
 import { useAuthStore } from "@/app/store/authStore";
@@ -26,7 +27,7 @@ interface AdminAuthContextValue {
   session: { access_token: string } | null;
   loading: boolean;
   hasPermission: (permission: AdminPermission) => boolean;
-  refreshAdmin: () => Promise<void>;
+  refreshAdmin: (force?: boolean) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,8 +40,27 @@ const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 // Provider
 // ---------------------------------------------------------------------------
 
+const PUBLIC_AUTH_ROUTES = new Set([
+  '/admin/login',
+  '/admin/forgot-password',
+  '/admin/reset-password',
+  '/login',
+]);
+
+function stripTrailingSlash(pathname: string) {
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
+}
+
+function isPublicAuthRoute(pathname: string) {
+  return PUBLIC_AUTH_ROUTES.has(stripTrailingSlash(pathname));
+}
+
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const { user, setAuth, logout } = useAuthStore();
+  const pathname = usePathname();
   const [session, setSession] = useState<{ access_token: string } | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -49,9 +69,15 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAdmin = useCallback(async (
     currentSession?: { access_token: string } | null,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    force = false
   ) => {
     try {
+      if (pathname && isPublicAuthRoute(pathname)) {
+        setLoading(false);
+        return;
+      }
+
       const activeSession = currentSession !== undefined ? currentSession : (await supabase.auth.getSession()).data.session;
       if (!activeSession?.access_token) {
         setLoading(false);
@@ -59,8 +85,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Lock check: prevent fetching again if we already have the state for this token
-      if (activeTokenRef.current === activeSession.access_token) {
+      // Lock check: prevent fetching again if we already have the state for this token unless forced
+      if (!force && activeTokenRef.current === activeSession.access_token) {
         setLoading(false);
         return;
       }
@@ -80,25 +106,34 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const payload = await response.json();
-      if (payload.success && payload.data) {
+      const isSuccess = payload.success || payload.ok;
+      const adminData = payload.data || payload.admin;
+
+      if (isSuccess && adminData) {
         const freshAdmin: AuthAdminUser = {
-          id: payload.data.id,
-          email: payload.data.email,
-          role: payload.data.role as AdminRole,
-          name: payload.data.fullName || payload.data.email,
-          permissions: payload.data.permissions as AdminPermission[],
-          isActive: payload.data.isActive,
-          mustChangePassword: payload.data.mustChangePassword,
+          id: adminData.id,
+          email: adminData.email,
+          role: adminData.role as AdminRole,
+          name: adminData.fullName || adminData.name || adminData.email,
+          full_name: adminData.fullName || adminData.full_name || null,
+          avatarUrl: adminData.avatarUrl || null,
+          permissions: adminData.permissions as AdminPermission[],
+          isActive: adminData.isActive,
+          mustChangePassword: adminData.mustChangePassword,
         };
         setAuth(freshAdmin, activeSession.access_token);
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
+      if (err instanceof TypeError && err.message.includes("Failed to fetch")) {
+        console.warn("[AdminAuthContext] refreshAdmin fetch blocked or failed. Checking server auth.");
+        return;
+      }
       console.error("[AdminAuthContext] refreshAdmin failed:", err);
     } finally {
       setLoading(false);
     }
-  }, [setAuth, logout]);
+  }, [setAuth, logout, pathname]);
 
   useEffect(() => {
     let mounted = true;
@@ -153,7 +188,9 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = useCallback(
     (permission: AdminPermission): boolean => {
-      if (!user || !user.permissions) return false;
+      if (!user) return false;
+      if (user.role === 'owner' || user.role === 'super_admin' || (user.role as string) === 'admin') return true;
+      if (!user.permissions) return false;
       return user.permissions.includes(permission);
     },
     [user]
@@ -164,7 +201,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     hasPermission,
-    refreshAdmin: () => refreshAdmin(),
+    refreshAdmin: (force?: boolean) => refreshAdmin(undefined, undefined, force !== false),
   };
 
   return (

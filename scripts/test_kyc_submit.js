@@ -1,3 +1,4 @@
+/* eslint-disable */
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient('https://eiswwwetrenkyqhsdebh.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpc3d3d2V0cmVua3lxaHNkZWJoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzM3OTM4MSwiZXhwIjoyMDkyOTU1MzgxfQ.Pd7wVFN2-7h6JaHrUrhKxL7jCN_OGsaTqaqtChBGQYE');
 

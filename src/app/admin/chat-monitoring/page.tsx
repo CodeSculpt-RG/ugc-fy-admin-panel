@@ -7,6 +7,7 @@ import { useRef } from "react";
 import { adminFetch, getAdminAuthHeaders, isAdminSessionExpiredError } from "@/app/services/adminApiClient";
 import {
   createAdminMonitoringSocket,
+  disconnectAdminMonitoringSocket,
   type AdminMonitoringSocket,
   type ChatMessagePayload,
 } from '@/lib/admin-monitoring-socket';
@@ -76,8 +77,6 @@ export default function ChatMonitoringPage() {
       createAdminMonitoringSocket(adminToken);
 
     if (!newSocket) {
-      // eslint-disable-next-line
-      setSocketConnected(false);
       return;
     }
 
@@ -91,11 +90,8 @@ export default function ChatMonitoringPage() {
       setSocketConnected(false);
     });
 
-    newSocket.on('connect_error', (error: Error) => {
-      console.error(
-        'Socket connection error',
-        error
-      );
+    newSocket.on('connect_error', () => {
+      // Silently handle connection errors to prevent console spam when realtime is unavailable
       setSocketConnected(false);
     });
 
@@ -112,15 +108,23 @@ export default function ChatMonitoringPage() {
       });
     });
 
+    // Explicitly connect since autoConnect is false
+    if (!newSocket.connected) {
+      newSocket.connect();
+    }
+
     newSocket.emit('admin:join-monitoring');
 
     return () => {
-      newSocket.emit('admin:leave-monitoring');
-      newSocket.off('connect');
-      newSocket.off('disconnect');
-      newSocket.off('connect_error');
-      newSocket.off('chat:new-message');
+      if (socketRef.current) {
+        socketRef.current.emit('admin:leave-monitoring');
+        socketRef.current.off('connect');
+        socketRef.current.off('disconnect');
+        socketRef.current.off('connect_error');
+        socketRef.current.off('chat:new-message');
+      }
       socketRef.current = null;
+      disconnectAdminMonitoringSocket();
     };
   }, [adminToken]);
 
@@ -128,26 +132,26 @@ export default function ChatMonitoringPage() {
     <DashboardShell>
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
             <MessageSquare className="w-8 h-8 text-primary" />
             Chat Monitoring
           </h1>
-          <p className="text-gray-600 dark:text-foreground/60 mt-2">
+          <p className="text-foreground/60 mt-2">
             {COPY.description}
           </p>
         </div>
-        <div className={`px-4 py-2 rounded-full text-sm font-medium border ${socketConnected ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-          'bg-red-500/10 text-red-400 border-red-500/20'
+        <div className={`px-4 py-2 rounded-full text-sm font-medium border ${socketConnected ? 'bg-success/10 text-success border-success/20' :
+          'bg-error/10 text-error border-error/20'
           }`}>
           ● {socketConnected ? 'Live' : 'Offline'} Monitoring
         </div>
       </div>
 
-      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6 flex items-start space-x-4">
-        <AlertTriangle className="w-6 h-6 text-red-400 shrink-0" />
+      <div className="bg-error/10 border border-error/20 rounded-xl p-4 mb-6 flex items-start space-x-4">
+        <AlertTriangle className="w-6 h-6 text-error shrink-0" />
         <div>
-          <h4 className="text-red-400 font-medium">{COPY.privacyNotice}</h4>
-          <p className="text-red-400/80 text-sm mt-1">
+          <h4 className="text-error font-medium">{COPY.privacyNotice}</h4>
+          <p className="text-error/80 text-sm mt-1">
             {COPY.privacyBody}
           </p>
         </div>
@@ -156,15 +160,15 @@ export default function ChatMonitoringPage() {
       <div className="bg-sidebar-bg border border-border rounded-2xl p-6 min-h-[400px]">
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
           </div>
         ) : error ? (
-          <div className="text-red-400 text-center py-8">{error}</div>
+          <div className="text-error text-center py-8">{error}</div>
         ) : conversations.length === 0 ? (
           <div className="text-center py-16 flex flex-col items-center">
             <MessageSquare className="w-12 h-12 text-foreground/20 mb-4" />
-            <h3 className="text-gray-900 dark:text-white font-medium text-lg">{COPY.noConversations}</h3>
-            <p className="text-gray-500 dark:text-foreground/40 mt-2">{COPY.noConversationsBody}</p>
+            <h3 className="text-foreground font-medium text-lg">{COPY.noConversations}</h3>
+            <p className="text-foreground/40 mt-2">{COPY.noConversationsBody}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -172,11 +176,11 @@ export default function ChatMonitoringPage() {
               <div key={conv.id} className="p-4 border border-border rounded-xl hover:bg-foreground/5 cursor-pointer transition-colors">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-gray-900 dark:text-white font-medium">{COPY.conversation} {conv.id.split('-')[0]}...</h4>
-                    <p className="text-gray-500 dark:text-foreground/40 text-sm mt-1">{COPY.status} {conv.status}</p>
+                    <h4 className="text-foreground font-medium">{COPY.conversation} {conv.id.split('-')[0]}...</h4>
+                    <p className="text-foreground/40 text-sm mt-1">{COPY.status} {conv.status}</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs text-gray-500 dark:text-foreground/40">
+                    <span className="text-xs text-foreground/40">
                       {new Date(conv.updated_at).toLocaleDateString()}
                     </span>
                   </div>

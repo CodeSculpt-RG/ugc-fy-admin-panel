@@ -23,26 +23,25 @@ export async function GET(request: Request) {
         error.message?.includes("Could not find the table");
 
       if (isMissing) {
-        const fallbackData = [
-          {
-            id: "a0000000-0000-0000-0000-000000000001",
-            admin_id: null,
-            type: "system",
-            title: "System Live",
-            message: "Admin notification pipeline is connected.",
-            href: "/admin/dashboard",
-            metadata: {},
-            is_read: false,
-            created_at: new Date().toISOString(),
-            read_at: null,
-          },
-        ];
         return NextResponse.json({
           success: true,
           source: "real_supabase_database",
-          data: fallbackData,
-          unreadCount: 1,
+          data: [],
+          unreadCount: 0,
           isMissingTable: true,
+          tableName: "admin_notifications",
+          migrationSql: `CREATE TABLE IF NOT EXISTS public.admin_notifications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  type text NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL,
+  href text,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  is_read boolean DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  read_at timestamptz
+);`
         });
       }
 

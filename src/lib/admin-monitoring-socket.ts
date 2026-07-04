@@ -61,14 +61,12 @@ let monitoringSocketToken: string | null = null;
 export function createAdminMonitoringSocket(
   adminToken: string
 ): AdminMonitoringSocket | null {
-  const socketUrl =
-    process.env.NEXT_PUBLIC_BACKEND_SOCKET_URL || 'ws://localhost:3000';
+  const socketUrl = process.env.NEXT_PUBLIC_BACKEND_SOCKET_URL;
 
   if (!socketUrl) {
-    console.error(
-      'NEXT_PUBLIC_BACKEND_SOCKET_URL missing'
-    );
-
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[socket] NEXT_PUBLIC_BACKEND_SOCKET_URL is not configured. Realtime disabled.');
+    }
     return null;
   }
 
@@ -93,22 +91,28 @@ export function createAdminMonitoringSocket(
       auth: {
         token: adminToken,
       },
-
-      transports: ['polling', 'websocket'],
-
-      autoConnect: true,
-
+      autoConnect: false,
+      transports: ['websocket'],
       reconnection: true,
-
-      reconnectionAttempts: 100, // tolerance for server restarts
-
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      
-      reconnectionDelayMax: 10000,
-      
-      randomizationFactor: 0.5,
+      timeout: 8000,
     }
   );
 
+  monitoringSocket.on('connect_error', () => {
+    // Silently handle connection errors to prevent console spam when realtime is unavailable
+    // The UI should gracefully handle offline states independently
+  });
+
   return monitoringSocket;
 }
+
+export function disconnectAdminMonitoringSocket() {
+  if (monitoringSocket) {
+    monitoringSocket.disconnect();
+    monitoringSocket = null;
+    monitoringSocketToken = null;
+  }
+}
+

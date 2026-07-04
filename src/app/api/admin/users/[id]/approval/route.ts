@@ -54,6 +54,23 @@ export async function PATCH(
 
     if (updateError) throw updateError;
 
+    if (updatedUser?.role === "brand") {
+      const brandPayload: Record<string, unknown> = {
+        kyc_status: status,
+        updated_at: new Date().toISOString(),
+      };
+      if (status === "approved") {
+        brandPayload.onboarding_completed = true;
+      }
+      const { error: brandError } = await supabaseAdmin
+        .from("brand_profiles")
+        .update(brandPayload)
+        .eq("user_id", id);
+      if (brandError) {
+        console.error("[Approval] failed to sync brand_profile", brandError);
+      }
+    }
+
     // Audit log
     void writeAuditLog({
       actorAdminId: check.admin.id,

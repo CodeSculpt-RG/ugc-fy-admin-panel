@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/store/authStore";
-import { supabase } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Lock, ShieldAlert, CheckCircle2, ArrowRight } from "lucide-react";
 
@@ -46,24 +45,19 @@ export default function ForcePasswordChangePage() {
     setLoading(true);
 
     try {
-      // 1. Update password in Supabase Auth
-      const { error: authError } = await supabase.auth.updateUser({
-        password: password,
+      const res = await fetch("/api/admin/profile/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password }),
       });
 
-      if (authError) throw authError;
-
-      // 2. Update must_change_password status in the database
-      const { error: dbError } = await supabase
-        .from("admin_profiles")
-        .update({
-          must_change_password: false,
-          password_changed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user?.id);
-
-      if (dbError) throw dbError;
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error?.message || data.message || "Failed to update security credentials.");
+      }
 
       setSuccess(true);
 

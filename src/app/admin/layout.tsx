@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+
 import AdminLoginPage from "./login/page";
 import { Loader2 } from "lucide-react";
 
@@ -18,7 +19,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { admin, loading } = useAdminAuth();
 
   useEffect(() => {
-    if (admin?.mustChangePassword && normalizedPath !== "/admin/force-password-change") {
+    if (!admin) return;
+    
+    const needsSetup = admin.mustChangePassword || admin.inviteStatus === "pending";
+    if (needsSetup && normalizedPath !== "/admin/force-password-change") {
       router.replace("/admin/force-password-change");
     }
   }, [admin, normalizedPath, router]);
@@ -40,8 +44,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // Public/Unprotected Page Bypasses
-  if (normalizedPath === "/admin/login" || normalizedPath === "/admin/setup-password") {
+  const publicRoutes = [
+    "/admin/login",
+    "/admin/auth/callback",
+    "/admin/forgot-password",
+    "/admin/reset-password",
+    "/admin/setup-password"
+  ];
+
+  if (publicRoutes.includes(normalizedPath)) {
     return <>{children}</>;
   }
 
@@ -55,5 +66,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <DashboardShell>{children}</DashboardShell>
+  );
 }

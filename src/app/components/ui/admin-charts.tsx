@@ -10,11 +10,44 @@ class ChartErrorBoundary extends Component<{children: ReactNode}, {hasError: boo
   componentDidCatch(error: Error, errorInfo: ErrorInfo) { console.error("Chart Crash:", error, errorInfo); }
   render() {
     if (this.state.hasError) {
-      return <div className="flex h-full w-full items-center justify-center text-red-500 font-medium text-sm">Chart failed to load</div>;
+      return (
+        <div className="h-[320px] min-h-[320px] w-full flex flex-col items-center justify-center bg-muted/10 rounded-xl border border-dashed border-muted-foreground/20">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/40 mb-3"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+          <span className="text-sm font-medium text-muted-foreground">Chart Unavailable</span>
+        </div>
+      );
     }
     return this.props.children;
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const SafeResponsiveContainer = ({ children, ...props }: any) => {
+  const [valid, setValid] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0 && !isNaN(width) && !isNaN(height)) {
+          setValid(true);
+        } else {
+          setValid(false);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+      {valid && <ResponsiveContainer {...props}>{children}</ResponsiveContainer>}
+    </div>
+  );
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ChartData = any;
@@ -97,7 +130,7 @@ export const AdminDonutChart = ({ data, emptyMessage = "No user data available y
     <ChartErrorBoundary>
       <div className="flex flex-col h-full w-full">
         <div className="h-[320px] min-h-[320px] w-full min-w-0">
-          <ResponsiveContainer {...responsiveChartProps}>
+          <SafeResponsiveContainer {...responsiveChartProps}>
           <PieChart>
             <Pie
               data={chartData}
@@ -126,8 +159,8 @@ export const AdminDonutChart = ({ data, emptyMessage = "No user data available y
               itemStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
             />
           </PieChart>
-        </ResponsiveContainer>
-      </div>
+          </SafeResponsiveContainer>
+        </div>
       <AdminChartLegend data={chartData} total={total} />
     </div>
     </ChartErrorBoundary>
@@ -155,7 +188,7 @@ export const AdminBarChart = ({ data, emptyMessage = "No data available." }: { d
   return (
     <ChartErrorBoundary>
     <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
-      <ResponsiveContainer {...responsiveChartProps}>
+      <SafeResponsiveContainer {...responsiveChartProps}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 700 }} dy={15} />
@@ -176,7 +209,7 @@ export const AdminBarChart = ({ data, emptyMessage = "No data available." }: { d
             ))}
           </Bar>
         </BarChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
     </ChartErrorBoundary>
   );
@@ -203,7 +236,7 @@ export const AdminLineChart = ({ data, lines, emptyMessage = "No data available.
   return (
     <ChartErrorBoundary>
     <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
-      <ResponsiveContainer {...responsiveChartProps}>
+      <SafeResponsiveContainer {...responsiveChartProps}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 700 }} dy={15} />
@@ -230,7 +263,7 @@ export const AdminLineChart = ({ data, lines, emptyMessage = "No data available.
             />
           ))}
         </LineChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
     </ChartErrorBoundary>
   );

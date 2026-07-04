@@ -51,6 +51,9 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showLinkOption, setShowLinkOption] = useState(false);
+
+  const [resendTargetId, setResendTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setMounted(true), 0);
@@ -67,6 +70,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
         setIsActive(true);
         setErrorMessage(null);
         setIsSuccess(false);
+        setResendTargetId(null);
       }, 0);
       return () => clearTimeout(timer);
     } else {
@@ -79,9 +83,71 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
 
   if (!mounted) return null;
 
+  const handleResendInvite = async () => {
+    if (!resendTargetId) return;
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const response = await adminManagementService.resendInvite(resendTargetId);
+      
+      if (!response.success && !response.ok) {
+        const errCode = response.error?.code;
+        if (errCode === 'INVITE_RESEND_COOLDOWN') {
+          setErrorMessage("An invite was sent recently. Please wait before trying again.");
+        } else if (errCode === 'SUPABASE_EMAIL_RATE_LIMITED') {
+          setErrorMessage("Supabase email rate limit reached. Wait or configure SMTP.");
+        } else if (errCode === 'SUPABASE_REDIRECT_URL_NOT_ALLOWED') {
+          setErrorMessage("Supabase redirect URL is not configured.");
+        } else if (errCode === 'SUPABASE_EMAIL_PROVIDER_FAILED') {
+          setErrorMessage("Supabase email provider failed. Check SMTP/Auth email settings.");
+        } else if (errCode === 'SUPABASE_INVITE_NOT_SENT_EXISTING_USER') {
+          setErrorMessage("Supabase did not send another invite because this email already belongs to an existing Auth user. Link existing user as admin or use another email.");
+          setShowLinkOption(true);
+        } else if (errCode === 'SUPABASE_INVITE_TIMEOUT') {
+          setErrorMessage("Supabase invite request timed out. Please try again.");
+        } else if (errCode === 'SUPABASE_INVITE_FAILED') {
+          setErrorMessage(`Supabase invite failed: ${response.error?.message || 'Unknown error'}`);
+        } else {
+          setErrorMessage(response.error?.message || "An expected error occurred.");
+        }
+        return;
+      }
+
+      setIsSuccess(true);
+      showToast("Invitation email resent successfully.", "success");
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      setErrorMessage(message);
+      console.error(`[ProvisionAdminModal] Failed to resend invite: ${message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLinkExistingUser = async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      await adminManagementService.linkExistingAdmin({
+        email: email.trim(),
+        full_name: fullName.trim() || email.split("@")[0],
+        role,
+      });
+      setIsSuccess(true);
+      showToast("Admin profile linked successfully. Setup instructions dispatched.", "success");
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      setErrorMessage(message);
+      console.error(`[ProvisionAdminModal] Failed to link existing admin: ${message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setShowLinkOption(false);
 
     if (!email || !email.includes("@")) {
       setErrorMessage("Please enter a valid network email identifier.");
@@ -94,16 +160,57 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
     }
 
     setLoading(true);
+    setResendTargetId(null);
     try {
-      await adminManagementService.createAdmin({
+      const response = await adminManagementService.createAdmin({
         email: email.trim(),
         full_name: fullName.trim() || email.split("@")[0],
         role,
         is_active: isActive,
       });
 
+      if (!response.ok) {
+        // Handle expected errors returned as response
+        const errCode = response.error?.code;
+        const details = response.error?.details as Record<string, unknown> | undefined;
+        const targetId = typeof details?.adminId === "string" ? details.adminId : null;
+
+        if (errCode === 'ADMIN_ALREADY_EXISTS') {
+          setErrorMessage("This email is already an active admin.");
+        } else if (errCode === 'ADMIN_INVITE_ALREADY_PENDING') {
+          setErrorMessage("An invite is already pending for this email.");
+          if (targetId) setResendTargetId(targetId);
+        } else if (errCode === 'ADMIN_INVITE_FAILED_RETRY_AVAILABLE') {
+          setErrorMessage("Previous invite failed. You can retry.");
+          if (targetId) setResendTargetId(targetId);
+        } else if (errCode === 'AUTH_USER_ALREADY_EXISTS') {
+          setErrorMessage("A Supabase account already exists for this email. Link existing user as admin or use another email.");
+          setShowLinkOption(true);
+        } else if (errCode === 'ADMIN_REVOKED_REQUIRES_REACTIVATION') {
+          setErrorMessage("This admin was revoked and requires explicit reactivation.");
+        } else if (errCode === 'SUPABASE_INVITE_FAILED') {
+          setErrorMessage(`Supabase invite failed: ${response.error?.message || 'Unknown error'}`);
+        } else if (errCode === 'SUPABASE_INVITE_TIMEOUT') {
+          setErrorMessage("Supabase invite request timed out. Please try again.");
+        } else if (errCode === 'INVITE_RESEND_COOLDOWN') {
+          setErrorMessage("An invite was sent recently. Please wait before trying again.");
+        } else if (errCode === 'SUPABASE_EMAIL_RATE_LIMITED') {
+          setErrorMessage("Supabase email rate limit reached. Wait or configure SMTP.");
+        } else if (errCode === 'SUPABASE_REDIRECT_URL_NOT_ALLOWED') {
+          setErrorMessage("Supabase redirect URL is not configured.");
+        } else if (errCode === 'SUPABASE_EMAIL_PROVIDER_FAILED') {
+          setErrorMessage("Supabase email provider failed. Check SMTP/Auth email settings.");
+        } else if (errCode === 'SUPABASE_INVITE_NOT_SENT_EXISTING_USER') {
+          setErrorMessage("Supabase did not send another invite because this email already belongs to an existing Auth user. Link existing user as admin or use another email.");
+          setShowLinkOption(true);
+        } else {
+          setErrorMessage(response.error?.message || "An expected error occurred.");
+        }
+        return;
+      }
+
       setIsSuccess(true);
-      showToast("Admin access created successfully. Password setup email has been sent.", "success");
+      showToast("Admin access created successfully. Invitation email has been sent.", "success");
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       setErrorMessage(message);
@@ -144,7 +251,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
 
             <button
               onClick={isSuccess ? handleSuccessClose : onClose}
-              className="absolute right-6 top-6 p-2 rounded-2xl bg-surface-elevated border border-border text-foreground/40 hover:text-white hover:bg-foreground/10 transition-all z-20 outline-none"
+              className="absolute right-6 top-6 p-2 rounded-2xl bg-surface-elevated border border-border text-foreground/40 hover:text-foreground hover:bg-foreground/10 transition-all z-20 outline-none"
             >
               <X className="w-5 h-5" />
             </button>
@@ -164,7 +271,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                   <div className="p-5 rounded-2xl bg-surface-elevated border border-border space-y-4">
                     <div>
                       <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em] block mb-1">Target Account</span>
-                      <p className="text-sm font-semibold text-white">{email}</p>
+                      <p className="text-sm font-semibold text-foreground">{email}</p>
                     </div>
 
                     <div>
@@ -177,7 +284,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                     <div>
                       <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em] block mb-1">Status</span>
                       <p className="text-xs text-foreground/60 leading-relaxed font-semibold">
-                        A secure password setup invitation has been automatically generated and sent to this inbox.
+                        A Supabase invitation email has been sent automatically. The new admin will complete setup using the invite link.
                       </p>
                     </div>
                   </div>
@@ -187,7 +294,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                     <div>
                       <span className="text-[10px] font-black text-accent-orange uppercase tracking-wider block">Security Protocol</span>
                       <p className="text-[11px] text-foreground/60 mt-1 leading-relaxed">
-                        The newly appointed admin must complete password initialization using the secure link provided in their email before gaining access to the control panel.
+                        The newly appointed admin must complete setup using the invite link and must finish password setup before accessing the dashboard.
                       </p>
                     </div>
                   </div>
@@ -197,7 +304,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                   <Button
                     type="button"
                     onClick={handleSuccessClose}
-                    className="w-full h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all"
+                    className="w-full h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] text-[11px] transition-all"
                   >
                     Close & Sync
                   </Button>
@@ -270,8 +377,13 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                   </div>
 
                   <div className="pt-2">
+                    <div className="mb-4 p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start space-x-3 text-primary text-xs font-semibold">
+                      <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>A Supabase invitation email will be sent automatically. The new admin will complete setup using the invite link and must finish password setup before accessing the dashboard.</span>
+                    </div>
+
                     <label className="flex items-center space-x-3 cursor-pointer group p-3 rounded-2xl bg-white/[0.01] hover:bg-surface-elevated border border-border transition-colors">
-                      <div className={cn("w-5 h-5 rounded-lg border flex items-center justify-center transition-all", isActive ? "bg-success-green border-success-green text-white" : "border-border bg-transparent")}>
+                      <div className={cn("w-5 h-5 rounded-lg border flex items-center justify-center transition-all", isActive ? "bg-success-green border-success-green text-primary-foreground" : "border-border bg-transparent")}>
                         {isActive && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
                       <input
@@ -297,13 +409,34 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                   >
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-primary/20"
-                  >
-                    {loading ? "PROVISIONING..." : "PROVISION ADMIN"}
-                  </Button>
+                  
+                  {resendTargetId ? (
+                    <Button
+                      type="button"
+                      onClick={handleResendInvite}
+                      disabled={loading}
+                      className="flex-1 h-14 rounded-[20px] bg-accent-orange hover:bg-accent-orange/90 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-accent-orange/20"
+                    >
+                      {loading ? "RESENDING..." : "RESEND INVITE"}
+                    </Button>
+                  ) : showLinkOption ? (
+                    <Button
+                      type="button"
+                      onClick={handleLinkExistingUser}
+                      disabled={loading}
+                      className="flex-1 h-14 rounded-[20px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-emerald-500/20"
+                    >
+                      {loading ? "LINKING..." : "LINK EXISTING USER"}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-primary/20"
+                    >
+                      {loading ? "PROVISIONING..." : "PROVISION ADMIN"}
+                    </Button>
+                  )}
                 </div>
               </form>
             )}

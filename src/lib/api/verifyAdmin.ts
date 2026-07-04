@@ -12,6 +12,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const resolvedSupabaseUrl: string = supabaseUrl;
 const resolvedSupabaseAnonKey: string = supabaseAnonKey;
 
+// Simple memory cache for static role permissions matrix
+const permissionCache: Record<string, AdminPermission[]> = {};
+const permissionCacheTime: Record<string, number> = {};
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export type VerifyAdminSuccess = {
   success: true;
   status: 200;
@@ -82,7 +87,7 @@ export async function verifyAdmin(request: Request): Promise<VerifyAdminResult> 
   // Load the admin_profiles record (bypasses RLS via service role)
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("admin_profiles")
-    .select("id, email, full_name, role, is_active, invited_by, must_change_password")
+    .select("id, email, full_name, role, is_active, invited_by, must_change_password, avatar_url, invite_status")
     .eq("id", user.id)
     .single();
 
@@ -133,26 +138,78 @@ export async function verifyAdmin(request: Request): Promise<VerifyAdminResult> 
     };
   }
 
-  // Load permissions for this role
-  const { data: permsData, error: permsError } = await supabaseAdmin
-    .from("admin_role_permissions")
-    .select("permission")
-    .eq("role", profile.role as AdminRole);
-
-  if (permsError) {
+  if (profile.invite_status === 'failed' || profile.invite_status === 'revoked') {
     return {
       success: false,
-      status: 500,
+      status: 403,
       error: {
-        message: "Failed to load role permissions. Contact your platform owner.",
-        code: "ROLE_PERMISSIONS_ERROR",
-        details: permsError.message,
-        hint: "Contact your platform owner or verify database schema.",
+        message: "Administrative invitation is invalid or revoked. Contact your platform owner.",
+        code: "ADMIN_INVITE_INVALID",
+        details: null,
+        hint: "Contact your platform owner.",
       },
     };
   }
 
-  const permissions = (permsData ?? []).map((p) => p.permission as AdminPermission);
+  const now = Date.now();
+  let permissions: AdminPermission[] = [];
+
+  if (permissionCache[profile.role] && (now - (permissionCacheTime[profile.role] || 0) < CACHE_TTL_MS)) {
+    permissions = permissionCache[profile.role];
+  } else {
+    // Load permissions for this role
+    const { data: permsData, error: permsError } = await supabaseAdmin
+      .from("admin_role_permissions")
+      .select("permission")
+      .eq("role", profile.role as AdminRole);
+
+    if (permsError) {
+      const isMissingTable =
+        permsError.code === "PGRST205" ||
+        permsError.code === "42P01" ||
+        permsError.message?.includes("does not exist") ||
+        permsError.message?.includes("Could not find the table");
+
+      if (isMissingTable) {
+        console.warn(`[verifyAdmin] admin_role_permissions table missing. Granting fallback permissions for role: ${profile.role}`);
+        let fallbackPermissions: AdminPermission[] = [];
+        if (profile.role === "owner" || profile.role === "SUPER_ADMIN") {
+          fallbackPermissions = getAllPermissions();
+        } else {
+          fallbackPermissions = getAllPermissions().filter(p => p.endsWith(".read"));
+        }
+        
+        const admin: VerifiedAdmin = {
+          id: profile.id,
+          email: profile.email,
+          role: profile.role as AdminRole,
+          permissions: fallbackPermissions,
+          isActive: profile.is_active,
+          fullName: profile.full_name ?? null,
+          avatarUrl: profile.avatar_url ?? null,
+          mustChangePassword: profile.must_change_password ?? false,
+          inviteStatus: profile.invite_status,
+        };
+
+        return { success: true, status: 200, admin, user: admin };
+      }
+
+      return {
+        success: false,
+        status: 500,
+        error: {
+          message: "Failed to load role permissions. Contact your platform owner.",
+          code: "ROLE_PERMISSIONS_ERROR",
+          details: permsError.message,
+          hint: "Contact your platform owner or verify database schema.",
+        },
+      };
+    }
+
+    permissions = (permsData ?? []).map((p) => p.permission as AdminPermission);
+    permissionCache[profile.role] = permissions;
+    permissionCacheTime[profile.role] = now;
+  }
 
   const admin: VerifiedAdmin = {
     id: profile.id,
@@ -161,7 +218,9 @@ export async function verifyAdmin(request: Request): Promise<VerifyAdminResult> 
     permissions,
     isActive: profile.is_active,
     fullName: profile.full_name ?? null,
+    avatarUrl: profile.avatar_url ?? null,
     mustChangePassword: profile.must_change_password ?? false,
+    inviteStatus: profile.invite_status,
   };
 
   return { success: true, status: 200, admin, user: admin };
@@ -189,5 +248,7 @@ function getAllPermissions(): AdminPermission[] {
     "security.read", "security.write",
     "settings.read", "settings.write",
     "owner.controls",
+    "profile.read", "profile.update", "profile.security.update",
+    "activity.read.own", "activity.read.team", "activity.read.all"
   ];
 }

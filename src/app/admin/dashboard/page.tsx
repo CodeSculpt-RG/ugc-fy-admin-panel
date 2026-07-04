@@ -125,7 +125,13 @@ export default function DashboardPage() {
           }, 750);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[DashboardRealtime] Channel error:', err);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[DashboardRealtime] Realtime subscription timed out. The UI will gracefully operate without realtime updates.');
+        }
+      });
 
     return () => {
       controller.abort(new DOMException("Dashboard request cancelled", "AbortError"));

@@ -7,9 +7,12 @@ export interface AuthAdminUser {
   email: string;
   role: AdminRole;
   name: string;
+  full_name?: string | null;
+  avatarUrl?: string | null;
   permissions: AdminPermission[];
   isActive: boolean;
   mustChangePassword?: boolean;
+  inviteStatus?: string | null;
 }
 
 interface AuthState {

@@ -1,44 +1,52 @@
-import { NextResponse } from "next/server";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
-import { normalizeError } from "@/lib/api/normalizeError";
+import { NextResponse } from 'next/server';
+import { verifyAdmin } from '@/lib/api/verifyAdmin';
 
-/**
- * GET /api/admin/me
- * Returns the currently authenticated admin's profile + permissions.
- * Used by AdminAuthContext on mount to hydrate client-side state.
- */
 export async function GET(request: Request) {
   try {
     const result = await verifyAdmin(request);
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: result.error },
-        { status: result.status }
+        {
+          ok: false,
+          code: result.error.code,
+          message: result.error.message,
+        },
+        {
+          status: result.status === 401 ? 401 : 403,
+          headers: {
+            'Cache-Control': 'no-store',
+          },
+        }
       );
     }
 
-    const { admin } = result;
-
-    return NextResponse.json({
-      success: true,
-      source: "real_supabase_database",
-      data: {
-        id: admin.id,
-        email: admin.email,
-        role: admin.role,
-        fullName: admin.fullName,
-        permissions: admin.permissions,
-        isActive: admin.isActive,
-        mustChangePassword: admin.mustChangePassword,
-      },
-    });
-  } catch (error: unknown) {
-    const normalizedError = normalizeError(error);
-    console.error("[GET /api/admin/me]", normalizedError);
     return NextResponse.json(
-      { success: false, error: normalizedError },
-      { status: 500 }
+      {
+        ok: true,
+        admin: result.admin,
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('[GET /api/admin/me] unexpected error:', error);
+    return NextResponse.json(
+      {
+        ok: false,
+        code: 'INTERNAL_ERROR',
+        message: 'Unexpected admin session error',
+      },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
     );
   }
 }

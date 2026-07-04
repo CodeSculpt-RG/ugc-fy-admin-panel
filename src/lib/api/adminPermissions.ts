@@ -51,7 +51,20 @@ export type AdminPermission =
   | "security.write"
   | "settings.read"
   | "settings.write"
-  | "owner.controls";
+  | "owner.controls"
+  | "profile.read"
+  | "profile.update"
+  | "profile.security.update"
+  | "activity.read.own"
+  | "activity.read.team"
+  | "activity.read.all"
+  | "kyc.read"
+  | "kyc.review"
+  | "kyc.approve"
+  | "kyc.reject"
+  | "kyc.media.read"
+  | "kyc.history.read"
+  | "kyc.notes.write";
 
 export interface VerifiedAdmin {
   id: string;
@@ -60,7 +73,9 @@ export interface VerifiedAdmin {
   permissions: AdminPermission[];
   isActive: boolean;
   fullName: string | null;
+  avatarUrl?: string | null;
   mustChangePassword?: boolean;
+  inviteStatus?: string;
 }
 
 /**
@@ -95,4 +110,5 @@ export const ROUTE_PERMISSIONS: Record<string, AdminPermission> = {
   "/admin/security": "security.read",
   "/admin/settings": "settings.read",
   "/admin/debug-connection": "infrastructure.read",
+  "/admin/profile": "profile.read",
 };

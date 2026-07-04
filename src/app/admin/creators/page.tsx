@@ -21,6 +21,20 @@ import { creatorService } from "@/app/services/creatorService";
 import { approvalService } from "@/app/services/approvalService";
 import { useToast } from "@/app/hooks/useToast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
+
+function resolveApprovalStatus(actionType: string): "approved" | "rejected" | "blocked" | "pending_review" {
+  switch (actionType) {
+    case "approve":
+      return "approved";
+    case "reject":
+      return "rejected";
+    case "block":
+      return "blocked";
+    default:
+      return "pending_review";
+  }
+}
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -30,6 +44,23 @@ export default function CreatorsPage() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const { showToast } = useToast();
   const { session, loading: authLoading } = useAdminAuth();
+  
+  // Hardcoded English fallbacks since next-intl is uninstalled
+  const t = (key: string) => {
+    const translations: Record<string, string> = {
+      syncData: "Sync Data",
+      filters: "Filters",
+      niche: "Niche",
+      allNiches: "All Niches",
+      status: "Status",
+      allStatus: "All Statuses",
+      approved: "Approved",
+      pendingReview: "Pending Review",
+      rejected: "Rejected",
+      blocked: "Blocked"
+    };
+    return translations[key] || key;
+  };
   
   const [selectedNiche, setSelectedNiche] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("approved");
@@ -126,6 +157,16 @@ export default function CreatorsPage() {
     };
   }, [authLoading, session, selectedStatus, loadCreators]);
 
+  // Listen to realtime KYC submissions to refresh the queue
+  useSupabaseRealtime('kyc_submissions', '*', (payload) => {
+    // Check if we are viewing pending review or if we just want to update the table
+    // For now, we refresh the creators list to show the new KYC status
+    if (session) {
+      console.log('[Realtime] KYC submission updated:', payload);
+      void loadCreators(selectedStatus);
+    }
+  });
+
   const uniqueNiches = useMemo(() => {
     const niches = new Set<string>();
     creators.forEach(c => c.niche && niches.add(c.niche));
@@ -182,16 +223,11 @@ export default function CreatorsPage() {
     if (!selectedCreator) return;
     setActionLoading(true);
     try {
-      const statusMap: Record<string, "approved" | "rejected" | "blocked" | "pending_review"> = {
-        approve: "approved",
-        reject: "rejected",
-        block: "blocked",
-        "": "pending_review"
-      };
+      const newStatus = resolveApprovalStatus(modalConfig.actionType);
 
       await approvalService.updateApprovalStatus(
         selectedCreator.id, 
-        statusMap[modalConfig.actionType] || "pending_review",
+        newStatus,
         reason
       );
 
@@ -336,7 +372,7 @@ export default function CreatorsPage() {
             className="flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all shadow-md active:scale-95 disabled:opacity-50"
           >
             <Zap className="w-4 h-4 fill-current" />
-            <span>Sync Data</span>
+            <span>{t("syncData")}</span>
           </button>
         </PageHeader>
 
@@ -344,18 +380,18 @@ export default function CreatorsPage() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
           <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
             <Filter className="w-4 h-4 text-primary" />
-            <span>Filters:</span>
+            <span>{t("filters")}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
-              <span className="text-xs text-text-secondary">Niche:</span>
+              <span className="text-xs text-text-secondary">{t("niche")}</span>
               <select
                 value={selectedNiche}
                 onChange={(e) => setSelectedNiche(e.target.value)}
                 className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-surface">All Niches</option>
+                <option value="all" className="bg-surface">{t("allNiches")}</option>
                 {uniqueNiches.map(niche => (
                   <option key={niche} value={niche} className="bg-surface">{niche}</option>
                 ))}
@@ -363,17 +399,17 @@ export default function CreatorsPage() {
             </div>
 
             <div className="flex items-center space-x-2 bg-surface border border-border rounded-2xl px-4 py-2">
-              <span className="text-xs text-text-secondary">Status:</span>
+              <span className="text-xs text-text-secondary">{t("status")}</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="bg-transparent text-xs font-bold text-foreground focus:outline-none cursor-pointer pr-2"
               >
-                <option value="all" className="bg-surface">All Status</option>
-                <option value="approved" className="bg-surface">Approved</option>
-                <option value="pending_review" className="bg-surface">Pending Review</option>
-                <option value="rejected" className="bg-surface">Rejected</option>
-                <option value="blocked" className="bg-surface">Blocked</option>
+                <option value="all" className="bg-surface">{t("allStatus")}</option>
+                <option value="approved" className="bg-surface">{t("approved")}</option>
+                <option value="pending_review" className="bg-surface">{t("pendingReview")}</option>
+                <option value="rejected" className="bg-surface">{t("rejected")}</option>
+                <option value="blocked" className="bg-surface">{t("blocked")}</option>
               </select>
             </div>
           </div>

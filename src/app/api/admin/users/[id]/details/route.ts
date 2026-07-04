@@ -39,7 +39,7 @@ export async function GET(
 
     let creator_profile = null;
     let brand_profile = null;
-    let audit_logs = [];
+    let audit_logs: unknown[] = [];
 
     // Parallelize role profile fetch and audit logs fetch
     const roleFetchPromise = async () => {
@@ -73,7 +73,7 @@ export async function GET(
 
     if (roleResult?.type === 'creator') creator_profile = roleResult.data;
     if (roleResult?.type === 'brand') brand_profile = roleResult.data;
-    if (logsResult) audit_logs = logsResult as any[];
+    if (logsResult) audit_logs = logsResult as unknown[];
 
     return NextResponse.json({
       success: true,

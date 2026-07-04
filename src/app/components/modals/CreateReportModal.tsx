@@ -89,7 +89,7 @@ export function CreateReportModal({ isOpen, onClose, onSuccess }: CreateReportMo
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/70 backdrop-blur-md z-[200]"
+            className="absolute inset-0 bg-background/80 backdrop-blur-md z-[200]"
           />
 
           {/* Modal Container */}
@@ -98,26 +98,26 @@ export function CreateReportModal({ isOpen, onClose, onSuccess }: CreateReportMo
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-[201] w-full max-w-[540px] max-h-[90vh] bg-[#0F172A] border border-white/10 rounded-[32px] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden"
+            className="relative z-[201] w-full max-w-[540px] max-h-[90vh] bg-card border border-border/60 rounded-[32px] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden"
           >
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary-blue/50 to-transparent" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
             <button
               onClick={onClose}
-              className="absolute right-6 top-6 p-2 rounded-2xl bg-white/[0.03] border border-white/5 text-[#F0F0FB]/40 hover:text-white hover:bg-white/10 transition-all z-20 outline-none"
+              className="absolute right-6 top-6 p-2 rounded-2xl bg-surface-elevated border border-border text-foreground/40 hover:text-foreground hover:bg-foreground/10 transition-all z-20 outline-none"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Scrollable Region */}
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar space-y-6">
-              <div className="flex items-center space-x-4 border-b border-white/[0.05] pb-6">
-                <div className="w-14 h-14 rounded-2xl bg-primary-blue/10 border border-primary-blue/20 flex items-center justify-center flex-shrink-0 shadow-sm shadow-primary-blue/10">
-                  <FileText className="w-6 h-6 text-primary-blue" />
+              <div className="flex items-center space-x-4 border-b border-border pb-6">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-sm shadow-primary/10">
+                  <FileText className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-[#F9FAFB] tracking-tight uppercase">Generate Internal Report</h3>
-                  <p className="text-xs text-[#94A3B8] font-medium mt-1">Dispatch automated platform compliance and intelligence package.</p>
+                  <h3 className="text-xl font-black text-foreground tracking-tight uppercase">Generate Internal Report</h3>
+                  <p className="text-xs text-muted-foreground font-medium mt-1">Dispatch automated platform compliance and intelligence package.</p>
                 </div>
               </div>
 
@@ -130,22 +130,22 @@ export function CreateReportModal({ isOpen, onClose, onSuccess }: CreateReportMo
 
               <div className="space-y-4 font-medium text-sm">
                 <div>
-                  <label className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em] px-2 block mb-2">Report Ledger Title</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] px-2 block mb-2">Report Ledger Title</label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Q3 Executive Fiscal Package"
-                    className="w-full h-13 rounded-2xl bg-white/[0.02] border border-white/[0.12] px-4 text-sm text-[#F9FAFB] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-[#94A3B8]/50 font-medium"
+                    className="w-full h-13 rounded-2xl bg-surface border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em] px-2 block mb-2">Compliance Vector Type *</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] px-2 block mb-2">Compliance Vector Type *</label>
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full h-13 rounded-2xl bg-[#111827] border border-white/[0.12] px-4 text-sm text-[#F9FAFB] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
+                    className="w-full h-13 rounded-2xl bg-surface-elevated border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
                   >
                     <option value="Financial">Financial (Treasury & Payouts)</option>
                     <option value="User">User (Network & KYC Compliance)</option>
@@ -156,11 +156,11 @@ export function CreateReportModal({ isOpen, onClose, onSuccess }: CreateReportMo
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em] px-2 block mb-2">Temporal Date Range *</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] px-2 block mb-2">Temporal Date Range *</label>
                   <select
                     value={dateRange}
                     onChange={(e) => setDateRange(e.target.value)}
-                    className="w-full h-13 rounded-2xl bg-[#111827] border border-white/[0.12] px-4 text-sm text-[#F9FAFB] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
+                    className="w-full h-13 rounded-2xl bg-surface-elevated border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
                   >
                     <option value="Last 7 Days">Past 7 Days</option>
                     <option value="Last 30 Days">Past 30 Days</option>
@@ -170,14 +170,14 @@ export function CreateReportModal({ isOpen, onClose, onSuccess }: CreateReportMo
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em] px-2 block mb-2">Extraction Format *</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] px-2 block mb-2">Extraction Format *</label>
                   <div className="grid grid-cols-3 gap-3">
                     {(["json", "csv", "pdf"] as const).map((fmt) => (
                       <button
                         key={fmt}
                         type="button"
                         onClick={() => setFormat(fmt)}
-                        className={`h-12 rounded-xl border flex items-center justify-center font-black text-xs uppercase tracking-widest transition-all ${format === fmt ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-white/[0.02] border-white/[0.12] text-[#94A3B8] hover:text-[#F9FAFB]"}`}
+                        className={`h-12 rounded-xl border flex items-center justify-center font-black text-xs uppercase tracking-widest transition-all ${format === fmt ? "bg-primary border-primary text-white shadow-lg shadow-primary/20" : "bg-surface border-border text-muted-foreground hover:text-foreground"}`}
                       >
                         {fmt}
                       </button>
@@ -186,29 +186,29 @@ export function CreateReportModal({ isOpen, onClose, onSuccess }: CreateReportMo
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.3em] px-2 block mb-2">Optional Dispatch Notes</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] px-2 block mb-2">Optional Dispatch Notes</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Provide specific parameters or notes for executive distribution..."
-                    className="w-full h-28 rounded-2xl bg-white/[0.02] border border-white/[0.12] p-4 text-sm text-[#F9FAFB] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-[#94A3B8]/50 resize-none font-medium"
+                    className="w-full h-28 rounded-2xl bg-surface border border-border p-4 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/50 resize-none font-medium"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/[0.12] w-full">
+              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border w-full">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={onClose}
-                  className="flex-1 h-14 bg-transparent border-white/[0.12] text-[#94A3B8] hover:text-[#F9FAFB] hover:bg-white/[0.04] rounded-[20px] font-black uppercase tracking-[0.2em] text-[11px]"
+                  className="flex-1 h-14 bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-[20px] font-black uppercase tracking-[0.2em] text-[11px]"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-primary/20"
+                  className="flex-1 h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-primary/20"
                 >
                   {loading ? "DISPATCHING..." : "GENERATE REPORT"}
                 </Button>

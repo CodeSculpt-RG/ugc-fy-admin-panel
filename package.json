@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node ../scripts/check-port.js 3000 && next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -30,8 +30,8 @@
     "react-dom": "19.2.4",
     "react-hook-form": "7.75.0",
     "recharts": "3.8.1",
-    "tailwind-merge": "3.6.0",
     "socket.io-client": "4.8.3",
+    "tailwind-merge": "3.6.0",
     "zod": "4.4.3",
     "zustand": "5.0.13"
   },

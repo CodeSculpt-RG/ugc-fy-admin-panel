@@ -21,6 +21,8 @@ import { brandService } from "@/app/services/brandService";
 import { approvalService } from "@/app/services/approvalService";
 import { normalizeError } from "@/lib/api/normalizeError";
 import { useToast } from "@/app/hooks/useToast";
+import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 
 const COPY = {
   syncData: "Sync Data",
@@ -57,6 +59,7 @@ export default function BrandsPage() {
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const { showToast } = useToast();
+  const { session, loading: authLoading } = useAdminAuth();
   
   const [selectedIndustry, setSelectedIndustry] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("approved");
@@ -106,7 +109,15 @@ export default function BrandsPage() {
       }
     });
     return () => controller.abort(new DOMException("Brands request cancelled", "AbortError"));
-  }, [selectedStatus, loadBrands]);
+  }, [authLoading, session, selectedStatus, loadBrands]);
+
+  // Listen to realtime KYC submissions to refresh the queue
+  useSupabaseRealtime('kyc_submissions', '*', (payload) => {
+    if (session) {
+      console.log('[Realtime] KYC submission updated:', payload);
+      void loadBrands(selectedStatus);
+    }
+  });
 
   const uniqueIndustries = useMemo(() => {
     const ind = new Set<string>();

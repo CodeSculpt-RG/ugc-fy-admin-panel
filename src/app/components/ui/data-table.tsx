@@ -142,7 +142,7 @@ export function DataTable<TData, TValue>({
                 <TableCell colSpan={columns.length} className="h-80 text-center">
                   <div className="flex flex-col items-center space-y-6">
                     <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                    <span className="text-[11px] font-black text-black dark:text-white uppercase tracking-[0.4em]">{COPY.synchronizing}</span>
+                    <span className="text-[11px] font-black text-foreground uppercase tracking-[0.4em]">{COPY.synchronizing}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -169,9 +169,9 @@ export function DataTable<TData, TValue>({
                 <TableCell colSpan={columns.length} className="h-80 text-center italic font-black uppercase tracking-[0.4em] text-[11px]">
                   <div className="flex flex-col items-center space-y-6">
                     <div className="p-6 rounded-[28px] bg-surface-elevated border border-border shadow-inner">
-                      <Search className="w-10 h-10 text-black dark:text-white opacity-30" />
+                      <Search className="w-10 h-10 text-foreground opacity-30" />
                     </div>
-                    <span className="text-black dark:text-white">{COPY.noData}</span>
+                    <span className="text-foreground">{COPY.noData}</span>
                   </div>
                 </TableCell>
               </TableRow>

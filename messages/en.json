@@ -1,0 +1,14 @@
+{
+  "Creators": {
+    "syncData": "Sync Data",
+    "filters": "Filters:",
+    "niche": "Niche:",
+    "allNiches": "All Niches",
+    "status": "Status:",
+    "allStatus": "All Status",
+    "approved": "Approved",
+    "pendingReview": "Pending Review",
+    "rejected": "Rejected",
+    "blocked": "Blocked"
+  }
+}

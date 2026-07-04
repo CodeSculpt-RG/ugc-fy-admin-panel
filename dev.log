@@ -1,0 +1,243 @@
+
+> admin-console@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.2.6 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.5:3000
+- Environments: .env.local, .env
+✓ Ready in 130ms
+
+(node:3881) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ GET /admin/login/ 200 in 2.4s (next.js: 2.3s, proxy.ts: 1735µs, application-code: 122ms)
+ GET /api/admin/profile/activity/?scope=own 401 in 331ms (next.js: 325ms, application-code: 6ms)
+ GET /admin/profile/ 200 in 601ms (next.js: 420ms, proxy.ts: 12ms, application-code: 169ms)
+[browser] [AdminAuthContext] refreshAdmin fetch blocked or failed. Checking server auth. (src/app/context/AdminAuthContext.tsx:127:17)
+ GET /api/admin/notifications/ 200 in 1680ms (next.js: 386ms, application-code: 1293ms)
+ GET /api/admin/health/ 200 in 2.4s (next.js: 379ms, application-code: 2.0s)
+[GET /api/admin/profile/activity] {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.admin_audit_logs'",
+  message: "Could not find the table 'public.admin_activity_logs' in the schema cache"
+}
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10 500 in 2.3s (next.js: 196ms, application-code: 2.1s)
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10 200 in 316ms (next.js: 3ms, application-code: 313ms)
+[GET /api/admin/profile/activity] {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.admin_audit_logs'",
+  message: "Could not find the table 'public.admin_activity_logs' in the schema cache"
+}
+[GET /api/admin/profile/activity] {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.admin_audit_logs'",
+  message: "Could not find the table 'public.admin_activity_logs' in the schema cache"
+}
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10 500 in 1054ms (next.js: 2ms, application-code: 1051ms)
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10&module=profile 200 in 207ms (next.js: 2ms, application-code: 205ms)
+[GET /api/admin/profile/activity] {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.admin_audit_logs'",
+  message: "Could not find the table 'public.admin_activity_logs' in the schema cache"
+}
+[GET /api/admin/profile/activity] {
+  code: 'PGRST205',
+  details: null,
+  hint: "Perhaps you meant the table 'public.admin_audit_logs'",
+  message: "Could not find the table 'public.admin_activity_logs' in the schema cache"
+}
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10&module=profile 500 in 1050ms (next.js: 3ms, application-code: 1048ms)
+ GET /api/admin/profile/activity/?scope=own 401 in 13ms (next.js: 3ms, application-code: 10ms)
+ GET /admin/profile/ 200 in 87ms (next.js: 59ms, proxy.ts: 6ms, application-code: 22ms)
+ GET /admin/profile/ 200 in 124ms (next.js: 102ms, proxy.ts: 1459µs, application-code: 20ms)
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10&module=profile 501 in 2.1s (next.js: 229ms, application-code: 1843ms)
+ GET /admin/profile/ 200 in 120ms (next.js: 98ms, proxy.ts: 1983µs, application-code: 20ms)
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10&module=profile 501 in 1031ms (next.js: 38ms, application-code: 994ms)
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json',
+  page: '/admin/profile'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/server/app/api/admin/profile/activity/route.js'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/server/app/api/admin/profile/activity/route.js',
+  page: '/api/admin/profile/activity'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json',
+  page: '/admin/profile'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+ GET /admin/profile/ 500 in 2.2s (next.js: 2.2s, proxy.ts: 1448µs, application-code: 13ms)
+ GET /admin/profile/ 500 in 2.2s (next.js: 2.2s, proxy.ts: 1448µs, application-code: 13ms)
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json',
+  page: '/admin/profile'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json',
+  page: '/admin/profile'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+ GET /admin/profile/ 500 in 336ms (next.js: 283ms, proxy.ts: 44ms, application-code: 9ms)
+ GET /admin/profile/ 500 in 336ms (next.js: 283ms, proxy.ts: 44ms, application-code: 9ms)
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json',
+  page: '/admin/profile'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json',
+  page: '/admin/profile'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+ GET /admin/profile/ 500 in 571ms (next.js: 522ms, proxy.ts: 42ms, application-code: 7ms)
+ GET /admin/profile/ 500 in 571ms (next.js: 522ms, proxy.ts: 42ms, application-code: 7ms)
+ GET /api/admin/profile/activity/?scope=own&page=1&pageSize=10&module=profile 500 in 1476ms (next.js: 11ms, application-code: 1465ms)
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/server/app/api/admin/profile/activity/route.js'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/server/app/api/admin/profile/activity/route.js',
+  page: '/api/admin/profile/activity'
+}
+⨯ Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+Error: ENOENT: no such file or directory, open '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+    at ignore-listed frames {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/routes-manifest.json'
+}
+[Error: ENOENT: no such file or directory, stat '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'stat',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'
+}
+⨯ unhandledRejection: [Error: ENOENT: no such file or directory, stat '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'stat',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'
+}
+⨯ unhandledRejection:  [Error: ENOENT: no such file or directory, stat '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'stat',
+  path: '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'
+}
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, stat '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/server-development/2.pack.gz'
+ GET /admin/profile/ 404 in 474ms (next.js: 370ms, proxy.ts: 15ms, application-code: 88ms)
+ GET /admin/profile/ 200 in 151ms (next.js: 23ms, proxy.ts: 5ms, application-code: 122ms)
+ GET /admin/profile/ 200 in 37ms (next.js: 3ms, proxy.ts: 4ms, application-code: 30ms)
+ GET /admin/profile/ 200 in 34ms (next.js: 2ms, proxy.ts: 5ms, application-code: 26ms)
+ GET /admin/profile/ 200 in 55ms (next.js: 2ms, proxy.ts: 4ms, application-code: 48ms)
+ GET /admin/profile/ 200 in 22ms (next.js: 1068µs, proxy.ts: 3ms, application-code: 18ms)
+ GET /admin/profile/ 200 in 33ms (next.js: 3ms, proxy.ts: 4ms, application-code: 27ms)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/rahulg/ugc fy 16 June/admin_panel/.next/dev/cache/webpack/client-development-fallback/0.pack.gz'
+[?25h

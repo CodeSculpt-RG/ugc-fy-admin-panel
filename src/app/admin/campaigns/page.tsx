@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { campaignService } from "@/app/services/campaignService";
 import { useToast } from "@/app/hooks/useToast";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 
 // ── String dictionary ─────────────────────────────────────────────────────────
 // All user-visible text is defined here. This resolves i18n lint warnings and
@@ -187,6 +188,20 @@ export default function CampaignsPage() {
     // eslint-disable-next-line
     loadCampaigns();
   }, [loadCampaigns]);
+
+  // Listen for realtime campaign updates
+  useSupabaseRealtime('campaigns', '*', (payload) => {
+    console.log('[Realtime] Campaign update:', payload);
+    void loadCampaigns();
+  });
+
+  // Listen for realtime UGC submission updates
+  useSupabaseRealtime('ugc_submissions', '*', (payload) => {
+    console.log('[Realtime] UGC submission update:', payload);
+    void loadCampaigns();
+  });
+
+
 
   const filteredCampaigns = useMemo(() => {
     return localCampaigns.filter((c) => {

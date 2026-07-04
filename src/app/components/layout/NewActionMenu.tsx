@@ -91,7 +91,7 @@ export default function NewActionMenu() {
           <motion.button 
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center space-x-3 bg-primary text-white px-6 py-3.5 rounded-[18px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/25 hover:bg-primary/90 transition-all outline-none group active-nav-glow"
+            className="flex items-center space-x-3 bg-primary text-primary-foreground px-6 py-3.5 rounded-[18px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/25 hover:bg-primary/90 transition-all outline-none group active-nav-glow"
           >
             <div className="p-1 rounded-md bg-foreground/20 group-hover:bg-foreground/30 transition-colors">
               <Plus className="w-3 h-3 stroke-[4]" />
@@ -122,15 +122,15 @@ export default function NewActionMenu() {
                       handleQuickAction(action.id);
                     }
                   }}
-                  className={`flex items-center space-x-4 p-4 rounded-[22px] focus:bg-primary focus:text-white cursor-pointer transition-all duration-300 outline-none group border border-transparent focus:border-primary/20 ${!hasPerm ? "opacity-40 cursor-not-allowed" : ""}`}
+                  className={`flex items-center space-x-4 p-4 rounded-[22px] focus:bg-primary focus:text-primary-foreground cursor-pointer transition-all duration-300 outline-none group border border-transparent focus:border-primary/20 ${!hasPerm ? "opacity-40 cursor-not-allowed" : ""}`}
                   title={!hasPerm ? "No permission" : undefined}
                 >
                   <div className="p-3.5 rounded-xl bg-surface-elevated border border-border group-focus:bg-foreground/10 group-focus:border-border transition-all group-focus:scale-110">
-                    <action.icon className="w-4 h-4 text-primary group-focus:text-white transition-transform group-hover:scale-110" />
+                    <action.icon className="w-4 h-4 text-primary group-focus:text-primary-foreground transition-transform group-hover:scale-110" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="text-[13px] font-black tracking-tight text-foreground group-focus:text-white">{action.label}</p>
+                      <p className="text-[13px] font-black tracking-tight text-foreground group-focus:text-primary-foreground">{action.label}</p>
                       {!hasPerm && (
                         <span className="text-[9px] font-black text-accent-orange uppercase tracking-widest px-2 py-0.5 rounded bg-accent-orange/10 border border-accent-orange/20">Locked</span>
                       )}

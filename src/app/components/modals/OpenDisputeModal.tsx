@@ -106,7 +106,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
 
             <button
               onClick={onClose}
-              className="absolute right-6 top-6 p-2 rounded-2xl bg-surface-elevated border border-border text-foreground/40 hover:text-white hover:bg-foreground/10 transition-all z-20 outline-none"
+              className="absolute right-6 top-6 p-2 rounded-2xl bg-surface-elevated border border-border text-foreground/40 hover:text-primary-foreground hover:bg-foreground/10 transition-all z-20 outline-none"
             >
               <X className="w-5 h-5" />
             </button>
@@ -114,7 +114,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
             {/* Scrollable Region */}
             <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar space-y-6">
               <div className="flex items-center space-x-4 border-b border-border pb-6">
-                <div className="w-14 h-14 rounded-2xl bg-accent-orange/10 border border-accent-orange/20 flex items-center justify-center flex-shrink-0 shadow-sm shadow-accent-orange/10">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-sm shadow-primary/10">
                   <Scale className="w-6 h-6 text-accent-orange" />
                 </div>
                 <div>
@@ -124,7 +124,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
               </div>
 
               {errorMessage && (
-                <div className="p-4 rounded-2xl bg-accent-orange/10 border border-accent-orange/20 flex items-center space-x-3 text-accent-orange text-xs font-semibold">
+                <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-center space-x-3 text-accent-orange text-xs font-semibold">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
@@ -139,7 +139,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
                     value={targetEmailOrId}
                     onChange={(e) => setTargetEmailOrId(e.target.value)}
                     placeholder="creator@example.com or UUID"
-                    className="w-full h-13 rounded-2xl bg-surface-elevated border border-border px-4 text-sm text-foreground focus:outline-none focus:border-accent-orange/40 focus:ring-2 focus:ring-accent-orange/20 transition-all placeholder:text-foreground/20 font-medium"
+                    className="w-full h-13 rounded-2xl bg-surface-elevated border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-accent-orange/20 transition-all placeholder:text-foreground/20 font-medium"
                   />
                 </div>
 
@@ -148,7 +148,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
-                    className="w-full h-13 rounded-2xl bg-surface border border-border px-4 text-sm text-foreground focus:outline-none focus:border-accent-orange/40 focus:ring-2 focus:ring-accent-orange/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
+                    className="w-full h-13 rounded-2xl bg-surface border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-accent-orange/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
                   >
                     <option value="Payment">Payment (Escrow Hold / Release)</option>
                     <option value="Content">Content (Copyright / Deliverable Quality)</option>
@@ -166,7 +166,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
                         key={pri}
                         type="button"
                         onClick={() => setPriority(pri)}
-                        className={`h-11 rounded-xl border flex items-center justify-center font-black text-[11px] uppercase tracking-wider transition-all ${priority === pri ? "bg-accent-orange border-accent-orange text-white shadow-lg shadow-accent-orange/20" : "bg-surface-elevated border-border text-foreground/40 hover:text-white"}`}
+                        className={`h-11 rounded-xl border flex items-center justify-center font-black text-[11px] uppercase tracking-wider transition-all ${priority === pri ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-surface-elevated border-border text-foreground/40 hover:text-primary-foreground"}`}
                       >
                         {pri}
                       </button>
@@ -181,7 +181,7 @@ export function OpenDisputeModal({ isOpen, onClose, onSuccess }: OpenDisputeModa
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Provide full context, contract terms, and deliverables under dispute..."
-                    className="w-full h-28 rounded-2xl bg-surface-elevated border border-border p-4 text-sm text-foreground focus:outline-none focus:border-accent-orange/40 focus:ring-2 focus:ring-accent-orange/20 transition-all placeholder:text-foreground/20 resize-none font-medium"
+                    className="w-full h-28 rounded-2xl bg-surface-elevated border border-border p-4 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-accent-orange/20 transition-all placeholder:text-foreground/20 resize-none font-medium"
                   />
                 </div>
               </div>

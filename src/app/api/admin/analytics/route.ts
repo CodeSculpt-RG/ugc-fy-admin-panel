@@ -7,21 +7,7 @@ type PaymentStatus = "pending" | "released" | "failed" | "refunded";
 
 const PAID_STATUS: PaymentStatus = "released";
 
-export function normalizePaymentStatus(status: string): PaymentStatus {
-  switch (status.toLowerCase()) {
-    case "paid":
-    case "released":
-      return "released";
-    case "pending":
-      return "pending";
-    case "failed":
-      return "failed";
-    case "refunded":
-      return "refunded";
-    default:
-      throw new Error(`Unsupported payment status: ${status}`);
-  }
-}
+
 
 export async function GET(request: Request) {
   try {

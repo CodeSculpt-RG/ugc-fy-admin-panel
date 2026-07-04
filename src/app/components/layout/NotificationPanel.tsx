@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { notificationService, AdminNotification } from "@/app/services/notificationService";
+import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { useToast } from "@/app/hooks/useToast";
 import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
 import { isAdminSessionExpiredError } from "@/app/services/adminApiClient";
@@ -76,6 +77,19 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
     });
     return () => controller.abort(new DOMException("Notification panel request cancelled", "AbortError"));
   }, [loadNotifications]);
+
+  const handleNotificationPayload = useCallback(() => {
+    console.log('[Realtime] Notification panel update');
+    void loadNotifications();
+  }, [loadNotifications]);
+
+  useSupabaseRealtime({
+    channelName: 'notifications_panel',
+    table: 'notifications',
+    event: '*',
+    enabled: Boolean(auth?.session?.access_token),
+    onPayload: handleNotificationPayload,
+  });
 
   const handleMarkAsRead = async (id: string, href?: string | null) => {
     try {
@@ -150,7 +164,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
             <p className="text-xs font-semibold text-error px-4">{error}</p>
             <button
               onClick={() => void loadNotifications()}
-              className="px-4 py-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-[10px] font-black uppercase tracking-widest text-white border border-border transition-all"
+              className="px-4 py-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-[10px] font-black uppercase tracking-widest text-foreground border border-border transition-all"
             >
               {COPY.retrySync}
             </button>
@@ -169,7 +183,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
               className={cn(
                 "p-4 rounded-[24px] border transition-all duration-300 cursor-pointer flex items-start space-x-4 group",
                 !notification.is_read
-                  ? "bg-primary/5 border-primary/20 text-white shadow-sm shadow-primary/5 hover:bg-primary/10 hover:border-primary/30"
+                  ? "bg-primary/5 border-primary/20 text-foreground shadow-sm shadow-primary/5 hover:bg-primary/10 hover:border-primary/30"
                   : "bg-surface-elevated border-border text-foreground/40 hover:bg-surface-elevated hover:bg-foreground/5 hover:border-border"
               )}
             >
@@ -192,7 +206,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
                     {new Date(notification.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
-                <p className={cn("text-xs font-black tracking-tight leading-snug truncate", !notification.is_read && "text-white")}>
+                <p className={cn("text-xs font-black tracking-tight leading-snug truncate", !notification.is_read && "text-foreground")}>
                   {notification.title}
                 </p>
                 <p className="text-[11px] text-foreground/60 mt-1 leading-relaxed line-clamp-2 font-medium">
@@ -208,7 +222,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
       <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
         <button
           onClick={() => loadNotifications()}
-          className="flex items-center space-x-2 text-[10px] font-black text-foreground/40 hover:text-white uppercase tracking-widest transition-colors"
+          className="flex items-center space-x-2 text-[10px] font-black text-foreground/40 hover:text-foreground uppercase tracking-widest transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
           <span>{COPY.refreshFeed}</span>
@@ -216,7 +230,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
         {onClose && (
           <button
             onClick={onClose}
-            className="flex items-center space-x-1.5 text-[10px] font-black text-foreground/40 hover:text-white uppercase tracking-widest transition-colors"
+            className="flex items-center space-x-1.5 text-[10px] font-black text-foreground/40 hover:text-foreground uppercase tracking-widest transition-colors"
           >
             <X className="w-3.5 h-3.5" />
             <span>{COPY.close}</span>
