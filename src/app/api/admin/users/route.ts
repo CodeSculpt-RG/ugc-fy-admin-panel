@@ -7,18 +7,11 @@ import { safeQuery } from "@/lib/api/safe-query";
 type ProfileRow = {
   id: string;
   email: string | null;
-  phone: string | null;
   full_name: string | null;
-  avatar_url: string | null;
   role: "brand" | "creator" | "admin" | string | null;
   approval_status: string | null;
-  profile_completed: boolean | null;
-  kyc_status: string | null;
-  is_verified: boolean | null;
   created_at: string | null;
   updated_at: string | null;
-  platform_id: string | null;
-  is_visible_publicly: boolean | null;
 };
 
 type OptionalProfileRow = {
@@ -32,6 +25,7 @@ type OptionalProfileRow = {
   username?: string | null;
   creator_name?: string | null;
   display_name?: string | null;
+  kyc_status?: string | null;
 };
 
 type OptionalProfileLoad = {
@@ -40,12 +34,25 @@ type OptionalProfileLoad = {
   warning: string | null;
 };
 
-function isMissingColumnError(error: string): boolean {
-  return (
-    error.includes("column") ||
-    error.includes("Could not find") ||
-    error.includes("42703")
-  );
+function isMissingColumnError(error: unknown): boolean {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "42703"
+  ) {
+    return true;
+  }
+
+  const message =
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message
+      : "";
+
+  return message.includes("does not exist");
 }
 
 function getProfileKey(profile: OptionalProfileRow): string | null {
@@ -79,7 +86,7 @@ async function loadOptionalProfiles(
     }
 
     if (!isMissingColumnError(result.error)) {
-      return { rows: [], missingTable: null, warning: result.error };
+      return { rows: [], missingTable: null, warning: typeof result.error === 'string' ? result.error : 'Unknown error' };
     }
   }
 
@@ -100,18 +107,11 @@ export async function GET(request: Request) {
       .select(`
         id, 
         email, 
-        phone,
         full_name, 
-        avatar_url, 
         role, 
         approval_status, 
-        profile_completed,
-        kyc_status,
-        is_verified,
         created_at, 
-        updated_at,
-        platform_id,
-        is_visible_publicly
+        updated_at
       `, { count: "exact" })
       .in('role', ['brand', 'creator'])
       .order("created_at", { ascending: false });
@@ -149,23 +149,25 @@ export async function GET(request: Request) {
     ].filter((warning): warning is string => Boolean(warning));
 
     const mappedUsers = typedProfiles.map(u => {
+      const brandProfile = u.role === "brand" ? brandProfileMap.get(u.id) ?? null : null;
+      const creatorProfile = u.role === "creator" ? creatorProfileMap.get(u.id) ?? null : null;
 
       return {
         id: u.id,
-        platform_id: u.platform_id,
+        platform_id: null,
         full_name: u.full_name,
         username: u.email ? u.email.split('@')[0] : null,
         email: u.email,
         role: u.role,
         approval_status: u.approval_status,
-        is_visible_publicly: u.is_visible_publicly,
-        kyc_status: u.kyc_status,
+        is_visible_publicly: false,
+        kyc_status: brandProfile?.kyc_status || creatorProfile?.kyc_status || null,
         created_at: u.created_at,
         updated_at: u.updated_at,
         
         // Pass these so getDisplayName in frontend doesn't break if it expects it
-        brand_profiles: u.role === "brand" ? brandProfileMap.get(u.id) ?? null : null,
-        creator_profiles: u.role === "creator" ? creatorProfileMap.get(u.id) ?? null : null
+        brand_profiles: brandProfile,
+        creator_profiles: creatorProfile
       };
     });
 

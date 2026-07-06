@@ -350,7 +350,7 @@ export default function BrandsPage() {
             columns={columns} 
             data={filteredBrands} 
             searchKey="company"
-            placeholder="Query corporate infrastructure by company name or email..."
+            searchPlaceholder="Query corporate infrastructure by company name or email..."
             onRowClick={(row) => {
               setSelectedUserId(row.id);
               setReviewPanelOpen(true);

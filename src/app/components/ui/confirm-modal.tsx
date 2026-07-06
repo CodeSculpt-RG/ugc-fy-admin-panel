@@ -69,14 +69,14 @@ export function ConfirmModal({
   if (!mounted) return null;
 
   const variantStyles = {
-    danger: "bg-accent-orange hover:bg-accent-orange/90 text-white",
+    danger: "bg-red-600 hover:bg-red-700 text-white",
     warning: "bg-accent-orange hover:bg-accent-orange/90 text-white",
     success: "bg-success-green hover:bg-success-green/90 text-white",
     info: "bg-primary hover:bg-primary/90 text-white",
   };
 
   const iconStyles = {
-    danger: "text-accent-orange bg-accent-orange/10 border-accent-orange/20",
+    danger: "text-red-600 bg-red-500/10 border-red-500/20",
     warning: "text-accent-orange bg-accent-orange/10 border-accent-orange/20",
     success: "text-success-green bg-success-green/10 border-success-green/20",
     info: "text-primary bg-primary/10 border-primary/20",
@@ -92,7 +92,7 @@ export function ConfirmModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-background/70 backdrop-blur-md z-[200]"
+            className="absolute inset-0 bg-neutral-950/35 backdrop-blur-sm z-[200]"
           />
 
           {/* Modal Container */}
@@ -101,7 +101,7 @@ export function ConfirmModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative z-[201] w-full max-w-[520px] max-h-[85vh] bg-card-bg border border-border rounded-[32px] sm:rounded-[40px] shadow-2xl flex flex-col overflow-hidden"
+            className="relative z-[201] w-full max-w-[520px] max-h-[85vh] bg-white/90 border border-white/70 rounded-[28px] shadow-[0_30px_90px_rgba(15,23,42,0.20)] backdrop-blur-2xl flex flex-col overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             

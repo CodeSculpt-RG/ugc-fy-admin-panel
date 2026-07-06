@@ -347,7 +347,7 @@ export default function EscrowPage() {
             columns={columns} 
             data={filteredEscrow} 
             searchKey="campaign"
-            placeholder="Query escrow infrastructure by campaign identifier..."
+            searchPlaceholder="Search escrows..."
           />
         )}
       </div>

@@ -2,6 +2,10 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+import { CommandHeader } from "@/app/components/shared/CommandHeader";
+import { DataSurface } from "@/app/components/shared/DataSurface";
+import { StatusPill } from "@/app/components/shared/StatusPill";
+import { GlassPanel } from "@/app/components/shared/GlassPanel";
 import { PageHeader } from "@/app/components/ui/core";
 import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
 import {
@@ -339,10 +343,10 @@ export default function SettingsPage() {
   if (isUnauthorized) {
     return (
       <DashboardShell>
-        <div className="section-spacing">
-          <PageHeader
+        <div className="space-y-5">
+          <CommandHeader
             title="System Configuration"
-            subtitle="Configure platform-wide parameters, security protocols, and integration architectures."
+            description="Configure platform-wide parameters, security protocols, and integration architectures."
           />
           <div className="p-16 rounded-[40px] bg-card-bg border border-border text-center space-y-6">
             <div className="w-20 h-20 rounded-full bg-error/10 border border-error/20 flex items-center justify-center mx-auto shadow-lg">
@@ -362,10 +366,10 @@ export default function SettingsPage() {
 
   return (
     <DashboardShell>
-      <div className="section-spacing">
-        <PageHeader
+      <div className="space-y-5">
+        <CommandHeader
           title="System Configuration"
-          subtitle="Configure platform-wide parameters, security protocols, and integration architectures."
+          description="Configure platform-wide parameters, security protocols, and integration architectures."
         >
           <div className="flex items-center space-x-3">
             <button
@@ -391,7 +395,7 @@ export default function SettingsPage() {
               <span>{isSaving ? "Committing..." : "Commit Changes"}</span>
             </button>
           </div>
-        </PageHeader>
+        </CommandHeader>
 
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-10">
           {/* Sidebar Navigation */}

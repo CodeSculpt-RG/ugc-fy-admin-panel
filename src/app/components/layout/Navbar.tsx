@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Search, Menu, X } from "lucide-react";
+import { Search, Menu } from "lucide-react";
 import { useSidebar } from "@/app/context/SidebarContext";
+import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import NotificationDropdown from "./NotificationDropdown";
 import NewActionMenu from "./NewActionMenu";
 import SystemStatusPopover from "./SystemStatusPopover";
@@ -11,91 +12,87 @@ import { cn } from "@/app/lib/utils";
 
 export default function Navbar() {
   const { toggleMobileMenu } = useSidebar();
+  const { admin } = useAdminAuth();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  return (
-    <nav className="h-[84px] bg-background/80 premium-blur border-b border-border px-8 md:px-12 lg:px-20 flex items-center justify-between sticky top-0 z-50 transition-all duration-700">
+  const roleLabel =
+    admin?.role === "owner"
+      ? "Owner Admin"
+      : admin?.role
+        ? `${admin.role.charAt(0).toUpperCase()}${admin.role.slice(1)} Admin`
+        : "Admin";
 
-      <div className="flex items-center space-x-8 lg:space-x-12 flex-1">
-        {/* Mobile Hamburger (Visible < 1024px) */}
+  return (
+    <header className="mb-4 flex items-center justify-between gap-3">
+      {/* Left side: Menu toggle (Mobile only) + Title */}
+      <div className="flex items-center gap-3 min-w-0">
         <button 
           onClick={toggleMobileMenu}
           aria-label="Toggle mobile menu"
-          className="lg:hidden p-4 rounded-2xl bg-surface-elevated border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-90"
+          className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/70 bg-white/70 text-neutral-600 shadow-sm transition hover:bg-white hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
         >
-          <Menu className="w-6 h-6" />
+          <Menu className="w-5 h-5" />
         </button>
 
-
-        {/* Search Bar */}
-        <div className={cn(
-          "relative w-full max-w-2xl group transition-all duration-700",
-          isSearchFocused ? "max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-[60] max-lg:p-8 max-lg:bg-background max-lg:h-28 max-lg:max-w-none" : "max-lg:max-w-[52px]"
-        )}>
-          <div className={cn(
-            "absolute left-6 top-1/2 -translate-y-1/2 flex items-center pointer-events-none transition-all duration-500",
-            isSearchFocused ? "text-primary scale-125" : "text-foreground/40"
-          )}>
-            <Search className="w-4.5 h-4.5 stroke-[3]" />
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-neutral-950 text-xs font-extrabold tracking-tight text-white shadow-[0_14px_34px_rgba(0,0,0,0.20)]">
+            UG
           </div>
 
+          <div className="min-w-0 hidden sm:block">
+            <p className="text-sm font-extrabold tracking-[0.18em] text-orange-600">
+              UGCFY
+            </p>
+            <p className="mt-0.5 truncate text-xs font-semibold text-neutral-500">
+              {roleLabel}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Right side: Search + Actions */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Compact Search */}
+        <div className={cn(
+          "hidden lg:flex relative items-center transition-all duration-300",
+          isSearchFocused ? "w-[380px]" : "w-[320px]"
+        )}>
+          <div className={cn(
+            "absolute left-4 top-1/2 -translate-y-1/2 flex items-center pointer-events-none transition-colors",
+            isSearchFocused ? "text-orange-600" : "text-neutral-400"
+          )}>
+            <Search className="w-4 h-4 stroke-[2.5]" />
+          </div>
           <input 
             type="text" 
-            placeholder="Query operational infrastructure..." 
+            placeholder="Search operations..." 
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setIsSearchFocused(false);
-                e.currentTarget.blur();
-              }
-            }}
-            className={cn(
-              "w-full bg-surface-elevated border border-border rounded-full py-3.5 pl-16 pr-8 text-xs font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background focus:border-primary/20 transition-all duration-700",
-              isSearchFocused ? "max-lg:h-14 shadow-sm" : "max-lg:w-0 max-lg:p-0 max-lg:border-0 max-lg:bg-transparent"
-            )}
+            className="h-11 w-full rounded-full border border-white/70 bg-white/70 py-2 pl-10 pr-12 text-sm font-medium text-neutral-900 shadow-sm outline-none backdrop-blur-xl transition-all placeholder:text-neutral-500 focus:border-white focus:bg-white focus:ring-2 focus:ring-orange-500/30"
           />
-
           {!isSearchFocused && (
-            <div className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 items-center space-x-2 px-3 py-2 rounded-xl bg-surface-elevated border border-border group-hover:border-border transition-all duration-500">
-              <span className="text-[10px] font-black text-foreground/40">⌘</span>
-              <span className="text-[10px] font-black text-foreground/40">K</span>
-            </div>
-
-          )}
-          {isSearchFocused && (
-            <button 
-              className="lg:hidden absolute right-12 top-1/2 -translate-y-1/2 text-foreground/40 p-4"
-              aria-label="Close search"
-              onClick={() => setIsSearchFocused(false)}
-            >
-              <X className="w-7 h-7" />
-            </button>
-
+             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-60">
+                <span className="text-[10px] font-bold text-neutral-500">⌘</span>
+                <span className="text-[10px] font-bold text-neutral-500">K</span>
+             </div>
           )}
         </div>
+
+        {/* Mobile Search Toggle */}
+        <button 
+          aria-label="Search"
+          className="lg:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-white/70 bg-white/70 text-neutral-600 shadow-sm transition hover:bg-white hover:text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+
+        <div className="hidden sm:block h-6 w-px bg-black/10 mx-1" />
+
+        <NewActionMenu />
+        <ThemeToggle />
+        <NotificationDropdown />
+        <SystemStatusPopover />
       </div>
-
-      <div className="flex items-center space-x-6 md:space-x-10 ml-8">
-        {/* Quick Action */}
-        <div className="relative group">
-          <NewActionMenu />
-        </div>
-
-        <div className="h-12 w-px bg-surface-elevated hidden sm:block mx-2" />
-
-
-        <div className="flex items-center space-x-4 md:space-x-6">
-          {/* Theme Toggle */}
-          <ThemeToggle />
-
-          {/* Notifications */}
-          <NotificationDropdown />
-
-          {/* Status Indicator */}
-          <SystemStatusPopover />
-        </div>
-      </div>
-    </nav>
+    </header>
   );
 }

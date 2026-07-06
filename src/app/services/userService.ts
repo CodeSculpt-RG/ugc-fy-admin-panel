@@ -5,6 +5,8 @@ type BrandProfileMin = {
   company_name?: string | null;
   brand_name?: string | null;
   contact_name?: string | null;
+  kyc_status?: string | null;
+  approval_status?: string | null;
 };
 
 type CreatorProfileMin = {
@@ -12,6 +14,8 @@ type CreatorProfileMin = {
   username?: string | null;
   creator_name?: string | null;
   display_name?: string | null;
+  kyc_status?: string | null;
+  approval_status?: string | null;
 };
 
 export type UserInternal = {
@@ -21,7 +25,6 @@ export type UserInternal = {
   full_name: string | null;
   name?: string | null;
   approval_status: "pending_review" | "approved" | "rejected" | "blocked";
-  is_verified: boolean | null;
   updated_at: string;
   created_at?: string;
   phone?: string | null;
@@ -49,6 +52,10 @@ type UserApiResponse = {
   };
 };
 
+export type UsersMeta = NonNullable<UserApiResponse["meta"]>;
+
+let latestUsersMeta: UsersMeta | null = null;
+
 function getApiErrorMessage(
   response: Response,
   payload: UserApiResponse | null
@@ -60,19 +67,33 @@ function getApiErrorMessage(
   );
 }
 
-function normalizeApiError(error: unknown) {
+type NormalizedApiError = {
+  message: string;
+  status?: number;
+  code?: string;
+};
+
+function normalizeApiError(error: unknown): NormalizedApiError {
   if (error instanceof Error) {
     return {
       message: error.message,
-      stack: error.stack,
     };
   }
 
-  if (typeof error === 'object' && error !== null) {
-    return JSON.stringify(error, Object.getOwnPropertyNames(error));
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return {
+      message: (error as { message: string }).message,
+    };
   }
 
-  return String(error);
+  return {
+    message: "Unknown API error",
+  };
 }
 
 function getDisplayName(internal: UserInternal): string {
@@ -95,6 +116,20 @@ function getDisplayName(internal: UserInternal): string {
   );
 }
 
+function deriveVerificationStatus(internal: UserInternal): "Verified" | "Unverified" {
+  const cp = Array.isArray(internal.creator_profiles) ? internal.creator_profiles[0] : internal.creator_profiles;
+  if (cp?.kyc_status) return cp.kyc_status === 'approved' ? 'Verified' : 'Unverified';
+  if (cp?.approval_status) return cp.approval_status === 'approved' ? 'Verified' : 'Unverified';
+
+  const bp = Array.isArray(internal.brand_profiles) ? internal.brand_profiles[0] : internal.brand_profiles;
+  if (bp?.kyc_status) return bp.kyc_status === 'approved' ? 'Verified' : 'Unverified';
+  if (bp?.approval_status) return bp.approval_status === 'approved' ? 'Verified' : 'Unverified';
+
+  if (internal.approval_status) return internal.approval_status === 'approved' ? 'Verified' : 'Unverified';
+
+  return 'Unverified';
+}
+
 const mapInternalToUser = (internal: UserInternal): User => ({
   id: internal.id,
   name: getDisplayName(internal),
@@ -102,7 +137,7 @@ const mapInternalToUser = (internal: UserInternal): User => ({
   role: (internal.role.charAt(0).toUpperCase() +
     internal.role.slice(1)) as "Creator" | "Brand" | "Admin",
   status: (internal.approval_status || "pending") as UserStatus,
-  verification: internal.is_verified || internal.approval_status === "approved" ? "Verified" : "Unverified",
+  verification: deriveVerificationStatus(internal),
   lastActive: internal.updated_at || new Date().toISOString(),
   riskLevel: "Low" as RiskLevel,
   platformId: internal.platform_id || undefined,
@@ -137,12 +172,19 @@ export const userService = {
       if (payload.meta?.partial && process.env.NODE_ENV !== "production") {
         console.warn("[UserService] User data loaded with partial optional profile data:", payload.meta);
       }
+      latestUsersMeta = payload.meta ?? null;
 
       return (payload.data ?? []).map(mapInternalToUser);
     } catch (error) {
-      console.error("[UserService] API Error:", normalizeApiError(error));
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[UserService] Recoverable API issue:", normalizeApiError(error).message);
+      }
       throw error;
     }
+  },
+
+  getLastUsersMeta(): UsersMeta | null {
+    return latestUsersMeta;
   },
 
   async getPendingUsers(signal?: AbortSignal): Promise<User[]> {
@@ -163,7 +205,9 @@ export const userService = {
 
       return (payload.data ?? []).map(mapInternalToUser);
     } catch (error) {
-      console.error("[UserService] API Error:", normalizeApiError(error));
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[UserService] Recoverable API issue:", normalizeApiError(error).message);
+      }
       throw error;
     }
   },
@@ -186,7 +230,9 @@ export const userService = {
 
       return payload.data ?? { profile: null, creator_profile: null, brand_profile: null, audit_logs: [] };
     } catch (error) {
-      console.error("[UserService] API Error:", normalizeApiError(error));
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[UserService] Recoverable API issue:", normalizeApiError(error).message);
+      }
       throw error;
     }
   },

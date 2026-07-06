@@ -15,10 +15,17 @@ import type { AdminUser } from "@/lib/auth/admin-types";
 import { useAuthStore } from "@/app/store/authStore";
 import type { Session } from "@supabase/supabase-js";
 
+export type AdminAuthStatus =
+  | "initializing"
+  | "authenticated"
+  | "unauthenticated"
+  | "unauthorized"
+  | "error";
+
 interface AdminAuthContextValue {
   admin: AdminUser | null;
   session: Session | null;
-  status: "checking" | "authenticated" | "unauthenticated" | "unknown";
+  status: AdminAuthStatus;
   loading: boolean;
   hasPermission: (permission: AdminPermission) => boolean;
   refreshAdmin: (force?: boolean) => Promise<void>;
@@ -26,59 +33,86 @@ interface AdminAuthContextValue {
 
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
-function isLikelyNetworkFetchError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  return (
-    error.message === "Failed to fetch" ||
-    error.message.includes("NetworkError") ||
-    error.message.includes("Load failed")
-  );
+function getSessionToken(session: Session | null): string | null {
+  return session?.access_token ?? null;
 }
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const { setAuth, logout } = useAuthStore();
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [status, setStatus] = useState<AdminAuthContextValue["status"]>("checking");
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<AdminAuthStatus>("initializing");
+  
+  const loading = status === "initializing";
+
+  const mountedRef = useRef(false);
+  const refreshInFlightRef = useRef(false);
   const activeTokenRef = useRef<string | null>(null);
 
+  const safeSetStatus = useCallback((nextStatus: AdminAuthStatus) => {
+    if (mountedRef.current) {
+      setStatus(nextStatus);
+    }
+  }, []);
+
+  const safeSetAdmin = useCallback((nextAdmin: AdminUser | null) => {
+    if (mountedRef.current) {
+      setAdmin(nextAdmin);
+    }
+  }, []);
+
   const handleLogout = useCallback(() => {
-    deleteCookie("admin-token");
-    setAdmin(null);
+    if (typeof window !== "undefined") {
+      deleteCookie("admin-token");
+    }
+    safeSetAdmin(null);
     setSession(null);
-    setStatus("unauthenticated");
+    safeSetStatus("unauthenticated");
     logout();
     activeTokenRef.current = null;
-  }, [logout]);
+  }, [logout, safeSetAdmin, safeSetStatus]);
 
-  const refreshAdmin = useCallback(async (
-    currentSession?: Session | null,
-    signal?: AbortSignal,
-    force = false
-  ) => {
+  const refreshAdmin = useCallback(async (options?: { signal?: AbortSignal; force?: boolean }) => {
+    if (refreshInFlightRef.current && !options?.force) {
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+    if (status !== "authenticated" && status !== "initializing") {
+      safeSetStatus("initializing");
+    }
+
     try {
-      const activeSession = currentSession !== undefined 
-        ? currentSession 
-        : (await supabase.auth.getSession()).data.session;
+      const { data } = await supabase.auth.getSession();
+      const activeSession = data.session;
 
       if (!activeSession?.access_token) {
-        setLoading(false);
         handleLogout();
         return;
       }
 
-      setCookie("admin-token", activeSession.access_token, { maxAge: 60 * 60 * 12, path: "/" });
-
-      if (!force && activeTokenRef.current === activeSession.access_token) {
-        setLoading(false);
-        return;
+      if (typeof window !== "undefined") {
+        setCookie("admin-token", activeSession.access_token, { maxAge: 60 * 60 * 12, path: "/" });
       }
-      activeTokenRef.current = activeSession.access_token;
+
+      if (!options?.force && activeTokenRef.current === activeSession.access_token) {
+        // We already successfully fetched for this token
+        if (admin) {
+          safeSetStatus("authenticated");
+        } else {
+          // If we have token but no admin, we shouldn't short-circuit
+          if (status === "initializing") {
+            // Force fetch
+          } else {
+            safeSetStatus("authenticated");
+            return;
+          }
+        }
+      }
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+      const signal = options?.signal || controller.signal;
 
       let response: Response;
       try {
@@ -86,113 +120,128 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           method: "GET",
           credentials: "include",
           cache: "no-store",
-          headers: activeSession?.access_token
-            ? { Authorization: `Bearer ${activeSession.access_token}` }
-            : {},
+          headers: { 
+            Accept: "application/json",
+            Authorization: `Bearer ${activeSession.access_token}`
+          },
           signal,
         });
-      } catch (fetchErr: unknown) {
-        if (isAbortError(fetchErr)) {
-          return;
-        }
-        const msg = fetchErr instanceof Error ? fetchErr.message : "Unknown error";
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
-        if (isLikelyNetworkFetchError(fetchErr)) {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("Admin session refresh skipped due to transient network issue:", msg);
-          }
-          setStatus(admin ? "authenticated" : "unknown");
-          setLoading(false);
-          return;
-        }
+      if (response.status === 401) {
+        safeSetAdmin(null);
+        safeSetStatus("unauthenticated");
+        handleLogout();
+        await supabase.auth.signOut();
+        return;
+      }
 
-        console.error("Unexpected admin session refresh fetch error:", msg);
-        setStatus(admin ? "authenticated" : "unknown");
-        setLoading(false);
+      if (response.status === 403) {
+        safeSetAdmin(null);
+        safeSetStatus("unauthorized");
+        handleLogout();
+        await supabase.auth.signOut();
         return;
       }
 
       if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          console.warn("[AdminAuthContext] me check rejected, status:", response.status);
-          handleLogout();
-          await supabase.auth.signOut();
-        } else {
-          console.warn("[AdminAuthContext] me check unavailable, status:", response.status);
-          setStatus(admin ? "authenticated" : "unknown");
-        }
-        setLoading(false);
+        safeSetAdmin(null);
+        safeSetStatus("error");
         return;
       }
 
-      const payload = await response.json();
-      if (payload.ok && payload.admin) {
-        setAdmin(payload.admin);
-        setStatus("authenticated");
-        // Map AdminUser to AuthAdminUser format expected by Zustand authStore
-        const storeAdmin = {
-          id: payload.admin.id,
-          email: payload.admin.email,
-          role: payload.admin.role.toUpperCase(), // Match old UI's uppercase expectations
-          name: payload.admin.full_name || payload.admin.email.split("@")[0],
-          full_name: payload.admin.full_name,
-          permissions: [] as string[], 
-          isActive: payload.admin.status === "active",
-        };
-        type AuthStoreParam = Parameters<typeof setAuth>[0];
-        setAuth(storeAdmin as unknown as AuthStoreParam, activeSession.access_token);
-      } else {
-        setStatus(admin ? "authenticated" : "unknown");
+      const payload = await response.json().catch(() => ({}));
+
+      if (!payload?.success && !payload?.ok) {
+        safeSetAdmin(null);
+        safeSetStatus("unauthorized");
+        return;
       }
-    } catch (err: unknown) {
-      if (isAbortError(err)) return;
-      console.error("[AdminAuthContext] refreshAdmin failed:", err);
-      setStatus(admin ? "authenticated" : "unknown");
+
+      const verifiedAdmin = payload.admin ?? payload.data?.admin ?? null;
+      if (!verifiedAdmin) {
+        safeSetAdmin(null);
+        safeSetStatus("unauthorized");
+        return;
+      }
+
+      activeTokenRef.current = activeSession.access_token;
+      safeSetAdmin(verifiedAdmin);
+      safeSetStatus("authenticated");
+
+      const storeAdmin = {
+        id: verifiedAdmin.id,
+        email: verifiedAdmin.email,
+        role: verifiedAdmin.role.toUpperCase(),
+        name: verifiedAdmin.full_name || verifiedAdmin.email.split("@")[0],
+        full_name: verifiedAdmin.full_name,
+        permissions: [] as string[],
+        isActive: verifiedAdmin.status === "active",
+      };
+      
+      type AuthStoreParam = Parameters<typeof setAuth>[0];
+      setAuth(storeAdmin as unknown as AuthStoreParam, activeSession.access_token);
+
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      console.error("[AdminAuthContext] Admin refresh failed:", error);
+      safeSetAdmin(null);
+      safeSetStatus("error");
     } finally {
-      setLoading(false);
+      refreshInFlightRef.current = false;
     }
-  }, [admin, setAuth, handleLogout]);
+  }, [admin, handleLogout, safeSetAdmin, safeSetStatus, setAuth, status]);
+
+  const refreshAdminRef = useRef(refreshAdmin);
+  useEffect(() => {
+    refreshAdminRef.current = refreshAdmin;
+  }, [refreshAdmin]);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
     const controller = new AbortController();
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!mounted) return;
-      if (error) {
-        console.error("[AdminAuthContext] getSession failed:", error);
-      }
-      const s = data.session;
-      setSession(s);
-      if (s?.access_token) {
-        refreshAdmin(s, controller.signal).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      } else {
-        setStatus("unauthenticated");
-        setLoading(false);
-      }
-    });
+    void refreshAdminRef.current({ signal: controller.signal });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (!mounted) return;
-      setSession(nextSession);
-      if (nextSession?.access_token) {
-        refreshAdmin(nextSession, controller.signal);
-      } else {
-        handleLogout();
-        setLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (!mountedRef.current) return;
+
+      setSession((currentSession) => {
+        const currentToken = getSessionToken(currentSession);
+        const nextToken = getSessionToken(nextSession);
+        if (currentToken === nextToken) {
+          return currentSession;
+        }
+        return nextSession;
+      });
+
+      if (event === "SIGNED_OUT") {
+        safeSetAdmin(null);
+        safeSetStatus("unauthenticated");
+        return;
+      }
+
+      if (
+        event === "SIGNED_IN" ||
+        event === "TOKEN_REFRESHED" ||
+        event === "USER_UPDATED"
+      ) {
+        void refreshAdminRef.current({ force: true });
       }
     });
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
       controller.abort();
       subscription.unsubscribe();
     };
-  }, [refreshAdmin, handleLogout]);
+  }, [safeSetAdmin, safeSetStatus]);
 
   const hasPermission = useCallback(
     (permission: AdminPermission): boolean => {
@@ -200,7 +249,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       const roleStr = admin.role.toLowerCase();
       if (roleStr === "owner" || roleStr === "super_admin") return true;
       
-      // Fallback/role permission map
       const permissionsMap: Record<string, AdminPermission[]> = {
         admin: ["dashboard.read", "users.read", "creators.read", "brands.read", "campaigns.read", "moderation.read", "payments.read", "escrow.read", "disputes.read", "support.read", "analytics.read", "reports.read", "settings.read", "profile.read", "profile.update"],
         kyc_manager: ["dashboard.read", "users.read", "creators.read", "kyc.read" as AdminPermission, "kyc.review" as AdminPermission, "kyc.approve" as AdminPermission, "kyc.reject" as AdminPermission],
@@ -222,7 +270,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     status,
     loading,
     hasPermission,
-    refreshAdmin: (force?: boolean) => refreshAdmin(undefined, undefined, force !== false),
+    refreshAdmin: (force?: boolean) => refreshAdminRef.current({ force }),
   };
 
   return (

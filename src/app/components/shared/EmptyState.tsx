@@ -6,17 +6,19 @@ interface EmptyStateProps {
   title: string;
   description: string;
   icon?: React.ReactNode;
+  action?: React.ReactNode;
   className?: string;
 }
 
-export function EmptyState({ title, description, icon, className }: EmptyStateProps) {
+export function EmptyState({ title, description, icon, action, className }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-2xl bg-surface-elevated/50", className)}>
-      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary shadow-sm">
+    <div className={cn("flex min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-white/70 bg-white/70 p-8 text-center shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-12", className)}>
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-500/10 text-orange-600 shadow-sm">
         {icon || <FolderOpen className="w-8 h-8" />}
       </div>
-      <h3 className="text-lg font-black text-foreground tracking-tight mb-2">{title}</h3>
-      <p className="text-sm font-semibold text-foreground/50 max-w-sm">{description}</p>
+      <h3 className="mb-2 text-lg font-semibold tracking-normal text-foreground">{title}</h3>
+      <p className="max-w-sm text-sm leading-6 text-text-secondary">{description}</p>
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }

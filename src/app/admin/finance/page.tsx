@@ -1,31 +1,89 @@
 "use client";
 
-import React from "react";
-import { AlertCircle, Banknote, CircleDollarSign, ReceiptText } from "lucide-react";
-import { PageHeader, StatCard } from "@/app/components/ui/core";
-import { EmptyState } from "@/app/components/ui/shared-states";
+import React, { useMemo } from "react";
+import { CommandHeader } from "@/app/components/shared/CommandHeader";
 import { ProtectedRoute } from "@/app/components/auth/ProtectedRoute";
+import { DataTable } from "@/app/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+import { StatusPill } from "@/app/components/shared/StatusPill";
+import { ActionDropdown } from "@/app/components/ui/action-dropdown";
+
+type FinanceRecord = {
+  id: string;
+  transaction: string;
+  brand: string;
+  amount: string;
+  status: string;
+  date: string;
+};
 
 export default function FinancePage() {
+  const columns = useMemo<ColumnDef<FinanceRecord>[]>(
+    () => [
+      {
+        accessorKey: "transaction",
+        header: "Transaction",
+        cell: ({ row }) => (
+          <span className="font-bold text-foreground font-mono">{row.original.transaction}</span>
+        ),
+      },
+      {
+        accessorKey: "brand",
+        header: "Brand",
+      },
+      {
+        accessorKey: "amount",
+        header: "Amount",
+        cell: ({ row }) => (
+          <span className="font-bold text-emerald-600">{row.original.amount}</span>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusPill
+            label={row.original.status.toUpperCase()}
+            variant={
+              row.original.status === "completed"
+                ? "success"
+                : row.original.status === "pending"
+                ? "warning"
+                : "error"
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: "date",
+        header: "Date",
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: () => {
+          return <ActionDropdown actions={[]} />;
+        },
+      },
+    ],
+    []
+  );
+
   return (
     <ProtectedRoute permission="payments.read">
-      <div className="section-spacing">
-        <PageHeader
-          title="Finance"
-          subtitle="Monitor campaign payments, payouts, invoices, and platform revenue."
+      <div className="space-y-5">
+        <CommandHeader
+          title="Finance & Payments"
+          description="Manage platform revenue, payouts, and transactions."
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Total Collected" value="₹0" icon={CircleDollarSign} color="blue" />
-          <StatCard label="Pending Payouts" value="₹0" icon={Banknote} color="orange" delay={0.05} />
-          <StatCard label="Platform Fees" value="₹0" icon={ReceiptText} color="success" delay={0.1} />
-          <StatCard label="Failed Payments" value="0" icon={AlertCircle} color="error" delay={0.15} />
-        </div>
-
-        <EmptyState
-          title="Finance Workspace Is Ready"
-          description="Payment and payout data is not fully available yet. The dashboard remains operational while finance tables are configured."
-          icon={<CircleDollarSign className="w-12 h-12 text-primary" />}
+        <DataTable
+          columns={columns}
+          data={[]}
+          searchKey="transaction"
+          searchPlaceholder="Search transactions..."
+          emptyTitle="No Financial Records"
+          emptyDescription="Transactions will appear here once payments are processed."
         />
       </div>
     </ProtectedRoute>

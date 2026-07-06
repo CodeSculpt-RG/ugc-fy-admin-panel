@@ -13,12 +13,12 @@ export function LoadingState({ message = "Synchronizing Secure Ledger...", class
   return (
     <div className={cn("flex flex-col items-center justify-center min-h-[400px] p-12 text-center", className)}>
       <div className="relative mb-8">
-        <div className="absolute -inset-4 rounded-full bg-primary/10 blur-xl animate-pulse" />
-        <div className="relative p-6 rounded-[32px] bg-surface border border-border shadow-2xl flex items-center justify-center">
-          <Loader2 className="w-12 h-12 text-primary animate-spin stroke-[2.5]" />
+        <div className="absolute -inset-4 rounded-full bg-orange-500/10 blur-xl animate-pulse" />
+        <div className="relative p-6 rounded-[32px] ugcfy-glass flex items-center justify-center">
+          <Loader2 className="w-12 h-12 text-orange-600 animate-spin stroke-[2.5]" />
         </div>
       </div>
-      <p className="text-xs font-black uppercase tracking-[0.4em] text-foreground/40 animate-pulse">{message}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary animate-pulse">{message}</p>
     </div>
   );
 }
@@ -39,12 +39,12 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center min-h-[400px] p-12 text-center glass-card rounded-[40px] border border-border", className)}>
-      <div className="p-8 rounded-[36px] bg-surface border border-border shadow-inner mb-8">
+    <div className={cn("flex flex-col items-center justify-center min-h-[360px] p-8 sm:p-12 text-center ugcfy-glass rounded-[28px]", className)}>
+      <div className="p-7 rounded-[28px] bg-white/75 border border-black/5 shadow-sm mb-8">
         {icon}
       </div>
-      <h3 className="text-2xl sm:text-3xl font-black text-foreground tracking-tighter mb-3">{title}</h3>
-      <p className="text-foreground/40 text-xs sm:text-sm font-medium max-w-md mx-auto mb-8 leading-relaxed">
+      <h3 className="text-xl sm:text-2xl font-semibold text-foreground tracking-normal mb-3">{title}</h3>
+      <p className="text-text-secondary text-sm max-w-md mx-auto mb-8 leading-6">
         {description}
       </p>
       {action}
@@ -60,24 +60,24 @@ interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = "Infrastructure Desync Detected",
-  message = "An error occurred while establishing a secure handshake with the Supabase backend service.",
+  title = "Dashboard Data Unavailable",
+  message = "We could not load this workspace section. Core admin navigation remains available.",
   onRetry,
   className,
 }: ErrorStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center min-h-[400px] p-12 text-center glass-card rounded-[40px] border border-error/20 bg-error/[0.02]", className)}>
-      <div className="p-8 rounded-[36px] bg-error/10 border border-error/20 text-error shadow-inner mb-8">
+    <div className={cn("flex flex-col items-center justify-center min-h-[360px] p-8 sm:p-12 text-center rounded-[28px] border border-red-200/70 bg-red-50/70 shadow-sm backdrop-blur-xl", className)}>
+      <div className="p-7 rounded-[28px] bg-red-500/10 border border-red-500/15 text-red-600 shadow-sm mb-8">
         <AlertCircle className="w-12 h-12 stroke-[2.5]" />
       </div>
-      <h3 className="text-2xl sm:text-3xl font-black text-foreground tracking-tighter mb-3">{title}</h3>
-      <p className="text-foreground/40 text-xs sm:text-sm font-medium max-w-md mx-auto mb-8 leading-relaxed">
+      <h3 className="text-xl sm:text-2xl font-semibold text-foreground tracking-normal mb-3">{title}</h3>
+      <p className="text-text-secondary text-sm max-w-md mx-auto mb-8 leading-6">
         {message}
       </p>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="flex items-center space-x-3 px-8 py-4 rounded-[24px] bg-primary hover:bg-primary/90 text-white font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-primary/20 outline-none"
+          className="flex min-h-11 items-center gap-3 px-5 py-3 rounded-full ugcfy-gradient-cta text-white font-semibold text-sm transition-all active:scale-95 outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
         >
           <RefreshCw className="w-4 h-4" />
           <span>Retry Handshake</span>
@@ -118,24 +118,30 @@ export function MissingTableState({ tableName, migrationSql, className }: Missin
   };
 
   const isEscalations = tableName === "chat_escalations";
-  const titleText = isEscalations ? "Escalations database is not ready." : `Database Table Missing: ${tableName}`;
+  const titleText = isEscalations ? "Escalations queue is ready." : "Optional workspace not provisioned";
   const descText = isEscalations 
-    ? "Run the migration to enable escalation tracking." 
-    : `The required table ${tableName} does not exist in the remote Supabase schema cache. Execute the DDL migration below in your Supabase SQL Editor.`;
+    ? "Escalation records will appear here once the tracking table is configured." 
+    : "This admin section is available, but its optional data table has not been configured yet.";
 
   return (
-    <div className={cn("flex flex-col items-center justify-center min-h-[450px] p-10 text-center glass-card rounded-[40px] border border-accent-orange/20 bg-accent-orange/[0.02]", className)}>
-      <div className="p-8 rounded-[36px] bg-accent-orange/10 border border-accent-orange/20 text-accent-orange shadow-inner mb-6">
+    <div className={cn("flex flex-col items-center justify-center min-h-[420px] p-8 sm:p-10 text-center ugcfy-glass rounded-[28px]", className)}>
+      <div className="p-7 rounded-[28px] bg-orange-500/10 border border-orange-500/15 text-orange-600 shadow-sm mb-6">
         <Database className="w-12 h-12 stroke-[2.5]" />
       </div>
-      <h3 className="text-2xl sm:text-3xl font-black text-foreground tracking-tighter mb-2">
+      <h3 className="text-xl sm:text-2xl font-semibold text-foreground tracking-normal mb-2">
         {titleText}
       </h3>
-      <p className="text-foreground/60 text-xs sm:text-sm font-medium max-w-lg mx-auto mb-6 leading-relaxed">
+      <p className="text-text-secondary text-sm max-w-lg mx-auto mb-6 leading-6">
         {descText}
       </p>
 
-      <div className="w-full max-w-2xl text-left bg-[#0F172A] border border-border rounded-[28px] p-6 relative shadow-2xl mb-6">
+      <details className="w-full max-w-2xl text-left rounded-[24px] border border-black/5 bg-white/60 p-5 shadow-sm">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-text-secondary">
+          Admin setup details
+        </summary>
+        <p className="mt-3 text-sm text-text-secondary">Optional table not provisioned: {tableName}</p>
+      </details>
+      <div className="w-full max-w-2xl text-left bg-[#18181B] border border-black/10 rounded-[24px] p-6 relative shadow-xl mt-4 mb-6">
         <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">
           <span className="text-[10px] font-black uppercase tracking-widest text-foreground/40 font-mono">SQL Migration Query</span>
           <button

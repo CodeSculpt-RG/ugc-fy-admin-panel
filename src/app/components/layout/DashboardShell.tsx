@@ -3,9 +3,9 @@
 import React from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import { motion } from "framer-motion";
 import { SidebarProvider, useSidebarOptional } from "@/app/context/SidebarContext";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { motion } from "framer-motion";
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -15,26 +15,21 @@ function DashboardContent({ children }: DashboardShellProps) {
   const { admin } = useAdminAuth();
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground selection:bg-primary/30 selection:text-primary">
+    <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.10),transparent_30rem),linear-gradient(180deg,#F7F7F8_0%,#EEF0F3_100%)] text-neutral-950 selection:bg-orange-500/20 selection:text-orange-700">
       {admin && <Sidebar />}
       
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-500 ease-in-out ml-0 relative">
-        {admin && <Navbar />}
-        
-        <main className="flex-1 min-w-0 overflow-x-hidden bg-background relative">
-          
-          <div className="p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="max-w-[1280px] mx-auto w-full section-spacing"
-            >
-              {children}
-            </motion.div>
-          </div>
-        </main>
-      </div>
+      <section className="min-w-0 flex-1 px-3 py-4 sm:px-5 lg:px-6 lg:py-6 overflow-x-hidden relative">
+        <div className="mx-auto w-full max-w-[1500px]">
+          {admin && <Navbar />}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            {children}
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }

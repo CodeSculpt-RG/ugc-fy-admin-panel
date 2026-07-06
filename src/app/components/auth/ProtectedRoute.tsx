@@ -30,10 +30,10 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
     );
   }
 
-  if (!admin && status === "unknown") {
+  if (!admin && status === "error") {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <LoadingState message="Session Verification Delayed..." />
+        <LoadingState message="Session Verification Failed..." />
       </div>
     );
   }

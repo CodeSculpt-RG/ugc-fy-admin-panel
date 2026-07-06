@@ -70,11 +70,11 @@ export default function NotificationDropdown() {
           onClick={() => {
             if (!isOpen) void checkUnread();
           }}
-          className="relative p-3.5 rounded-2xl bg-surface-elevated border border-border text-foreground/30 hover:text-foreground hover:bg-foreground/[0.06] hover:border-border transition-all group outline-none active:scale-90"
+          className="relative flex h-11 w-11 items-center justify-center rounded-[24px] border border-white/70 bg-white/85 backdrop-blur-2xl text-neutral-600 shadow-sm transition-all hover:bg-white hover:text-neutral-950 hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)] group outline-none active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500/30"
         >
           <Bell className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
           {unreadCount > 0 && (
-            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-accent-orange rounded-full border-2 border-card-bg animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.6)]" />
+            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full border-2 border-white animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.6)]" />
           )}
         </button>
       </DropdownMenuTrigger>

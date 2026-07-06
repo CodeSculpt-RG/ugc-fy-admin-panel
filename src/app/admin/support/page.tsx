@@ -1,31 +1,91 @@
 "use client";
 
-import React from "react";
-import { CheckCircle2, MessageSquareText, Reply, Siren } from "lucide-react";
-import { PageHeader, StatCard } from "@/app/components/ui/core";
-import { EmptyState } from "@/app/components/ui/shared-states";
+import React, { useMemo } from "react";
+import { CommandHeader } from "@/app/components/shared/CommandHeader";
 import { ProtectedRoute } from "@/app/components/auth/ProtectedRoute";
+import { DataTable } from "@/app/components/ui/data-table";
+import { ColumnDef } from "@tanstack/react-table";
+import { StatusPill } from "@/app/components/shared/StatusPill";
+import { ActionDropdown } from "@/app/components/ui/action-dropdown";
+
+type SupportRecord = {
+  id: string;
+  ticket: string;
+  user: string;
+  priority: string;
+  status: string;
+  created: string;
+};
 
 export default function SupportPage() {
+  const columns = useMemo<ColumnDef<SupportRecord>[]>(
+    () => [
+      {
+        accessorKey: "ticket",
+        header: "Ticket",
+        cell: ({ row }) => (
+          <span className="font-bold text-foreground font-mono">{row.original.ticket}</span>
+        ),
+      },
+      {
+        accessorKey: "user",
+        header: "User",
+      },
+      {
+        accessorKey: "priority",
+        header: "Priority",
+        cell: ({ row }) => (
+          <span className={row.original.priority === "urgent" ? "text-red-500 font-bold" : "text-text-secondary"}>
+            {row.original.priority.toUpperCase()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => (
+          <StatusPill
+            label={row.original.status.toUpperCase()}
+            variant={
+              row.original.status === "resolved"
+                ? "success"
+                : row.original.status === "open"
+                ? "warning"
+                : "info"
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: "created",
+        header: "Created",
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: () => {
+          return <ActionDropdown actions={[]} />;
+        },
+      },
+    ],
+    []
+  );
+
   return (
     <ProtectedRoute permission="support.read">
-      <div className="section-spacing">
-        <PageHeader
-          title="Support"
-          subtitle="Manage support tickets and admin escalations."
+      <div className="space-y-5">
+        <CommandHeader
+          title="Support Tickets"
+          description="Manage user inquiries, disputes, and support requests."
         />
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Open Tickets" value="0" icon={MessageSquareText} color="blue" />
-          <StatCard label="Pending Replies" value="0" icon={Reply} color="orange" delay={0.05} />
-          <StatCard label="Escalated" value="0" icon={Siren} color="error" delay={0.1} />
-          <StatCard label="Resolved" value="0" icon={CheckCircle2} color="success" delay={0.15} />
-        </div>
-
-        <EmptyState
-          title="Support Queue Is Ready"
-          description="Support ticket data is not fully available yet. The dashboard remains operational while support tables are configured."
-          icon={<MessageSquareText className="w-12 h-12 text-primary" />}
+        <DataTable
+          columns={columns}
+          data={[]}
+          searchKey="ticket"
+          searchPlaceholder="Search tickets..."
+          emptyTitle="No Support Tickets"
+          emptyDescription="The support queue is empty."
         />
       </div>
     </ProtectedRoute>

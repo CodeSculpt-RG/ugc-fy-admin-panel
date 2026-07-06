@@ -6,7 +6,7 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto custom-scrollbar rounded-[32px] border border-border bg-card-bg shadow-2xl">
+  <div className="relative w-full overflow-auto custom-scrollbar rounded-[28px] border border-white/70 bg-white/75 shadow-[0_18px_50px_rgba(15,23,42,0.07)] backdrop-blur-xl">
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm border-separate border-spacing-0", className)}
@@ -20,7 +20,7 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("bg-surface-elevated relative z-10", className)} {...props} />
+  <thead ref={ref} className={cn("bg-white/60 relative z-10", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -43,7 +43,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-border bg-surface-elevated font-medium [&>tr]:last:border-b-0",
+      "border-t border-black/5 bg-white/60 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -58,7 +58,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b border-border transition-all hover:bg-surface-elevated group/row relative",
+      "border-b border-black/5 transition-all hover:bg-white/70 group/row relative",
       className
     )}
     {...props}
@@ -73,7 +73,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-14 px-6 text-left align-middle font-black text-xs uppercase tracking-wider text-black dark:text-white border-b border-border first:rounded-tl-2xl last:rounded-tr-2xl whitespace-nowrap",
+      "h-14 px-6 text-left align-middle font-semibold text-xs uppercase tracking-wide text-neutral-600 dark:text-white border-b border-black/5 first:rounded-tl-2xl last:rounded-tr-2xl whitespace-nowrap",
       className
     )}
     {...props}
@@ -88,7 +88,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "px-6 py-4 align-middle text-sm text-black dark:text-white group-hover/row:text-black dark:group-hover/row:text-white transition-all duration-300 border-b border-border",
+      "px-6 py-4 align-middle text-sm text-neutral-900 dark:text-white group-hover/row:text-black dark:group-hover/row:text-white transition-all duration-300 border-b border-black/5",
       className
     )}
     {...props}

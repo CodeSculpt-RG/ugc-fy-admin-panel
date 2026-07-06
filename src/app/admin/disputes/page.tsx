@@ -375,7 +375,7 @@ export default function DisputesPage() {
             columns={columns} 
             data={filteredDisputes} 
             searchKey="campaign"
-            placeholder="Query mediation infrastructure by campaign brief..."
+            searchPlaceholder="Query mediation infrastructure by campaign brief..."
           />
         )}
       </div>

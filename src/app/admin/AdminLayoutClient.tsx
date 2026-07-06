@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import AdminLoginPage from "./login/page";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldAlert, AlertCircle } from "lucide-react";
 
 const TEXT = {
   securingConnection: "Securing Connection",
@@ -15,7 +15,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   const pathname = usePathname();
   const normalizedPath = pathname.replace(/\/$/, "");
   const router = useRouter();
-  const { admin, loading, status, refreshAdmin } = useAdminAuth();
+  const { admin, status, refreshAdmin } = useAdminAuth();
   
   // Mounted flag to ensure we don't render client-specific states during SSR first pass
   const [mounted, setMounted] = useState(false);
@@ -45,8 +45,8 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
 
   const isPublicRoute = publicRoutes.includes(normalizedPath);
 
-  // 1. Initial stable render during SSR (both server and first client render see this)
-  if (!mounted || loading) {
+  // 1. Initial stable render during SSR or active initialization
+  if (!mounted || status === "initializing") {
     return (
       <main 
         suppressHydrationWarning
@@ -70,17 +70,46 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  if (!admin && status === "unknown") {
+  // 3. Unauthenticated redirects to login immediately but renders a safe fallback meantime
+  if (status === "unauthenticated") {
+    // If somehow we got here on a protected route while unauthenticated, trigger an immediate client-side redirect.
+    // proxy.ts should have handled this, but just in case:
+    router.replace(`/admin/login?next=${encodeURIComponent(pathname)}`);
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/40">Redirecting to Secure Login</p>
+      </main>
+    );
+  }
+
+  // 4. Unauthorized users should not access the layout
+  if (status === "unauthorized") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-12 text-center">
+        <div className="w-20 h-20 rounded-[30px] bg-accent-orange/10 flex items-center justify-center mb-8 border border-accent-orange/20 shadow-lg shadow-accent-orange/5">
+          <ShieldAlert className="w-10 h-10 text-accent-orange" />
+        </div>
+        <h2 className="text-2xl font-black text-foreground mb-4 tracking-tight uppercase">Access Denied</h2>
+        <p className="text-foreground/40 max-w-md leading-relaxed font-medium uppercase text-[11px] tracking-widest">
+          You do not have permission to access this admin section.
+        </p>
+      </div>
+    );
+  }
+
+  // 5. Network errors or verification failures
+  if (status === "error") {
     return (
       <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 bg-primary/10 rounded-2xl border border-primary/20 flex items-center justify-center mb-6 shadow-glow">
-          <Loader2 className="w-8 h-8 text-primary" />
+        <div className="w-16 h-16 bg-red-500/10 rounded-2xl border border-red-500/20 flex items-center justify-center mb-6 shadow-glow">
+          <AlertCircle className="w-8 h-8 text-red-500" />
         </div>
         <h1 className="text-xl font-black text-foreground tracking-tight mb-2">
-          Session Verification Delayed
+          Unable to verify admin session
         </h1>
         <p className="text-sm text-text-secondary max-w-md leading-relaxed mb-8">
-          The admin session could not be verified because the network request was interrupted. Your session was not cleared.
+          Please refresh or sign in again. The network request might have been interrupted.
         </p>
         <button
           onClick={() => void refreshAdmin(true)}
@@ -92,16 +121,16 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
     );
   }
 
-  // 3. Strict Layout Guard: If not authenticated, render login page
+  // 6. Strict Layout Guard Backup (If somehow admin is null but status isn't mapping correctly)
   if (!admin) {
     return <AdminLoginPage />;
   }
 
-  // 4. Force password setup bypasses the shell
+  // 7. Force password setup bypasses the shell
   if (normalizedPath === "/admin/force-password-change") {
     return <>{children}</>;
   }
 
-  // 5. Authenticated admin dashboard shell
+  // 8. Authenticated admin dashboard shell
   return <DashboardShell>{children}</DashboardShell>;
 }

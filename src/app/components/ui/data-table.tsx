@@ -1,7 +1,7 @@
 "use client";
 "use no memo";
 
-import React from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -12,6 +12,7 @@ import {
   SortingState,
   getFilteredRowModel,
   ColumnFiltersState,
+  VisibilityState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -23,43 +24,48 @@ import {
 } from "@/app/components/ui/table";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
-import { ChevronLeft, ChevronRight, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Loader2, LayoutPanelLeft } from "lucide-react";
 import { cn } from "@/app/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu";
 
-const COPY = {
-  synchronizing: "Synchronizing Secure Data...",
-  noData: "No matching operational data found.",
-  displaying: "Displaying",
-  of: "of",
-  entries: "entries",
-  prev: "Prev",
-  next: "Next",
-} as const;
-
-interface DataTableProps<TData, TValue> {
+export type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
-  searchKey?: string;
-  placeholder?: string;
+  searchKey?: keyof TData;
+  searchPlaceholder?: string;
   isLoading?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  enableColumnVisibility?: boolean;
+  enablePagination?: boolean;
+  pageSize?: number;
   onRowClick?: (row: TData) => void;
-  minWidth?: string;
-}
+};
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
-  placeholder = "Search operational ledger...",
+  searchPlaceholder = "Search...",
   isLoading = false,
+  emptyTitle = "No results found",
+  emptyDescription = "Try adjusting your filters.",
+  enableColumnVisibility = true,
+  enablePagination = true,
+  pageSize = 10,
   onRowClick,
-  minWidth = "min-w-[960px]",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState<string>("");
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
 
-  const hasSearchKey = React.useMemo(() => {
+  const hasSearchKey = useMemo(() => {
     if (!searchKey) return false;
     return columns.some((col) => {
       const c = col as { accessorKey?: string; id?: string };
@@ -67,66 +73,108 @@ export function DataTable<TData, TValue>({
     });
   }, [searchKey, columns]);
 
-  // eslint-disable-next-line
+  // Merge the search key visibility hiding safely
+  const initialVisibility = useMemo(() => {
+    const visibility: VisibilityState = {};
+    if (hasSearchKey && typeof searchKey === 'string') {
+      visibility[searchKey] = false;
+    }
+    return visibility;
+  }, [hasSearchKey, searchKey]);
+
+  useEffect(() => {
+    setColumnVisibility(prev => ({ ...prev, ...initialVisibility }));
+  }, [initialVisibility]);
+
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: enablePagination ? getPaginationRowModel() : undefined,
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       columnFilters,
       globalFilter,
-      columnVisibility: hasSearchKey && searchKey ? { [searchKey]: false } : {},
+      columnVisibility,
     },
     initialState: {
       pagination: {
-        pageSize: 25,
+        pageSize: pageSize,
       },
     },
   });
 
   return (
-    <div className="space-y-10">
-      {searchKey && (
-        <div className="flex items-center">
-          <div className="relative flex-1 max-w-xl group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/20 group-focus-within:text-primary transition-all duration-500" />
+    <div className="rounded-[28px] border border-white/70 bg-white/70 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-4">
+        {searchKey && hasSearchKey && (
+          <div className="relative flex-1 max-w-sm group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary group-focus-within:text-primary transition-all duration-300" />
             <Input
-              placeholder={placeholder}
-              value={
-                (hasSearchKey && searchKey
-                  ? (table.getColumn(searchKey)?.getFilterValue() as string)
-                  : globalFilter) ?? ""
+              placeholder={searchPlaceholder}
+              value={(table.getColumn(String(searchKey))?.getFilterValue() as string) ?? ""}
+              onChange={(event) =>
+                table.getColumn(String(searchKey))?.setFilterValue(event.target.value)
               }
-              onChange={(event) => {
-                const value = event.target.value;
-                const column = hasSearchKey && searchKey ? table.getColumn(searchKey) : undefined;
-                if (column) {
-                  column.setFilterValue(value);
-                } else {
-                  table.setGlobalFilter(value);
-                }
-              }}
-              className="pl-16 bg-surface border-border text-foreground rounded-[24px] h-16 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:border-primary/20 placeholder:text-foreground/40 text-xs font-semibold tracking-wide transition-all duration-500 group-hover:bg-surface/80"
+              className="pl-10 bg-white/75 border-black/5 text-foreground rounded-full h-11 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background placeholder:text-text-secondary/60 text-sm font-medium transition-all duration-300 hover:bg-white"
             />
           </div>
-        </div>
-      )}
+        )}
+        
+        {!searchKey && (
+          <div className="relative flex-1 max-w-sm group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary group-focus-within:text-primary transition-all duration-300" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={globalFilter ?? ""}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+              className="pl-10 bg-white/75 border-black/5 text-foreground rounded-full h-11 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 focus-visible:ring-offset-background placeholder:text-text-secondary/60 text-sm font-medium transition-all duration-300 hover:bg-white"
+            />
+          </div>
+        )}
 
-      <div className="relative group overflow-x-auto custom-scrollbar">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20" />
-        <Table className={cn(minWidth)}>
+        {enableColumnVisibility && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-11 rounded-full bg-white/75 border-black/5 hover:bg-white text-sm font-semibold">
+                <LayoutPanelLeft className="mr-2 h-4 w-4 text-text-secondary" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[180px] rounded-2xl p-2">
+              {table
+                .getAllColumns()
+                .filter((column) => typeof column.accessorFn !== "undefined" && column.getCanHide() && column.id !== searchKey)
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize rounded-xl cursor-pointer"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      <div className="w-full overflow-x-auto rounded-[22px] border border-black/5 bg-white/60 custom-scrollbar relative">
+        <Table className="min-w-[900px]">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent border-border">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className="uppercase text-xs tracking-wide text-text-secondary font-bold bg-white/40">
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -141,10 +189,10 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-80 text-center">
-                  <div className="flex flex-col items-center space-y-6">
-                    <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                    <span className="text-[11px] font-black text-foreground uppercase tracking-[0.4em]">{COPY.synchronizing}</span>
+                <TableCell colSpan={columns.length} className="h-64 text-center">
+                  <div className="flex flex-col items-center space-y-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <span className="text-[11px] font-black text-text-secondary uppercase tracking-[0.2em]">Loading Records...</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -155,12 +203,12 @@ export function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                   onClick={() => onRowClick && onRowClick(row.original)}
                   className={cn(
-                    "group hover:bg-surface-elevated transition-all duration-300 border-b border-border last:border-0",
+                    "group hover:bg-white/80 transition-all duration-300 border-b border-black/5 last:border-0",
                     onRowClick && "cursor-pointer"
                   )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-4">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -168,12 +216,15 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-80 text-center italic font-black uppercase tracking-[0.4em] text-[11px]">
-                  <div className="flex flex-col items-center space-y-6">
-                    <div className="p-6 rounded-[28px] bg-surface-elevated border border-border shadow-inner">
-                      <Search className="w-10 h-10 text-foreground opacity-30" />
+                <TableCell colSpan={columns.length} className="h-64 text-center">
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="p-4 rounded-[22px] bg-white/50 border border-black/5 shadow-sm">
+                      <Search className="w-8 h-8 text-foreground opacity-20" />
                     </div>
-                    <span className="text-foreground">{COPY.noData}</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground mb-1">{emptyTitle}</h3>
+                      <p className="text-xs text-text-secondary">{emptyDescription}</p>
+                    </div>
                   </div>
                 </TableCell>
               </TableRow>
@@ -182,37 +233,35 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-      <div className="flex items-center justify-between px-8 py-2">
-        <div className="flex flex-col space-y-1">
+      {enablePagination && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-2">
           <p className="text-sm text-text-secondary">
-            {COPY.displaying} <span className="font-bold text-foreground">{table.getRowModel().rows.length}</span> {COPY.of} <span className="font-bold text-foreground">{data.length}</span> {COPY.entries}
+            Displaying <span className="font-bold text-foreground">{table.getRowModel().rows.length}</span> of <span className="font-bold text-foreground">{data.length}</span> entries
           </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="rounded-full h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-black/5 bg-white/75 hover:bg-white hover:text-foreground"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Prev
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="rounded-full h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-black/5 bg-white/75 hover:bg-white hover:text-foreground"
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
         </div>
-
-        <div className="flex items-center space-x-5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            className="rounded-xl h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-border bg-surface hover:bg-surface-elevated hover:text-foreground"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            {COPY.prev}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            className="rounded-xl h-10 px-4 text-sm font-semibold transition-all disabled:opacity-30 border-border bg-surface hover:bg-surface-elevated hover:text-foreground"
-          >
-            {COPY.next}
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
-
-      </div>
+      )}
     </div>
   );
 }

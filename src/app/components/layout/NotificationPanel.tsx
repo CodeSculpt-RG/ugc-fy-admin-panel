@@ -129,8 +129,8 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
   };
 
   return (
-    <div className="w-full max-w-[420px] bg-surface border border-border p-5 rounded-[36px] shadow-2xl overflow-hidden relative flex flex-col max-h-[540px]">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+    <div className="w-full max-w-[420px] bg-white/85 border border-white/70 p-4 rounded-[24px] shadow-[0_24px_70px_rgba(15,23,42,0.14)] backdrop-blur-2xl overflow-hidden relative flex flex-col max-h-[540px]">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
 
       {/* Header */}
       <div className="flex items-center justify-between pb-4 mb-4 border-b border-border">

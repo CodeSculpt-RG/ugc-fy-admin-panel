@@ -91,23 +91,23 @@ export default function NewActionMenu() {
           <motion.button 
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center space-x-3 bg-primary text-primary-foreground px-6 py-3.5 rounded-[18px] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/25 hover:bg-primary/90 transition-all outline-none group active-nav-glow"
+            className="flex min-h-11 items-center gap-2.5 rounded-full ugcfy-gradient-cta px-4 py-3 text-sm font-semibold text-white transition-all outline-none group hover:opacity-95 focus-visible:ring-2 focus-visible:ring-orange-500/30 sm:px-5"
           >
-            <div className="p-1 rounded-md bg-foreground/20 group-hover:bg-foreground/30 transition-colors">
-              <Plus className="w-3 h-3 stroke-[4]" />
+            <div className="rounded-full bg-white/20 p-1 transition-colors group-hover:bg-white/30">
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
             </div>
             <span className="hidden md:inline">New Action</span>
           </motion.button>
         </DropdownMenuTrigger>
         <DropdownMenuContent 
           align="end" 
-          className="w-80 bg-surface border border-border p-3 rounded-[32px] shadow-2xl overflow-hidden relative"
+          className="w-80 bg-white/85 border border-white/70 p-2 rounded-[24px] shadow-[0_24px_70px_rgba(15,23,42,0.14)] backdrop-blur-2xl overflow-hidden relative"
           sideOffset={16}
         >
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500/30 to-transparent" />
           
           <div className="px-5 py-5 mb-2 border-b border-border">
-            <p className="text-[10px] font-black text-foreground/20 uppercase tracking-[0.5em]">Administrative Tasks</p>
+            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Administrative Tasks</p>
           </div>
           
           <div className="space-y-1 relative z-10">
@@ -122,20 +122,20 @@ export default function NewActionMenu() {
                       handleQuickAction(action.id);
                     }
                   }}
-                  className={`flex items-center space-x-4 p-4 rounded-[22px] focus:bg-primary focus:text-primary-foreground cursor-pointer transition-all duration-300 outline-none group border border-transparent focus:border-primary/20 ${!hasPerm ? "opacity-40 cursor-not-allowed" : ""}`}
+                  className={`flex items-center space-x-4 p-3.5 rounded-2xl focus:bg-neutral-950 focus:text-white cursor-pointer transition-all duration-300 outline-none group border border-transparent hover:bg-neutral-950 hover:text-white ${!hasPerm ? "opacity-40 cursor-not-allowed" : ""}`}
                   title={!hasPerm ? "No permission" : undefined}
                 >
-                  <div className="p-3.5 rounded-xl bg-surface-elevated border border-border group-focus:bg-foreground/10 group-focus:border-border transition-all group-focus:scale-110">
-                    <action.icon className="w-4 h-4 text-primary group-focus:text-primary-foreground transition-transform group-hover:scale-110" />
+                  <div className="p-3 rounded-xl bg-black/5 text-neutral-600 group-hover:bg-white/20 group-hover:text-white group-focus:bg-white/20 group-focus:text-white transition-all group-focus:scale-110">
+                    <action.icon className="w-4 h-4 transition-transform group-hover:scale-110" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="text-[13px] font-black tracking-tight text-foreground group-focus:text-primary-foreground">{action.label}</p>
+                      <p className="text-[13px] font-semibold tracking-normal text-neutral-900 group-focus:text-white group-hover:text-white">{action.label}</p>
                       {!hasPerm && (
-                        <span className="text-[9px] font-black text-accent-orange uppercase tracking-widest px-2 py-0.5 rounded bg-accent-orange/10 border border-accent-orange/20">Locked</span>
+                        <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest px-2 py-0.5 rounded bg-orange-500/10 border border-orange-500/20">Locked</span>
                       )}
                     </div>
-                    <p className="text-[10px] text-foreground/30 font-semibold group-focus:text-foreground/70 transition-colors truncate uppercase tracking-wider">{action.description}</p>
+                    <p className="text-xs text-neutral-500 group-focus:text-white/70 group-hover:text-white/70 transition-colors truncate">{action.description}</p>
                   </div>
                 </DropdownMenuItem>
               );

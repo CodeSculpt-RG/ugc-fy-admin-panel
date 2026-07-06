@@ -50,16 +50,16 @@ export async function GET(request: Request) {
       safeCountTrack("users", q => q.eq("role", "admin")),
       safeCountTrack("users"),
       
-      safeCountTrack("users", q => q.eq("role", "creator").eq("is_verified", false)),
-      safeCountTrack("users", q => q.eq("role", "brand").eq("is_verified", false)),
-      safeCountTrack("users", q => q.eq("is_verified", false)),
+      safeCountTrack("users", q => q.eq("role", "creator").eq("approval_status", "pending_review")),
+      safeCountTrack("users", q => q.eq("role", "brand").eq("approval_status", "pending_review")),
+      safeCountTrack("users", q => q.eq("approval_status", "pending_review")),
       
-      safeCountTrack("users", q => q.eq("is_verified", true)),
+      safeCountTrack("users", q => q.eq("approval_status", "approved")),
       safeCountTrack("users", q => q.eq("is_active", false)),
       safeCountTrack("users", q => q.eq("is_active", false)),
       
-      safeFetch("users", q => q.select("id, email, role, is_verified, created_at").order("created_at", { ascending: false }).limit(5)),
-      safeFetch("users", q => q.select("id, email, role, is_verified, created_at").eq("is_verified", false).order("created_at", { ascending: false }).limit(5)),
+      safeFetch("users", q => q.select("id, email, role, approval_status, created_at").order("created_at", { ascending: false }).limit(5)),
+      safeFetch("users", q => q.select("id, email, role, approval_status, created_at").eq("approval_status", "pending_review").order("created_at", { ascending: false }).limit(5)),
     ]);
 
     const isPartial = missingTables.size > 0;
@@ -86,14 +86,14 @@ export async function GET(request: Request) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       recentUsers: recentUsersData.map((u: any) => ({
         ...u,
-        approval_status: u.is_verified ? "approved" : "pending_review",
+        approval_status: u.approval_status || "pending_review",
         email: u.email || "Confidential"
       })),
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pendingApprovalQueue: pendingQueueData.map((u: any) => ({
         ...u,
-        approval_status: u.is_verified ? "approved" : "pending_review",
+        approval_status: u.approval_status || "pending_review",
         email: u.email || "Confidential"
       })),
       

@@ -12,17 +12,17 @@ interface ErrorStateProps {
 
 export function ErrorState({ title, description, actionLabel = "Retry", onAction, className }: ErrorStateProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center p-12 text-center border border-error/20 rounded-2xl bg-error/5", className)}>
-      <div className="w-16 h-16 bg-error/10 rounded-2xl flex items-center justify-center mb-6 text-error shadow-sm">
+    <div className={cn("flex min-h-[280px] flex-col items-center justify-center rounded-[28px] border border-red-200/70 bg-red-50/70 p-8 text-center shadow-sm backdrop-blur-xl sm:p-12", className)}>
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-red-500/10 text-red-600 shadow-sm">
         <AlertCircle className="w-8 h-8" />
       </div>
-      <h3 className="text-lg font-black text-foreground tracking-tight mb-2">{title}</h3>
-      <p className="text-sm font-semibold text-foreground/60 max-w-sm mb-6">{description}</p>
+      <h3 className="mb-2 text-lg font-semibold tracking-normal text-foreground">{title}</h3>
+      <p className="mb-6 max-w-sm text-sm leading-6 text-text-secondary">{description}</p>
       
       {onAction && (
         <button
           onClick={onAction}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl bg-surface-elevated border border-border text-foreground hover:bg-foreground/5 hover:border-foreground/20 transition-all text-xs font-black uppercase tracking-wider"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-black/5 bg-white/80 px-5 py-3 text-sm font-semibold text-foreground shadow-sm transition-all hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/30"
         >
           <RefreshCw className="w-4 h-4" />
           <span>{actionLabel}</span>

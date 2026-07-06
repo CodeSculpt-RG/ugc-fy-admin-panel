@@ -201,7 +201,7 @@ export default function AuditLogsPage() {
             columns={columns} 
             data={logs} 
             searchKey="action"
-            placeholder="Query operational registry by administrative identifier or mutation category..."
+            searchPlaceholder="Search action or entity..."
           />
         )}
       </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Poppins } from "next/font/google";
 import "./globals.css";
 import React from "react";
 
@@ -11,6 +12,12 @@ import QueryProvider from "./context/QueryProvider";
 import { AdminAuthProvider } from "./context/AdminAuthContext";
 
 import { ThemeProvider } from "./context/ThemeContext";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
+});
 
 export default function RootLayout({
   children,
@@ -34,7 +41,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary font-sans" suppressHydrationWarning>
+      <body className={`${poppins.variable} min-h-full flex flex-col bg-background text-foreground selection:bg-primary/30 selection:text-primary font-sans`} suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider>
             <AdminAuthProvider>

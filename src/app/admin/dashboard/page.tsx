@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { 
@@ -10,85 +10,92 @@ import {
   ShieldAlert,
   ArrowRight,
   RefreshCw,
-  CheckCircle2,
-  XCircle,
   Clock,
   Database,
   Activity,
-  Settings
+  Settings,
+  Server,
+  Lock,
+  MessageSquare,
+  AlertTriangle,
+  Info
 } from "lucide-react";
-import { StatCard, StatusBadge } from "@/app/components/ui/core";
-import { ChartCard } from "@/app/components/ui/chart-card";
-import { AdminDonutChart, AdminBarChart } from "@/app/components/ui/charts";
-import { ConfirmModal } from "@/app/components/ui/confirm-modal";
+import { CommandHeader } from "@/app/components/shared/CommandHeader";
+import { MetricTile } from "@/app/components/shared/MetricTile";
+import { GlassPanel } from "@/app/components/shared/GlassPanel";
+import { StatusPill } from "@/app/components/shared/StatusPill";
+import { SectionHeader } from "@/app/components/shared/SectionHeader";
+import { DataSurface } from "@/app/components/shared/DataSurface";
 import { EmptyState } from "@/app/components/shared/EmptyState";
 import { ErrorState } from "@/app/components/shared/ErrorState";
-import { cn } from "@/app/lib/utils";
 import { useToast } from "@/app/hooks/useToast";
 import { isAbortError } from "@/app/services/adminApiClient";
 import { dashboardService, DashboardStats } from "@/app/services/dashboardService";
-import { approvalService } from "@/app/services/approvalService";
-import { LucideIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { normalizeError } from "@/lib/api/normalizeError";
+import { AnalyticsAreaChart } from "@/app/components/dashboard/AnalyticsAreaChart";
+import { AnalyticsBarChart } from "@/app/components/dashboard/AnalyticsBarChart";
+import { AnalyticsLineChart } from "@/app/components/dashboard/AnalyticsLineChart";
+import { HighLowCard } from "@/app/components/dashboard/HighLowCard";
+import { RangeSelector } from "@/app/components/dashboard/RangeSelector";
 
-interface DynamicStat {
-  label: string;
-  value: string;
-  trend: string;
-  up: boolean;
-  icon: LucideIcon;
-  color: "blue" | "orange" | "error" | "success";
-  action: () => void;
-}
+type RangeOption = "7d" | "30d" | "90d";
 
-const COPY = {
-  welcome: "Welcome back, Admin 👋",
-  subtitle:
-    "Here's what's happening with your UGC-FY marketplace today. Monitor active campaigns, creator approvals, and platform revenue.",
-  settings: "Settings",
-  systemLive: "System Live & Connected",
-  supabaseHealthy: "Supabase: Healthy",
-  apiNormal: "API Status: Normal",
-  syncingLedger: "Synchronizing Intelligence Ledger...",
-  infrastructureDesync: "Infrastructure Desync",
-  secureHandshake: "Unable to establish a secure handshake with the administrative API.",
-  retryHandshake: "Retry Handshake",
-  noUserData: "No user data available yet.",
-  recentRegistrations: "Recent Registrations",
-  onboardingStream: "Live entity onboarding stream",
-  viewAllUsers: "View All Users",
-  noRecentEntities: "No recent entities found in ledger.",
-  approvalQueue: "Approval Queue",
-  pendingVerification: "Pending verification",
-  approvalQueueEmpty: "Approval queue is empty.",
-  approve: "Approve",
-  reject: "Reject",
-} as const;
+const WorkflowRow = ({ label, count, onClick }: { label: string, count: number, onClick?: () => void }) => (
+  <div 
+    onClick={onClick}
+    className={`flex items-center justify-between py-2 border-b border-black/5 last:border-0 ${onClick ? "cursor-pointer hover:bg-black/5 rounded px-2 -mx-2 transition-colors" : ""}`}
+  >
+    <span className="text-sm font-medium text-foreground/80">{label}</span>
+    <span className="text-sm font-semibold text-foreground">
+      {count > 0 ? (
+        <span className="bg-orange-500/10 text-orange-700 px-2 py-0.5 rounded-full">{count}</span>
+      ) : (
+        <span className="text-muted-foreground">0</span>
+      )}
+    </span>
+  </div>
+);
+
+type AnalyticsData = {
+  summary: Record<string, number>;
+  timeseries: Record<string, { date: string; value: number }[]>;
+  highsLows: Record<string, { date: string; value: number } | null>;
+  meta: {
+    partial: boolean;
+    missingTables: string[];
+    generatedAt: string;
+    rangeDays: number;
+  };
+};
 
 export default function DashboardPage() {
-
   const [statsData, setStatsData] = useState<DashboardStats | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [range, setRange] = useState<RangeOption>("30d");
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [selectedRejectId, setSelectedRejectId] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
 
   const { showToast } = useToast();
   const router = useRouter();
   const realtimeRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadStats = useCallback(async (silent = false, signal?: AbortSignal) => {
+  const loadDashboard = useCallback(async (silent = false, signal?: AbortSignal) => {
     if (!silent) setIsLoading(true);
     setIsError(false);
     try {
-      const data = await dashboardService.getStats(signal);
-      setStatsData(data);
+      const [stats, analyticsRes] = await Promise.all([
+        dashboardService.getStats(signal),
+        fetch(`/api/admin/dashboard/analytics?range=${range}`, { signal }).then(r => r.json())
+      ]);
+      setStatsData(stats);
+      if (analyticsRes.success) {
+        setAnalyticsData(analyticsRes.data);
+      }
     } catch (err: unknown) {
       if (isAbortError(err)) return;
       const normalizedError = normalizeError(err);
-      console.error("[DashboardPage] Failed to load stats:", normalizedError);
       setIsError(true);
       if (!silent) {
         showToast(normalizedError.message, "error");
@@ -98,13 +105,13 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     }
-  }, [showToast]);
+  }, [showToast, range]);
 
   useEffect(() => {
     const controller = new AbortController();
     queueMicrotask(() => {
       if (!controller.signal.aborted) {
-        void loadStats(false, controller.signal);
+        void loadDashboard(false, controller.signal);
       }
     });
 
@@ -122,408 +129,215 @@ export default function DashboardPage() {
             clearTimeout(realtimeRefreshRef.current);
           }
           realtimeRefreshRef.current = setTimeout(() => {
-            void loadStats(true);
+            void loadDashboard(true);
           }, 750);
         }
       )
-      .subscribe((status, err) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.error('[DashboardRealtime] Channel error:', err);
-        } else if (status === 'TIMED_OUT') {
-          console.warn('[DashboardRealtime] Realtime subscription timed out. The UI will gracefully operate without realtime updates.');
-        }
-      });
+      .subscribe();
 
     return () => {
-      controller.abort(new DOMException("Dashboard request cancelled", "AbortError"));
+      controller.abort();
       if (realtimeRefreshRef.current) {
         clearTimeout(realtimeRefreshRef.current);
         realtimeRefreshRef.current = null;
       }
       supabase.removeChannel(channel);
     };
-  }, [loadStats]);
+  }, [loadDashboard]);
 
   const handleSynchronize = async () => {
     setIsSyncing(true);
     showToast("Synchronizing with live database...", "info");
-    await loadStats(true);
+    await loadDashboard(true);
     setIsSyncing(false);
     showToast("Operational dashboard synchronized successfully.", "success");
   };
 
-  const handleApproveEntity = async (id: string) => {
-    setActionLoading(true);
-    try {
-      await approvalService.updateApprovalStatus(id, "approved");
-      showToast("Entity approved successfully. Profile activated.", "success");
-      await loadStats(true);
-    } catch (err: unknown) {
-      const normalizedError = normalizeError(err);
-      showToast(`Protocol failure: ${normalizedError.message}`, "error");
-    } finally {
-      setActionLoading(false);
-    }
+  const handleRangeChange = (newRange: RangeOption) => {
+    setRange(newRange);
   };
-
-  const handleRejectConfirm = async (reason?: string) => {
-    if (!selectedRejectId) return;
-    setActionLoading(true);
-    try {
-      await approvalService.updateApprovalStatus(selectedRejectId, "rejected", reason);
-      showToast("Entity rejected. Access restricted.", "warning");
-      setSelectedRejectId(null);
-      await loadStats(true);
-    } catch (err: unknown) {
-      const normalizedError = normalizeError(err);
-      showToast(`Protocol failure: ${normalizedError.message}`, "error");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const dynamicStats: DynamicStat[] = [
-    { 
-      label: "Total Users", 
-      value: statsData?.totalUsers?.toLocaleString() || "0", 
-      trend: "LIVE", 
-      up: true, 
-      icon: Users, 
-      color: "blue",
-      action: () => router.push("/admin/users", { scroll: false })
-    },
-    { 
-      label: "Total Creators", 
-      value: statsData?.totalCreators?.toLocaleString() || "0", 
-      trend: "LIVE", 
-      up: true, 
-      icon: Users, 
-      color: "blue",
-      action: () => router.push("/admin/creators", { scroll: false })
-    },
-    { 
-      label: "Total Brands", 
-      value: statsData?.totalBrands?.toLocaleString() || "0", 
-      trend: "LIVE", 
-      up: true, 
-      icon: Building2, 
-      color: "blue",
-      action: () => router.push("/admin/brands", { scroll: false })
-    },
-    { 
-      label: "Pending Approvals", 
-      value: statsData?.pendingUsers?.toLocaleString() || "0", 
-      trend: "QUEUE", 
-      up: true, 
-      icon: ShieldCheck, 
-      color: "orange",
-      action: () => router.push("/admin/users?status=pending_review", { scroll: false })
-    },
-    { 
-      label: "Approved Entities", 
-      value: statsData?.approvedUsers?.toLocaleString() || "0", 
-      trend: "SECURE", 
-      up: true, 
-      icon: ShieldCheck, 
-      color: "success",
-      action: () => router.push("/admin/users?status=approved", { scroll: false })
-    },
-    { 
-      label: "Rejected / Blocked", 
-      value: ((statsData?.rejectedUsers ?? 0) + (statsData?.blockedUsers ?? 0)).toLocaleString(), 
-      trend: "RESTRICTED", 
-      up: false, 
-      icon: ShieldAlert, 
-      color: "error",
-      action: () => router.push("/admin/users?status=rejected", { scroll: false })
-    },
-  ];
-
-  const roleData = useMemo(() => [
-    { name: "Creators", count: statsData?.roleBreakdown?.creators || 0, color: "#2563EB" },
-    { name: "Brands", count: statsData?.roleBreakdown?.brands || 0, color: "#10B981" },
-    { name: "Admins", count: statsData?.roleBreakdown?.admins || 0, color: "#F97316" },
-  ], [statsData?.roleBreakdown]);
-
-  const totalRoles = roleData.reduce((acc: number, curr: { count: number }) => acc + curr.count, 0);
-
-  const approvalData = useMemo(() => [
-    { name: "Approved", count: statsData?.approvalBreakdown?.approved || 0, color: "#10B981" },
-    { name: "Pending", count: statsData?.approvalBreakdown?.pending || 0, color: "#F97316" },
-    { name: "Rejected", count: statsData?.approvalBreakdown?.rejected || 0, color: "#EF4444" },
-    { name: "Blocked", count: statsData?.approvalBreakdown?.blocked || 0, color: "#9CA3AF" },
-  ], [statsData?.approvalBreakdown]);
 
   return (
     <DashboardShell>
       <div className="section-spacing">
-        {/* Hero Banner */}
-        <div className="bg-gradient-to-r from-primary to-accent-hover text-white rounded-[32px] p-10 md:p-14 mb-10 shadow-glow relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
+        
+        {/* Main Dashboard Canvas */}
+        <section className="rounded-[36px] border border-white/70 bg-white/55 p-4 shadow-[0_30px_90px_rgba(15,23,42,0.10)] backdrop-blur-2xl sm:p-6 lg:p-8">
           
-          <div className="space-y-4 relative z-10">
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
-              {COPY.welcome}
-            </h1>
-            <p className="text-white/80 text-sm md:text-base max-w-xl">
-              {COPY.subtitle}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 relative z-10">
-            <button
-              onClick={handleSynchronize}
-              disabled={isSyncing}
-              className="flex items-center space-x-2 px-6 py-3.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold transition-all active:scale-95 disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-4 h-4", isSyncing ? "animate-spin" : "")} />
-              <span>{isSyncing ? "Syncing..." : "Sync Data"}</span>
-            </button>
-            <button
-              onClick={() => router.push("/admin/settings", { scroll: false })}
-              className="flex items-center space-x-2 px-6 py-3.5 rounded-2xl bg-white text-primary font-bold shadow-lg hover:shadow-xl transition-all active:scale-95"
-            >
-              <Settings className="w-4 h-4" />
-              <span>{COPY.settings}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* System Health Banner */}
-        {statsData && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-3 rounded-full bg-foreground text-background border border-border mb-10 shadow-sm gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex h-3 w-3 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-success" />
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest">{COPY.systemLive}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-6 text-[11px] font-bold uppercase tracking-widest">
-              <div className="flex items-center space-x-2">
-                <Database className="w-4 h-4 opacity-70" />
-                <span>{COPY.supabaseHealthy}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Activity className="w-4 h-4 opacity-70" />
-                <span>{COPY.apiNormal}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {isLoading ? (
-          <DashboardSkeletonGrid />
-        ) : isError ? (
-          <ErrorState 
-            title={COPY.infrastructureDesync} 
-            description={COPY.secureHandshake} 
-            actionLabel={COPY.retryHandshake} 
-            onAction={() => loadStats()} 
-            className="my-20"
-          />
-        ) : (
-          <>
-            {/* Stats Grid */}
-            <div className="dashboard-grid">
-              {dynamicStats.map((stat, i) => (
-                <StatCard
-                  key={stat.label}
-                  label={stat.label}
-                  value={stat.value}
-                  trend={stat.trend}
-                  up={stat.up}
-                  icon={stat.icon}
-                  delay={i * 0.1}
-                  color={stat.color}
-                  onClick={stat.action}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Charts Section */}
-        {statsData && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-10">
-            <ChartCard 
-              title="Ecosystem Role Split" 
-              subtitle="Distribution of registered entities"
-            >
-              <div className="mt-8">
-                {totalRoles === 0 ? (
-                  <div className="h-[240px] flex items-center justify-center text-foreground/40 text-sm font-semibold">
-                    {COPY.noUserData}
-                  </div>
-                ) : (
-                  <AdminDonutChart data={roleData} height={240} />
-                )}
-              </div>
-            </ChartCard>
-
-            <ChartCard 
-              title="Approval Breakdown" 
-              subtitle="Moderation status across all accounts"
-            >
-              <div className="mt-8">
-                <AdminBarChart data={approvalData} xKey="name" yKey="count" color="#ff6a00" height={240} />
-              </div>
-            </ChartCard>
-          </div>
-        )}
-
-        {/* Lower Grid */}
-        {statsData && (
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 mt-10">
-            {/* Activity Feed / Recent Signups */}
-            <div className="xl:col-span-2 bg-card-bg border border-border rounded-[28px] p-10 shadow-sm relative overflow-hidden group interactive-card">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
-              
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-black text-foreground tracking-tighter">{COPY.recentRegistrations}</h3>
-                  <p className="stat-label">{COPY.onboardingStream}</p>
-                </div>
-                <button 
-                  onClick={() => router.push("/admin/users", { scroll: false })}
-                  className="px-6 py-3 rounded-2xl bg-surface-elevated border border-border text-[10px] font-black text-foreground/40 hover:bg-white hover:text-black transition-all flex items-center space-x-3 uppercase tracking-widest group/btn shadow-sm"
+          <CommandHeader 
+            eyebrow="Creator economy operations"
+            title="UGCFY Command Center"
+            description="Monitor creators, brands, campaigns, verification, moderation, finance, and support from one workspace."
+            actions={
+              <div className="flex items-center gap-4">
+                <RangeSelector currentRange={range} onRangeChange={handleRangeChange} />
+                <button
+                  onClick={handleSynchronize}
+                  disabled={isSyncing}
+                  className="inline-flex h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-foreground shadow-sm ring-1 ring-inset ring-black/10 transition-all hover:bg-neutral-50 active:scale-95 disabled:opacity-50"
                 >
-                  <span>{COPY.viewAllUsers}</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-1 transition-transform" />
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                  Sync Data
                 </button>
               </div>
+            }
+            statusChips={
+              statsData && (
+                <>
+                  <StatusPill label="System Live" variant="live" />
+                  <StatusPill label="API Normal" variant="live" />
+                </>
+              )
+            }
+          />
 
-              <div className="space-y-4">
-                {statsData.recentUsers.length === 0 ? (
-                  <EmptyState title="No Recent Entities" description={COPY.noRecentEntities} className="py-12" />
-                ) : (
-                  statsData.recentUsers.map((user) => (
-                    <div 
-                      key={user.id} 
-                      onClick={() => router.push("/admin/users", { scroll: false })}
-                      className="flex items-center space-x-6 p-6 rounded-[28px] bg-surface-elevated border border-border hover:border-primary/20 hover:bg-surface-elevated hover:bg-foreground/5 transition-all duration-500 group/item shadow-sm cursor-pointer relative overflow-hidden"
-                    >
-                      <div className="p-4 rounded-2xl bg-surface-elevated border border-border flex-shrink-0 group-hover/item:bg-primary/10 transition-colors">
-                        <Clock className="w-5 h-5 text-foreground/15 group-hover/item:text-primary transition-colors" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-base font-black text-foreground tracking-tight">{user.email || user.id}</p>
-                          <span className="text-[10px] font-black text-foreground/20 uppercase tracking-widest">
-                            {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-3 mt-2">
-                          <span className="text-[10px] font-black text-primary uppercase tracking-wider">{user.role}</span>
-                          <span className="text-foreground/20">•</span>
-                          <span className="text-xs text-foreground/40 font-semibold">{user.profile_completed ? "Profile Complete" : "Profile Incomplete"}</span>
-                        </div>
-                      </div>
-                      <StatusBadge 
-                        status={user.approval_status} 
-                        variant={user.approval_status === "approved" ? "success" : user.approval_status === "pending_review" ? "warning" : "error"} 
-                        className="hidden lg:inline-flex"
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-10">
-              {/* Policy Guard / Pending Queue */}
-              <div className="bg-card-bg border border-border rounded-[28px] p-10 shadow-sm interactive-card relative overflow-hidden group">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-warning/20 to-transparent" />
-                
-                <div className="flex items-center justify-between mb-10">
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-black text-foreground tracking-tighter">{COPY.approvalQueue}</h3>
-                    <p className="stat-label">{COPY.pendingVerification}</p>
+          {isLoading ? (
+            <div className="flex h-[400px] items-center justify-center text-muted-foreground">Loading operational data...</div>
+          ) : isError ? (
+            <ErrorState 
+              title="Infrastructure Desync" 
+              description="Unable to establish a secure handshake with the administrative API." 
+              actionLabel="Retry Handshake" 
+              onAction={() => loadDashboard()} 
+              className="my-8"
+            />
+          ) : (
+            <div className="mt-8 space-y-10">
+              
+              {analyticsData?.meta?.partial && (
+                <div className="flex items-start gap-3 rounded-[24px] border border-amber-500/15 bg-amber-50/75 p-4 text-amber-900 shadow-sm backdrop-blur-xl">
+                  <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                  <div>
+                    <p className="text-sm font-semibold">Some analytics are partial because optional data tables are not available yet.</p>
+                    <p className="mt-1 text-sm leading-6 text-amber-800/80">
+                      Missing: {analyticsData.meta.missingTables.join(", ")}
+                    </p>
                   </div>
-                  <button 
-                    onClick={() => router.push("/admin/users?status=pending_review", { scroll: false })}
-                    className="p-3.5 rounded-xl bg-accent-orange/10 border border-accent-orange/20 shadow-lg shadow-accent-orange/10 hover:bg-accent-orange/20 transition-all"
-                  >
-                    <ArrowRight className="w-5 h-5 text-accent-orange stroke-[2.5]" />
-                  </button>
+                </div>
+              )}
+
+              {/* Operational Signals */}
+              <div>
+                <SectionHeader title="Operational Signals" description="Global platform metrics" />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                  <MetricTile 
+                    label="Total Users" 
+                    value={analyticsData?.summary?.totalUsers?.toLocaleString() || "0"} 
+                    icon={<Users />} 
+                    status={<StatusPill label="Live" variant="live" dot={false} />}
+                  />
+                  <MetricTile 
+                    label="Creators" 
+                    value={analyticsData?.summary?.totalCreators?.toLocaleString() || "0"} 
+                    icon={<Users />} 
+                    status={<StatusPill label="Live" variant="live" dot={false} />}
+                  />
+                  <MetricTile 
+                    label="Brands" 
+                    value={analyticsData?.summary?.totalBrands?.toLocaleString() || "0"} 
+                    icon={<Building2 />} 
+                    status={<StatusPill label="Live" variant="live" dot={false} />}
+                  />
+                  <MetricTile 
+                    label="Active Campaigns" 
+                    value={analyticsData?.summary?.activeCampaigns?.toLocaleString() || "0"} 
+                    icon={<Activity />} 
+                    status={<StatusPill label="Queue" variant="queue" dot={false} />}
+                  />
+                  <MetricTile 
+                    label="Pending Approvals" 
+                    value={analyticsData?.summary?.pendingApprovals?.toLocaleString() || "0"} 
+                    icon={<ShieldCheck />} 
+                    status={<StatusPill label="Secure" variant="success" dot={false} />}
+                  />
+                  <MetricTile 
+                    label="Revenue" 
+                    value={`₹${analyticsData?.summary?.totalRevenue?.toLocaleString() || "0"}`} 
+                    icon={<Database />} 
+                    status={<StatusPill label="Restricted" variant="danger" dot={false} />}
+                  />
+                </div>
+              </div>
+
+              {/* Analytics Charts */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <div>
+                  <SectionHeader title="Platform Growth" description="User, creator, and brand acquisition" />
+                  <AnalyticsAreaChart 
+                    data={analyticsData?.timeseries?.users || []} 
+                    dataKeys={["value"]} 
+                    colors={["#3b82f6"]} 
+                  />
                 </div>
 
-                <div className="space-y-6">
-                  {statsData.pendingApprovalQueue.length === 0 ? (
-                    <EmptyState title="Queue Empty" description={COPY.approvalQueueEmpty} className="py-10" />
+                <div>
+                  <SectionHeader title="Revenue / Income" description="Platform transactions over time" />
+                  {analyticsData?.meta?.missingTables?.includes("payments/transactions") ? (
+                    <div className="flex items-center justify-center h-[280px] bg-white/40 rounded-[22px] border border-black/5 mt-4">
+                      <span className="text-sm font-medium text-text-secondary">Revenue data will appear once verified payment records are available.</span>
+                    </div>
                   ) : (
-                    statsData.pendingApprovalQueue.map((item) => (
-                      <div key={item.id} className="space-y-4 group/mod p-5 rounded-2xl bg-surface-elevated border border-border hover:border-border transition-all shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-black text-foreground truncate tracking-tight">{item.email || item.id}</p>
-                            <p className="text-[10px] text-primary uppercase font-black tracking-widest mt-1">{item.role}</p>
-                          </div>
-                          <StatusBadge status="Pending" variant="warning" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 pt-2">
-                          <button 
-                            onClick={() => handleApproveEntity(item.id)}
-                            disabled={actionLoading}
-                            className="py-3 rounded-2xl bg-success-green text-white text-[10px] font-black uppercase tracking-widest hover:bg-success-green/90 transition-all shadow-lg shadow-success-green/20 active:scale-95 disabled:opacity-50 flex items-center justify-center space-x-1"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>{COPY.approve}</span>
-                          </button>
-                          <button 
-                            onClick={() => setSelectedRejectId(item.id)}
-                            disabled={actionLoading}
-                            className="py-3 rounded-2xl bg-surface-elevated border border-border text-foreground/60 text-[10px] font-black uppercase tracking-widest hover:bg-error hover:text-white hover:border-error transition-all active:scale-95 shadow-sm disabled:opacity-50 flex items-center justify-center space-x-1"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>{COPY.reject}</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                    <AnalyticsBarChart 
+                      data={analyticsData?.timeseries?.revenue || []} 
+                      dataKeys={["value"]} 
+                      colors={["#10b981"]} 
+                    />
                   )}
                 </div>
+
+                <div>
+                  <SectionHeader title="Campaign Activity" description="Campaign creation and engagement" />
+                  <AnalyticsLineChart 
+                    data={analyticsData?.timeseries?.campaigns || []} 
+                    dataKeys={["value"]} 
+                    colors={["#f97316"]} 
+                  />
+                </div>
+
+                <div>
+                  <SectionHeader title="Approval Flow" description="Pending and processed entity approvals" />
+                  <AnalyticsAreaChart 
+                    data={analyticsData?.timeseries?.approvals || []} 
+                    dataKeys={["value"]} 
+                    colors={["#8b5cf6"]} 
+                  />
+                </div>
               </div>
+
+              {/* Highs & Lows */}
+              <div>
+                <SectionHeader title="Highs & Lows" description="Critical pivot points over the period" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <HighLowCard 
+                    title="Revenue" 
+                    highValue={analyticsData?.highsLows?.revenueHigh?.value || null} 
+                    highDate={analyticsData?.highsLows?.revenueHigh?.date || null} 
+                    lowValue={analyticsData?.highsLows?.revenueLow?.value || null} 
+                    lowDate={analyticsData?.highsLows?.revenueLow?.date || null} 
+                    formatValue={(val) => `₹${val.toLocaleString()}`}
+                  />
+                  <HighLowCard 
+                    title="User Growth" 
+                    highValue={analyticsData?.highsLows?.usersHigh?.value || null} 
+                    highDate={analyticsData?.highsLows?.usersHigh?.date || null} 
+                    lowValue={analyticsData?.highsLows?.usersLow?.value || null} 
+                    lowDate={analyticsData?.highsLows?.usersLow?.date || null} 
+                  />
+                  <HighLowCard 
+                    title="Campaigns" 
+                    highValue={analyticsData?.highsLows?.campaignsHigh?.value || null} 
+                    highDate={analyticsData?.highsLows?.campaignsHigh?.date || null} 
+                    lowValue={analyticsData?.highsLows?.campaignsLow?.value || null} 
+                    lowDate={analyticsData?.highsLows?.campaignsLow?.date || null} 
+                  />
+                </div>
+              </div>
+
             </div>
-          </div>
-        )}
+          )}
+        </section>
+
       </div>
-
-      <ConfirmModal
-        isOpen={!!selectedRejectId}
-        onClose={() => setSelectedRejectId(null)}
-        onConfirm={(reason) => handleRejectConfirm(reason)}
-        title="Restrict Entity Access"
-        description="Are you sure you want to reject this profile? They will be unable to access platform resources."
-        variant="danger"
-        confirmText="Confirm Rejection"
-        showInput={true}
-        loading={actionLoading}
-      />
     </DashboardShell>
-  );
-}
-
-function DashboardSkeletonGrid() {
-  return (
-    <div className="dashboard-grid">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i} className="bg-surface-elevated rounded-3xl p-6 border border-border shadow-sm flex flex-col justify-between h-[160px] animate-pulse">
-          <div className="flex justify-between items-start">
-            <div className="w-24 h-4 bg-foreground/5 rounded-md" />
-            <div className="w-10 h-10 bg-foreground/5 rounded-xl" />
-          </div>
-          <div>
-            <div className="w-16 h-8 bg-foreground/10 rounded-lg mb-2" />
-            <div className="w-32 h-3 bg-foreground/5 rounded-md" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

@@ -15,10 +15,7 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const mappedUsers = (profiles ?? []).map(u => ({
-      ...u,
-      is_verified: false
-    }));
+    const mappedUsers = profiles ?? [];
 
     return NextResponse.json({
       success: true,

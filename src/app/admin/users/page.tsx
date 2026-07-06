@@ -2,6 +2,10 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+import { CommandHeader } from "@/app/components/shared/CommandHeader";
+import { DataSurface } from "@/app/components/shared/DataSurface";
+import { StatusPill } from "@/app/components/shared/StatusPill";
+import { GlassPanel } from "@/app/components/shared/GlassPanel";
 import { PageHeader, StatusBadge } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
@@ -12,7 +16,8 @@ import {
   ShieldCheck, 
   ShieldAlert, 
   Ban, 
-  Filter
+  Filter,
+  Info
 } from "lucide-react";
 import { ActionDropdown, ActionItem } from "@/app/components/ui/action-dropdown";
 import { UserKycReviewPanel } from "@/app/components/ui/user-kyc-review-panel";
@@ -48,6 +53,7 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isPartialData, setIsPartialData] = useState(false);
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [reviewPanelOpen, setReviewPanelOpen] = useState(false);
@@ -79,11 +85,12 @@ export default function UsersPage() {
     try {
       const data = await userService.getUsers(signal);
       setLocalUsers(data);
+      setIsPartialData(Boolean(userService.getLastUsersMeta()?.partial));
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      console.error("[UsersPage] Failed to fetch identity protocols:", err instanceof Error ? err.message : JSON.stringify(err));
+      console.error("[UsersPage] Data load error:", err instanceof Error ? err.message : String(err));
       setIsError(true);
-      const friendlyMsg = "Failed to load users. Please check backend connection and permissions.";
+      const friendlyMsg = "Unable to load user operations. Some profile fields may not be available yet.";
       setErrorMsg(friendlyMsg);
       showToast(friendlyMsg, "error");
     } finally {
@@ -242,8 +249,8 @@ export default function UsersPage() {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
-        <StatusBadge 
-          status={row.original.status === "approved" ? "APPROVED" : row.original.status === "pending_review" || row.original.status === "pending" ? "PENDING" : row.original.status === "on_hold" ? "ON HOLD" : row.original.status === "rejected" ? "REJECTED" : "RESTRICTED"} 
+        <StatusPill 
+          label={row.original.status === "approved" ? "APPROVED" : row.original.status === "pending_review" || row.original.status === "pending" ? "PENDING" : row.original.status === "on_hold" ? "ON HOLD" : row.original.status === "rejected" ? "REJECTED" : "RESTRICTED"} 
           variant={row.original.status === "approved" ? "success" : (row.original.status === "pending" || row.original.status === "pending_review" || row.original.status === "on_hold") ? "warning" : "error"} 
         />
       ),
@@ -318,10 +325,10 @@ export default function UsersPage() {
   return (
     <ProtectedRoute permission="users.read">
       <DashboardShell>
-      <div className="section-spacing">
-        <PageHeader 
+      <div className="space-y-5">
+        <CommandHeader 
           title="Identity Protocols" 
-          subtitle="Enterprise-grade management of platform entities and security vectors."
+          description="Enterprise-grade management of platform entities and security vectors."
         >
           <button 
             onClick={() => void loadUsers()}
@@ -330,10 +337,10 @@ export default function UsersPage() {
           >
             <span>{COPY.syncData}</span>
           </button>
-        </PageHeader>
+        </CommandHeader>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-6 rounded-[28px] bg-card-bg border border-border mb-10 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-[28px] ugcfy-glass">
           <div className="flex items-center space-x-3 text-text-secondary text-sm font-semibold">
             <Filter className="w-4 h-4 text-primary" />
             <span>{COPY.filters}</span>
@@ -369,6 +376,18 @@ export default function UsersPage() {
           </div>
         </div>
 
+        {isPartialData && (
+          <div className="flex items-start gap-3 rounded-[24px] border border-amber-500/15 bg-amber-50/75 p-4 text-amber-900 shadow-sm backdrop-blur-xl">
+            <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <p className="text-sm font-semibold">Some profile details are not available yet.</p>
+              <p className="mt-1 text-sm leading-6 text-amber-800/80">
+                Core admin data remains accessible while optional creator and brand profile tables are configured.
+              </p>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <LoadingState message="Synchronizing Identity Records..." />
         ) : isError ? (
@@ -378,7 +397,7 @@ export default function UsersPage() {
             columns={columns} 
             data={filteredUsers} 
             searchKey="searchable"
-            placeholder="Query user by email, name, or platform ID (e.g. CN000001)..."
+            searchPlaceholder="Query user by email, name, or platform ID (e.g. CN000001)..."
             onRowClick={(row: SearchableUser) => {
               setSelectedUserId(row.id);
               setReviewPanelOpen(true);

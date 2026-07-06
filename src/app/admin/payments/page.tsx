@@ -486,7 +486,7 @@ export default function PaymentsPage() {
               columns={columns} 
               data={filteredPayments} 
               searchKey="brand"
-              placeholder="Query fiscal infrastructure by corporate entity..."
+              searchPlaceholder="Query fiscal infrastructure by corporate entity..."
             />
           )}
         </div>

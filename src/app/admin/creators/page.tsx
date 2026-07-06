@@ -428,7 +428,7 @@ export default function CreatorsPage() {
             columns={columns} 
             data={filteredCreators} 
             searchKey="email"
-            placeholder="Query creator infrastructure by identifier or email..."
+            searchPlaceholder="Query creator infrastructure by identifier or email..."
             onRowClick={(row) => {
               setSelectedUserId(row.id);
               setReviewPanelOpen(true);
