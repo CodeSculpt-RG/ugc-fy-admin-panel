@@ -9,7 +9,6 @@ import {
   ShieldCheck, 
   ShieldAlert,
   ArrowRight,
-  AlertCircle,
   RefreshCw,
   CheckCircle2,
   XCircle,
@@ -22,6 +21,8 @@ import { StatCard, StatusBadge } from "@/app/components/ui/core";
 import { ChartCard } from "@/app/components/ui/chart-card";
 import { AdminDonutChart, AdminBarChart } from "@/app/components/ui/charts";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
+import { EmptyState } from "@/app/components/shared/EmptyState";
+import { ErrorState } from "@/app/components/shared/ErrorState";
 import { cn } from "@/app/lib/utils";
 import { useToast } from "@/app/hooks/useToast";
 import { isAbortError } from "@/app/services/adminApiClient";
@@ -318,21 +319,13 @@ export default function DashboardPage() {
         {isLoading ? (
           <DashboardSkeletonGrid />
         ) : isError ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-6">
-            <div className="p-6 rounded-[32px] bg-error/10 border border-error/20 text-error">
-               <AlertCircle className="w-12 h-12" />
-            </div>
-            <div className="text-center space-y-2">
-              <p className="text-lg font-black text-foreground">{COPY.infrastructureDesync}</p>
-              <p className="text-sm text-foreground/40">{COPY.secureHandshake}</p>
-            </div>
-            <button 
-              onClick={() => loadStats()}
-              className="h-12 px-8 rounded-2xl bg-surface-elevated border border-border text-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:border-primary transition-all active:scale-95"
-            >
-              {COPY.retryHandshake}
-            </button>
-          </div>
+          <ErrorState 
+            title={COPY.infrastructureDesync} 
+            description={COPY.secureHandshake} 
+            actionLabel={COPY.retryHandshake} 
+            onAction={() => loadStats()} 
+            className="my-20"
+          />
         ) : (
           <>
             {/* Stats Grid */}
@@ -406,7 +399,7 @@ export default function DashboardPage() {
 
               <div className="space-y-4">
                 {statsData.recentUsers.length === 0 ? (
-                  <p className="text-center py-12 text-foreground/20 text-xs font-black uppercase tracking-widest">{COPY.noRecentEntities}</p>
+                  <EmptyState title="No Recent Entities" description={COPY.noRecentEntities} className="py-12" />
                 ) : (
                   statsData.recentUsers.map((user) => (
                     <div 
@@ -461,7 +454,7 @@ export default function DashboardPage() {
 
                 <div className="space-y-6">
                   {statsData.pendingApprovalQueue.length === 0 ? (
-                    <p className="text-center py-10 text-foreground/20 text-xs font-black uppercase tracking-widest">{COPY.approvalQueueEmpty}</p>
+                    <EmptyState title="Queue Empty" description={COPY.approvalQueueEmpty} className="py-10" />
                   ) : (
                     statsData.pendingApprovalQueue.map((item) => (
                       <div key={item.id} className="space-y-4 group/mod p-5 rounded-2xl bg-surface-elevated border border-border hover:border-border transition-all shadow-sm">

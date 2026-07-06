@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+import { EmptyState } from "@/app/components/shared/EmptyState";
 import { PageHeader } from "@/app/components/ui/core";
 import { 
   Search, 
@@ -14,7 +15,6 @@ import {
   User,
   Clock,
   CheckCircle,
-  HelpCircle,
   AlertCircle,
   ShieldAlert,
   Info
@@ -640,8 +640,8 @@ export default function EscalationsPage() {
 
             {/* Table Area */}
             <div className="bg-surface border border-border rounded-[32px] overflow-hidden shadow-sm">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left text-sm border-collapse">
+              <div className="w-full overflow-x-auto rounded-2xl custom-scrollbar">
+                <table className="w-full text-left text-sm border-collapse min-w-[1000px]">
                   <thead className="bg-surface border-b border-border text-[9px] uppercase tracking-widest text-text-secondary">
                     <tr>
                       <th className="px-8 py-5 font-black">{COPY.issue}</th>
@@ -662,16 +662,8 @@ export default function EscalationsPage() {
                       </tr>
                     ) : filteredEscalations.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-8 py-24 text-center">
-                          <div className="flex flex-col items-center justify-center space-y-4 max-w-sm mx-auto">
-                            <div className="p-5 rounded-[24px] bg-foreground/[0.03] border border-border">
-                              <HelpCircle className="w-8 h-8 text-text-secondary" />
-                            </div>
-                            <h3 className="text-base font-bold text-foreground">{COPY.noEscalations}</h3>
-                            <p className="text-xs text-text-secondary leading-relaxed">
-                              {COPY.noEscalationsBody}
-                            </p>
-                          </div>
+                        <td colSpan={7} className="p-0">
+                          <EmptyState title={COPY.noEscalations} description={COPY.noEscalationsBody} className="my-10 border-0" />
                         </td>
                       </tr>
                     ) : (

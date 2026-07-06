@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "admin:set-owner-password": "node scripts/set-owner-password.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",

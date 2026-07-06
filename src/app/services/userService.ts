@@ -42,6 +42,11 @@ type UserApiResponse = {
   source?: string;
   data?: UserInternal[];
   error?: ApiError;
+  meta?: {
+    partial?: boolean;
+    missingTables?: string[];
+    warnings?: string[];
+  };
 };
 
 function getApiErrorMessage(
@@ -127,6 +132,10 @@ export const userService = {
       if (!response.ok || !payload?.success) {
         const message = getApiErrorMessage(response, payload);
         throw new Error(message);
+      }
+
+      if (payload.meta?.partial && process.env.NODE_ENV !== "production") {
+        console.warn("[UserService] User data loaded with partial optional profile data:", payload.meta);
       }
 
       return (payload.data ?? []).map(mapInternalToUser);

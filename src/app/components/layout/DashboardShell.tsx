@@ -23,12 +23,12 @@ function DashboardContent({ children }: DashboardShellProps) {
         
         <main className="flex-1 min-w-0 overflow-x-hidden bg-background relative">
           
-          <div className="p-8 md:p-12 lg:p-20">
+          <div className="p-4 sm:p-6 md:p-8 lg:p-12 xl:p-16">
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: "easeOut" }}
-              className="max-w-[1180px] mx-auto w-full section-spacing"
+              className="max-w-[1280px] mx-auto w-full section-spacing"
             >
               {children}
             </motion.div>

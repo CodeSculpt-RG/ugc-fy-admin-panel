@@ -161,12 +161,12 @@ export default function DebugConnectionPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground/20 mb-2">Permissions Hydrated</h4>
-                     <p className="text-sm font-black text-success-green tracking-tight leading-none">{admin?.permissions.length || 0} Vectors Active</p>
+                     <p className="text-sm font-black text-success-green tracking-tight leading-none">{(admin?.permissions || []).length || 0} Vectors Active</p>
                      <div className="flex flex-wrap gap-1 mt-3">
-                        {admin?.permissions.slice(0, 3).map(p => (
+                        {(admin?.permissions || []).slice(0, 3).map((p: string) => (
                           <span key={p} className="px-2 py-0.5 rounded-md bg-surface-elevated hover:bg-foreground/5 text-[9px] font-black text-foreground/40 uppercase tracking-tighter border border-border">{p.split('.')[0]}</span>
                         ))}
-                        {(admin?.permissions.length || 0) > 3 && <span className="text-[9px] text-foreground/20 font-black">+{(admin?.permissions.length || 0) - 3} more</span>}
+                        {((admin?.permissions || []).length || 0) > 3 && <span className="text-[9px] text-foreground/20 font-black">+{(admin?.permissions || []).length - 3} more</span>}
                      </div>
                   </div>
                </div>

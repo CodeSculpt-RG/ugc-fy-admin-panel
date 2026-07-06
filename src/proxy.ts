@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-
-
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get("admin-token");
+  const token = request.cookies.get("admin-token")?.value;
   const { pathname } = request.nextUrl;
 
   // Intercept socket.io requests and proxy to backend, forwarding upgrade headers
@@ -31,21 +29,46 @@ export function proxy(request: NextRequest) {
     });
   }
 
-  // Protect /admin routes (except login and setup-password)
-  if (pathname.startsWith("/admin") && !pathname.includes("/admin/login") && !pathname.includes("/admin/setup-password")) {
-    if (!token) {
+  // Handle root redirects
+  if (pathname === "/") {
+    if (token) {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    } else {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }
 
-  // Redirect to dashboard/creators if already logged in and trying to access login page
+  if (pathname === "/login") {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+  }
+
+  if (pathname === "/dashboard") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+  }
+
+  // Protect /admin routes (except login, setup-password, forgot-password, reset-password, auth/callback)
+  const isAuthRoute = 
+    pathname.includes("/admin/login") || 
+    pathname.includes("/admin/setup-password") || 
+    pathname.includes("/admin/forgot-password") || 
+    pathname.includes("/admin/reset-password") ||
+    pathname.includes("/admin/auth/callback");
+
+  if (pathname.startsWith("/admin") && !isAuthRoute) {
+    if (!token) {
+      const nextUrl = encodeURIComponent(pathname + request.nextUrl.search);
+      return NextResponse.redirect(new URL(`/admin/login?next=${nextUrl}`, request.url));
+    }
+  }
+
+  // Redirect to dashboard if already logged in and trying to access login page
   if (pathname === "/admin/login" && token) {
-    return NextResponse.redirect(new URL("/admin/creators", request.url));
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/socket.io", "/socket.io/", "/socket.io/:path*"],
+  matcher: ["/", "/login", "/dashboard", "/admin/:path*", "/socket.io", "/socket.io/", "/socket.io/:path*"],
 };

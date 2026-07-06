@@ -13,19 +13,27 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
-  const { admin, loading, hasPermission } = useAdminAuth();
+  const { admin, loading, status, hasPermission } = useAdminAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !admin) {
+    if (!loading && !admin && status === "unauthenticated") {
       router.push("/admin/login");
     }
-  }, [loading, admin, router]);
+  }, [loading, admin, status, router]);
 
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <LoadingState message="Verifying Administrative Credentials..." />
+      </div>
+    );
+  }
+
+  if (!admin && status === "unknown") {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <LoadingState message="Session Verification Delayed..." />
       </div>
     );
   }

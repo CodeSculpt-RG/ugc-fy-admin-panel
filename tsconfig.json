@@ -20,8 +20,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "resend": ["./src/lib/resend.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [

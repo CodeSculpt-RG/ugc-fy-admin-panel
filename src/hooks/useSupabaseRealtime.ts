@@ -6,7 +6,7 @@ import type {
   RealtimePostgresChangesPayload,
 } from '@supabase/supabase-js';
 
-import { supabase as createClient } from '@/app/lib/supabase';
+import { supabase as createClient } from '@/lib/supabase/client';
 
 export type RealtimeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 

@@ -3,15 +3,18 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
+  ClipboardCheck,
   UserSquare2,
   Building2,
   Megaphone,
   ShieldCheck,
   CreditCard,
+  CircleDollarSign,
   Lock,
   Scale,
   BarChart3,
@@ -23,6 +26,7 @@ import {
   LogOut,
   X,
   MessageSquare,
+  LifeBuoy,
   AlertTriangle
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
@@ -40,6 +44,7 @@ const menuItems = [
     group: "Main Navigation", items: [
       { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
       { name: "Users", href: "/admin/users", icon: Users },
+      { name: "KYC", href: "/admin/kyc", icon: ClipboardCheck },
       { name: "Creators", href: "/admin/creators", icon: UserSquare2 },
       { name: "Brands", href: "/admin/brands", icon: Building2 },
       { name: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
@@ -47,8 +52,10 @@ const menuItems = [
       { name: "Chat Monitoring", href: "/admin/chat-monitoring", icon: MessageSquare },
       { name: "Escalations", href: "/admin/escalations", icon: AlertTriangle },
       { name: "Payments", href: "/admin/payments", icon: CreditCard },
+      { name: "Finance", href: "/admin/finance", icon: CircleDollarSign },
       { name: "Escrow", href: "/admin/escrow", icon: Lock },
       { name: "Disputes", href: "/admin/disputes", icon: Scale },
+      { name: "Support", href: "/admin/support", icon: LifeBuoy },
       { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
       { name: "Reports", href: "/admin/reports", icon: FileText },
     ]
@@ -56,9 +63,10 @@ const menuItems = [
   {
     group: "Infrastructure", items: [
       { name: "Cluster Health", href: "/admin/infrastructure", icon: LayoutDashboard },
-      { name: "Admin Management", href: "/admin/admin-management", icon: UserSquare2 },
-      { name: "Audit Logs", href: "/admin/audit-logs", icon: History },
-      { name: "Security", href: "/admin/security", icon: ShieldAlert },
+      { name: "Admin Management", href: "/admin/settings/admins", icon: UserSquare2 },
+      { name: "Security Logs", href: "/admin/settings/security-logs", icon: History },
+      { name: "Ban Management", href: "/admin/settings/bans", icon: ShieldAlert },
+      { name: "Security Settings", href: "/admin/settings/security", icon: Lock },
       { name: "Settings", href: "/admin/settings", icon: Settings },
       ...(process.env.NODE_ENV === "development" ? [
         { name: "Debug Connection", href: "/admin/debug-connection", icon: LayoutDashboard }
@@ -76,6 +84,16 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout();
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMobileOpen) {
+        setIsMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileOpen, setIsMobileOpen]);
 
   // Filter menu items based on permissions
   const filteredMenuItems = useMemo(() => {
@@ -126,7 +144,7 @@ export default function Sidebar() {
           )}
         </Link>
         {isMobileOpen && (
-          <button onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-muted-foreground hover:text-foreground transition-all">
+          <button aria-label="Close menu" onClick={() => setIsMobileOpen(false)} className="lg:hidden p-4 rounded-2xl bg-surface-elevated hover:bg-foreground/5 border border-border text-muted-foreground hover:text-foreground transition-all">
             <X className="w-6 h-6" />
           </button>
         )}

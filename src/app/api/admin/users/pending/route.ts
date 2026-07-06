@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { requirePermission } from "@/lib/auth/admin-auth";
 import { normalizeError } from "@/lib/api/normalizeError";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
 
 export async function GET(request: Request) {
   try {
-    const auth = await verifyAdmin(request);
-    if (!auth.success) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: auth.status }
-      );
-    }
+    await requirePermission(request, "users:read");
 
     const { data: profiles, error, count } = await supabaseAdmin
       .from("profiles")

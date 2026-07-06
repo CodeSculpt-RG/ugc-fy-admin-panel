@@ -63,6 +63,10 @@ export default function NotificationDropdown() {
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <button
+          type="button"
+          aria-label="Notifications"
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
           onClick={() => {
             if (!isOpen) void checkUnread();
           }}

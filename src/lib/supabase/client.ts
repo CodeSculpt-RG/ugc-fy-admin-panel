@@ -1,21 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
+import { publicSupabaseEnv } from "./public-env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export const supabase = createClient(
+  publicSupabaseEnv.url,
+  publicSupabaseEnv.anonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: "ugc-fy-admin-auth",
+    },
+  }
+);
 
-if (!supabaseUrl) {
-  throw new Error("Infrastructure Failure: NEXT_PUBLIC_SUPABASE_URL is not defined.");
-}
-
-if (!supabaseAnonKey) {
-  throw new Error("Infrastructure Failure: NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined.");
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: "ugc-fy-admin-auth",
-  },
-});
+export const supabaseBrowserClient = supabase;

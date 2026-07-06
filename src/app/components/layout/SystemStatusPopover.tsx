@@ -71,10 +71,13 @@ export default function SystemStatusPopover() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={cn(
-          "flex items-center space-x-2 px-3 py-2 rounded-xl border transition-all cursor-pointer group outline-none",
-          isConnected ? "bg-success-green/5 border-success-green/10 hover:bg-success-green/10 hover:border-success-green/20" : "bg-accent-orange/5 border-accent-orange/10 hover:bg-accent-orange/10 hover:border-accent-orange/20"
-        )}>
+        <button
+          aria-label="System Status"
+          className={cn(
+            "flex items-center space-x-2 px-3 py-2 rounded-xl border transition-all cursor-pointer group outline-none",
+            isConnected ? "bg-success-green/5 border-success-green/10 hover:bg-success-green/10 hover:border-success-green/20" : "bg-accent-orange/5 border-accent-orange/10 hover:bg-accent-orange/10 hover:border-accent-orange/20"
+          )}
+        >
           <div className="relative flex items-center justify-center">
             <Zap className={cn("w-3.5 h-3.5 group-hover:scale-110 transition-transform", isConnected ? "text-success-green fill-success-green" : "text-accent-orange fill-accent-orange")} />
             <span className={cn("absolute inset-0 blur-sm opacity-20 group-hover:opacity-40 transition-opacity", isConnected ? "bg-success-green" : "bg-accent-orange")} />

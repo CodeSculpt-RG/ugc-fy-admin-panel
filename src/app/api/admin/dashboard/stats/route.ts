@@ -1,94 +1,113 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeError } from "@/lib/api/normalizeError";
-import { requirePermission } from "@/lib/api/requirePermission";
+import { requirePermission } from "@/lib/auth/admin-auth";
+import { safeCount } from "@/lib/api/safe-count";
 
 export async function GET(request: Request) {
   try {
-    const check = await requirePermission(request, "dashboard.read");
-    if (!check.ok) return check.response;
+    await requirePermission(request, "dashboard:read");
 
-    // Fetch counts and recent data in parallel for speed
+    const missingTables = new Set<string>();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const safeCountTrack = async (table: string, queryBuilder?: (q: any) => any) => {
+      const res = await safeCount(table, queryBuilder);
+      if (res.missing) missingTables.add(table);
+      return res.count;
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const safeFetch = async (table: string, queryBuilder: (q: any) => any) => {
+      const { data, error } = await queryBuilder(supabaseAdmin.from(table));
+      if (error) {
+        if (error.code === "PGRST205" || error.code === "42P01") {
+          missingTables.add(table);
+          return [];
+        }
+        console.error(`[safeFetch] Error fetching ${table}:`, error);
+        return [];
+      }
+      return data || [];
+    };
+
     const [
-      { count: totalCreators },
-      { count: totalBrands },
-      { count: totalAdmins },
-      { count: totalUsers },
-      
-      { count: pendingCreators },
-      { count: pendingBrands },
-      { count: pendingUsersCount },
-      
-      { count: approvedUsers },
-      { count: rejectedUsers },
-      { count: blockedUsers },
-      
-      { data: recentUsersData },
-      { data: pendingQueueData },
+      totalCreators,
+      totalBrands,
+      totalAdmins,
+      totalUsers,
+      pendingCreators,
+      pendingBrands,
+      pendingUsersCount,
+      approvedUsers,
+      rejectedUsers,
+      blockedUsers,
+      recentUsersData,
+      pendingQueueData,
     ] = await Promise.all([
-      // Basic counts
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("role", "creator"),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("role", "brand"),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("role", "admin"),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }),
+      safeCountTrack("users", q => q.eq("role", "creator")),
+      safeCountTrack("users", q => q.eq("role", "brand")),
+      safeCountTrack("users", q => q.eq("role", "admin")),
+      safeCountTrack("users"),
       
-      // Pending counts
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("role", "creator").eq("is_verified", false),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("role", "brand").eq("is_verified", false),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("is_verified", false),
+      safeCountTrack("users", q => q.eq("role", "creator").eq("is_verified", false)),
+      safeCountTrack("users", q => q.eq("role", "brand").eq("is_verified", false)),
+      safeCountTrack("users", q => q.eq("is_verified", false)),
       
-      // Breakdown counts
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("is_verified", true),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("is_active", false),
-      supabaseAdmin.from("users").select("*", { count: "exact", head: true }).eq("is_active", false),
+      safeCountTrack("users", q => q.eq("is_verified", true)),
+      safeCountTrack("users", q => q.eq("is_active", false)),
+      safeCountTrack("users", q => q.eq("is_active", false)),
       
-      // Lists
-      supabaseAdmin.from("users").select("id, email, role, is_verified, created_at").order("created_at", { ascending: false }).limit(5),
-      supabaseAdmin.from("users").select("id, email, role, is_verified, created_at").eq("is_verified", false).order("created_at", { ascending: false }).limit(5),
+      safeFetch("users", q => q.select("id, email, role, is_verified, created_at").order("created_at", { ascending: false }).limit(5)),
+      safeFetch("users", q => q.select("id, email, role, is_verified, created_at").eq("is_verified", false).order("created_at", { ascending: false }).limit(5)),
     ]);
 
+    const isPartial = missingTables.size > 0;
+
     const stats = {
-      totalUsers: totalUsers ?? 0,
-      totalCreators: totalCreators ?? 0,
-      totalBrands: totalBrands ?? 0,
+      totalUsers,
+      totalCreators,
+      totalBrands,
       
-      pendingUsers: pendingUsersCount ?? 0,
-      pendingCreators: pendingCreators ?? 0,
-      pendingBrands: pendingBrands ?? 0,
+      pendingUsers: pendingUsersCount,
+      pendingCreators,
+      pendingBrands,
       
-      approvedUsers: approvedUsers ?? 0,
-      approvedCreators: 0, // Simplified for now
-      approvedBrands: 0, // Simplified for now
+      approvedUsers,
+      approvedCreators: 0, 
+      approvedBrands: 0, 
       
-      rejectedUsers: rejectedUsers ?? 0,
-      blockedUsers: blockedUsers ?? 0,
+      rejectedUsers,
+      blockedUsers,
       
-      completedProfiles: 0, // Simplified
-      incompleteProfiles: 0, // Simplified
+      completedProfiles: 0, 
+      incompleteProfiles: 0, 
       
-      recentUsers: (recentUsersData ?? []).map(u => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      recentUsers: recentUsersData.map((u: any) => ({
         ...u,
         approval_status: u.is_verified ? "approved" : "pending_review",
         email: u.email || "Confidential"
       })),
       
-      pendingApprovalQueue: (pendingQueueData ?? []).map(u => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pendingApprovalQueue: pendingQueueData.map((u: any) => ({
         ...u,
         approval_status: u.is_verified ? "approved" : "pending_review",
         email: u.email || "Confidential"
       })),
       
       roleBreakdown: {
-        creators: totalCreators ?? 0,
-        brands: totalBrands ?? 0,
-        admins: totalAdmins ?? 0,
+        creators: totalCreators,
+        brands: totalBrands,
+        admins: totalAdmins,
       },
       
       approvalBreakdown: {
-        pending: pendingUsersCount ?? 0,
-        approved: approvedUsers ?? 0,
-        rejected: rejectedUsers ?? 0,
-        blocked: blockedUsers ?? 0,
+        pending: pendingUsersCount,
+        approved: approvedUsers,
+        rejected: rejectedUsers,
+        blocked: blockedUsers,
       },
       
       systemHealth: {
@@ -102,6 +121,11 @@ export async function GET(request: Request) {
       success: true,
       source: "real_supabase_database",
       data: stats,
+      meta: {
+        partial: isPartial,
+        missingTables: Array.from(missingTables),
+        generatedAt: new Date().toISOString()
+      }
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);

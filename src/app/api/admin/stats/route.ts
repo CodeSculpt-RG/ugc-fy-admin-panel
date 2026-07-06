@@ -1,47 +1,64 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/app/lib/supabaseAdmin';
-import { verifyAdmin, handleApiError } from '@/app/lib/apiUtils';
+import { handleApiError } from '@/app/lib/apiUtils';
+import { safeCount } from '@/lib/api/safe-count';
+import { requirePermission } from '@/lib/auth/admin-auth';
 
 export async function GET(request: Request) {
-  const auth = await verifyAdmin(request);
-  if (!auth.success) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: auth.status });
+  try {
+    await requirePermission(request, "dashboard:read");
+  } catch {
+    return NextResponse.json({ success: false, error: "Unauthorized access" }, { status: 403 });
   }
 
 
   try {
-    const supabaseAdmin = getSupabaseAdmin();
+    const missingTables = new Set<string>();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const safeCountTrack = async (table: string, queryBuilder?: (q: any) => any) => {
+      const res = await safeCount(table, queryBuilder);
+      if (res.missing) missingTables.add(table);
+      return res.count;
+    };
+
     const [
-      { count: totalCreators },
-      { count: totalBrands },
-      { count: pendingCreators },
-      { count: approvedCreators },
-      { count: rejectedCreators },
-      { count: pendingBrands },
-      { count: approvedBrands },
-      { count: rejectedBrands },
-      { count: blockedUsers }
+      totalCreators,
+      totalBrands,
+      pendingCreators,
+      approvedCreators,
+      rejectedCreators,
+      pendingBrands,
+      approvedBrands,
+      rejectedBrands,
+      blockedUsers
     ] = await Promise.all([
-      supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('role', 'creator'),
-      supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('role', 'brand'),
-      supabaseAdmin.from('creator_profiles').select('*', { count: 'exact', head: true }).in('kyc_status', ['pending', 'submitted']),
-      supabaseAdmin.from('creator_profiles').select('*', { count: 'exact', head: true }).eq('kyc_status', 'approved'),
-      supabaseAdmin.from('creator_profiles').select('*', { count: 'exact', head: true }).eq('kyc_status', 'rejected'),
-      supabaseAdmin.from('brand_profiles').select('*', { count: 'exact', head: true }).in('kyc_status', ['pending', 'submitted']),
-      supabaseAdmin.from('brand_profiles').select('*', { count: 'exact', head: true }).eq('kyc_status', 'approved'),
-      supabaseAdmin.from('brand_profiles').select('*', { count: 'exact', head: true }).eq('kyc_status', 'rejected'),
-      supabaseAdmin.from('users').select('*', { count: 'exact', head: true }).eq('is_active', false)
+      safeCountTrack('users', q => q.eq('role', 'creator')),
+      safeCountTrack('users', q => q.eq('role', 'brand')),
+      safeCountTrack('creator_profiles', q => q.in('kyc_status', ['pending', 'submitted'])),
+      safeCountTrack('creator_profiles', q => q.eq('kyc_status', 'approved')),
+      safeCountTrack('creator_profiles', q => q.eq('kyc_status', 'rejected')),
+      safeCountTrack('brand_profiles', q => q.in('kyc_status', ['pending', 'submitted'])),
+      safeCountTrack('brand_profiles', q => q.eq('kyc_status', 'approved')),
+      safeCountTrack('brand_profiles', q => q.eq('kyc_status', 'rejected')),
+      safeCountTrack('users', q => q.eq('is_active', false))
     ]);
+
+    const isPartial = missingTables.size > 0;
 
     return NextResponse.json({
       success: true,
       data: {
-        creators: totalCreators || 0,
-        brands: totalBrands || 0,
-        pending: (pendingCreators || 0) + (pendingBrands || 0),
-        approved: (approvedCreators || 0) + (approvedBrands || 0),
-        rejected: (rejectedCreators || 0) + (rejectedBrands || 0),
-        blocked: blockedUsers || 0
+        creators: totalCreators,
+        brands: totalBrands,
+        pending: pendingCreators + pendingBrands,
+        approved: approvedCreators + approvedBrands,
+        rejected: rejectedCreators + rejectedBrands,
+        blocked: blockedUsers
+      },
+      meta: {
+        partial: isPartial,
+        missingTables: Array.from(missingTables),
+        generatedAt: new Date().toISOString()
       }
     });
   } catch (error) {

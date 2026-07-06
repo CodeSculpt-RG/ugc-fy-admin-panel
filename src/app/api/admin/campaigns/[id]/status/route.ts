@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { verifyAdmin } from "@/lib/api/verifyAdmin";
+import { requirePermission } from "@/lib/auth/admin-auth";
 import { normalizeError } from "@/lib/api/normalizeError";
 
 export async function PATCH(
@@ -8,13 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await verifyAdmin(request);
-    if (!auth.success) {
-      return NextResponse.json(
-        { success: false, error: auth.error },
-        { status: auth.status }
-      );
-    }
+    await requirePermission(request, "campaigns:write");
 
     const { id } = await params;
     const body = await request.json();

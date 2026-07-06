@@ -20,6 +20,7 @@ export default function Navbar() {
         {/* Mobile Hamburger (Visible < 1024px) */}
         <button 
           onClick={toggleMobileMenu}
+          aria-label="Toggle mobile menu"
           className="lg:hidden p-4 rounded-2xl bg-surface-elevated border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all active:scale-90"
         >
           <Menu className="w-6 h-6" />
@@ -43,6 +44,12 @@ export default function Navbar() {
             placeholder="Query operational infrastructure..." 
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setIsSearchFocused(false);
+                e.currentTarget.blur();
+              }
+            }}
             className={cn(
               "w-full bg-surface-elevated border border-border rounded-full py-3.5 pl-16 pr-8 text-xs font-medium text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 focus:ring-offset-background focus:border-primary/20 transition-all duration-700",
               isSearchFocused ? "max-lg:h-14 shadow-sm" : "max-lg:w-0 max-lg:p-0 max-lg:border-0 max-lg:bg-transparent"
@@ -59,6 +66,7 @@ export default function Navbar() {
           {isSearchFocused && (
             <button 
               className="lg:hidden absolute right-12 top-1/2 -translate-y-1/2 text-foreground/40 p-4"
+              aria-label="Close search"
               onClick={() => setIsSearchFocused(false)}
             >
               <X className="w-7 h-7" />

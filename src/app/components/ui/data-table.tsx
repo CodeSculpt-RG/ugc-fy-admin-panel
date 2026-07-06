@@ -43,6 +43,7 @@ interface DataTableProps<TData, TValue> {
   placeholder?: string;
   isLoading?: boolean;
   onRowClick?: (row: TData) => void;
+  minWidth?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -52,6 +53,7 @@ export function DataTable<TData, TValue>({
   placeholder = "Search operational ledger...",
   isLoading = false,
   onRowClick,
+  minWidth = "min-w-[960px]",
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -119,7 +121,7 @@ export function DataTable<TData, TValue>({
 
       <div className="relative group overflow-x-auto custom-scrollbar">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-20" />
-        <Table className="min-w-full">
+        <Table className={cn(minWidth)}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent border-border">

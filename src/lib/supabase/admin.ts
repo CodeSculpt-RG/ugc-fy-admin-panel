@@ -1,19 +1,19 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { publicSupabaseEnv } from "./public-env";
+import { serverSupabaseEnv } from "./server-env";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-const resolvedSupabaseUrl: string = supabaseUrl || "http://localhost:54321";
-const resolvedServiceRoleKey: string = serviceRoleKey || "missing_key";
-
-export const supabaseAdmin = createClient(resolvedSupabaseUrl, resolvedServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
+export const supabaseAdmin = createClient(
+  publicSupabaseEnv.url,
+  serverSupabaseEnv.serviceRoleKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
 
 export const isSupabaseAdminConfigured = () => {
-  return !!supabaseUrl && !!serviceRoleKey;
+  return !!publicSupabaseEnv.url && !!serverSupabaseEnv.serviceRoleKey;
 };

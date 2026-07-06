@@ -179,7 +179,7 @@ export default function AdminProfilePage() {
               <div className="flex-shrink-0">
                 <AvatarUpload 
                   currentAvatarUrl={admin.avatarUrl} 
-                  adminName={admin.full_name || admin.name} 
+                  adminName={admin.full_name || admin.name || "Admin"} 
                   onUploadSuccess={handleAvatarUpdate} 
                 />
               </div>
@@ -304,7 +304,7 @@ export default function AdminProfilePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {admin.permissions.map((perm) => (
+              {(admin.permissions || []).map((perm: string) => (
                 <div key={perm} className="flex items-center gap-3 p-4 rounded-2xl bg-background border border-border">
                   <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
                     <CheckCircle2 className="w-4 h-4 text-success" />

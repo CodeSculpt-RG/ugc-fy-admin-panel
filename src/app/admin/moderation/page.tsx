@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
-import { 
+import {
   ShieldCheck, 
   ShieldAlert, 
   ThumbsUp, 
@@ -14,7 +14,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { PageHeader } from "@/app/components/ui/core";
-import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
+import { EmptyState, LoadingState, ErrorState } from "@/app/components/ui/shared-states";
 import { motion } from "framer-motion";
 import { cn } from "@/app/lib/utils";
 import { ModerationItem } from "@/app/types";
@@ -31,20 +31,19 @@ export default function ModerationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [missingTableInfo, setMissingTableInfo] = useState<{ isMissing: boolean; name: string; sql: string }>({ isMissing: false, name: "", sql: "" });
+  const [isPartialQueue, setIsPartialQueue] = useState(false);
 
-  const loadQueue = useCallback(async () => {
+  const loadQueue = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setIsError(false);
-    setMissingTableInfo({ isMissing: false, name: "", sql: "" });
+    setIsPartialQueue(false);
     try {
       const data = await moderationService.getQueue();
-      if (data.isMissingTable && data.tableName && data.migrationSql) {
-        setMissingTableInfo({ isMissing: true, name: data.tableName, sql: data.migrationSql });
-      } else {
-        setLocalItems(data.data);
-      }
+      if (signal?.aborted) return;
+      setLocalItems(data.data);
+      setIsPartialQueue(Boolean(data.isMissingTable));
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error("[ModerationPage] Failed to fetch queue:", error);
       setIsError(true);
       showToast("Infrastructure synchronization failed.", "error");
@@ -54,8 +53,13 @@ export default function ModerationPage() {
   }, [showToast]);
 
   useEffect(() => {
-    // eslint-disable-next-line
-    loadQueue();
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (!controller.signal.aborted) {
+        void loadQueue(controller.signal);
+      }
+    });
+    return () => controller.abort(new DOMException("Moderation request cancelled", "AbortError"));
   }, [loadQueue]);
 
   const filteredItems = localItems.filter(item => 
@@ -126,7 +130,7 @@ export default function ModerationPage() {
             </div>
 
             <button 
-              onClick={() => loadQueue()}
+              onClick={() => void loadQueue()}
               disabled={isLoading}
               className="flex items-center space-x-3 px-6 py-3.5 rounded-[22px] bg-primary text-white text-[11px] font-black uppercase tracking-widest hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
             >
@@ -157,14 +161,18 @@ export default function ModerationPage() {
         {/* Content Grid */}
         {isLoading ? (
           <LoadingState message="Synchronizing Asset Ledger..." />
-        ) : missingTableInfo.isMissing ? (
-          <MissingTableState tableName={missingTableInfo.name} migrationSql={missingTableInfo.sql} />
         ) : isError ? (
           <ErrorState onRetry={loadQueue} />
         ) : filteredItems.length === 0 ? (
-          <div className="col-span-full py-20 text-center glass-card rounded-[40px] border border-border p-12 shadow-premium">
-            <span className="text-xs font-black uppercase tracking-[0.4em] text-foreground/40">No moderation cases found.</span>
-          </div>
+          <EmptyState
+            title={isPartialQueue ? "Moderation Queue Pending Setup" : "No Moderation Cases Found"}
+            description={
+              isPartialQueue
+                ? "Moderation queue is ready, but no moderation cases table has been provisioned yet."
+                : "There are no moderation cases matching the current filter."
+            }
+            icon={<ShieldCheck className="w-12 h-12 text-success-green" />}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
             {filteredItems.map((item, i) => (
