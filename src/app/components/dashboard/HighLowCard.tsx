@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 type HighLowCardProps = {
   title: string;
@@ -13,8 +13,8 @@ type HighLowCardProps = {
 };
 
 export function HighLowCard({ title, highValue, highDate, lowValue, lowDate, formatValue }: HighLowCardProps) {
-  const displayHigh = highValue !== null ? (formatValue ? formatValue(highValue) : highValue.toLocaleString()) : "—";
-  const displayLow = lowValue !== null ? (formatValue ? formatValue(lowValue) : lowValue.toLocaleString()) : "—";
+  const displayHigh = highValue !== null ? (formatValue ? formatValue(highValue) : highValue.toLocaleString()) : "No data yet";
+  const displayLow = lowValue !== null ? (formatValue ? formatValue(lowValue) : lowValue.toLocaleString()) : "No data yet";
 
   return (
     <div className="rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl flex flex-col justify-between">

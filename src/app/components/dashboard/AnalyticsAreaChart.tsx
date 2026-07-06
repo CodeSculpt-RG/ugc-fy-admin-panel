@@ -20,23 +20,39 @@ type AnalyticsAreaChartProps = {
   data: DataPoint[];
   dataKeys: string[];
   colors?: string[];
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
 const DEFAULT_COLORS = ["#f97316", "#10b981", "#ef4444", "#3b82f6"];
 
-export function AnalyticsAreaChart({ data, dataKeys, colors = DEFAULT_COLORS }: AnalyticsAreaChartProps) {
-  if (!data || data.length === 0) {
+export function AnalyticsAreaChart({ 
+  data, 
+  dataKeys, 
+  colors = DEFAULT_COLORS,
+  emptyTitle = "No data yet",
+  emptyDescription = "Real data will appear here once available." 
+}: AnalyticsAreaChartProps) {
+  
+  const hasData = data && data.length > 0 && data.some((point) =>
+    Object.entries(point).some(([key, value]) => key !== "date" && typeof value === "number" && value > 0)
+  );
+
+  if (!hasData) {
     return (
-      <div className="flex items-center justify-center h-[280px] bg-white/40 rounded-[22px] border border-black/5">
-        <span className="text-sm font-medium text-text-secondary">No data available</span>
+      <div className="flex min-h-[280px] items-center justify-center rounded-[24px] border border-dashed border-black/10 bg-white/50 p-6 text-center">
+        <div>
+          <p className="text-sm font-semibold text-neutral-950">{emptyTitle}</p>
+          <p className="mt-1 text-xs text-neutral-500 max-w-[250px] mx-auto">{emptyDescription}</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-      <div className="h-[280px] w-full mt-4">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[280px] w-full mt-4 min-h-[280px]">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               {dataKeys.map((key, index) => (

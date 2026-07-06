@@ -1,29 +1,9 @@
 import { NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/api/verifyAdmin";
 import { safeCount } from "@/lib/api/safe-count";
-import { safeQuery } from "@/lib/api/safe-query";
+import { isMissingOptionalTableError } from "@/lib/api/safe-query";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-
-export type AnalyticsPoint = {
-  date: string;
-  value: number;
-};
-
-export type AnalyticsHighLow = {
-  date: string;
-  value: number;
-};
-
-function generateEmptyTimeseries(days: number): AnalyticsPoint[] {
-  const series: AnalyticsPoint[] = [];
-  const now = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    series.push({ date: d.toISOString().split("T")[0], value: 0 });
-  }
-  return series;
-}
+import { AnalyticsPoint, AnalyticsHighLow } from "@/app/lib/types/analytics";
 
 export async function GET(request: Request) {
   const admin = await verifyAdmin(request);
@@ -44,50 +24,118 @@ export async function GET(request: Request) {
 
   let partial = false;
   const missingTables: string[] = [];
+  const emptySources: string[] = [];
+  const missingColumns: string[] = [];
 
-  const emptySeries = generateEmptyTimeseries(days);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type SupabaseQueryBuilder = any;
+
+  // Helper to fetch and aggregate timeseries data safely
+  async function fetchTimeseries(
+    tableName: string, 
+    filterBuilder?: (q: SupabaseQueryBuilder) => SupabaseQueryBuilder,
+    dateColumn = 'created_at'
+  ): Promise<AnalyticsPoint[]> {
+    let query = supabaseAdmin.from(tableName).select(dateColumn).gte(dateColumn, fromDateStr);
+    if (filterBuilder) query = filterBuilder(query);
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isMissingOptionalTableError(error)) {
+        if (!missingTables.includes(tableName)) missingTables.push(tableName);
+        partial = true;
+        return [];
+      }
+      // If error is about missing column
+      if (error.message?.includes("does not exist")) {
+        missingColumns.push(`${tableName}.${dateColumn}`);
+        partial = true;
+        return [];
+      }
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      if (!emptySources.includes(tableName)) emptySources.push(tableName);
+      return [];
+    }
+
+    // Aggregate by day
+    const aggregated: Record<string, number> = {};
+    const rows = data as unknown as Record<string, unknown>[];
+    rows.forEach((row) => {
+      const val = row[dateColumn] as string | null | undefined;
+      if (!val) return;
+      const date = val.split("T")[0];
+      aggregated[date] = (aggregated[date] || 0) + 1;
+    });
+
+    // Generate timeseries strictly from aggregated data
+    const series: AnalyticsPoint[] = Object.keys(aggregated)
+      .sort()
+      .map((date) => ({
+        date,
+        value: aggregated[date],
+      }));
+
+    return series;
+  }
 
   // Users
+  const usersSeries = await fetchTimeseries("profiles");
   const usersRes = await safeCount("profiles");
   const totalUsers = usersRes.count;
-  if (usersRes.missing) { partial = true; missingTables.push("profiles"); }
-
+  
   // Creators
-  const creatorsRes = await safeCount("profiles", q => q.eq("role", "creator"));
+  const creatorsSeries = await fetchTimeseries("creator_profiles");
+  const creatorsRes = await safeCount("creator_profiles");
   const totalCreators = creatorsRes.count;
-  if (creatorsRes.missing && !missingTables.includes("profiles")) { partial = true; missingTables.push("profiles"); }
 
   // Brands
-  const brandsRes = await safeCount("profiles", q => q.eq("role", "brand"));
+  const brandsSeries = await fetchTimeseries("brand_profiles");
+  const brandsRes = await safeCount("brand_profiles");
   const totalBrands = brandsRes.count;
-  if (brandsRes.missing && !missingTables.includes("profiles")) { partial = true; missingTables.push("profiles"); }
 
   // Campaigns
+  const campaignsSeries = await fetchTimeseries("campaigns");
   const campaignsRes = await safeCount("campaigns");
   const activeCampaigns = campaignsRes.count;
-  if (campaignsRes.missing) { partial = true; missingTables.push("campaigns"); }
 
   // Approvals
+  const approvalsSeries = await fetchTimeseries("profiles", q => q.eq("status", "pending"));
   const approvalsRes = await safeCount("profiles", q => q.eq("status", "pending"));
   const pendingApprovals = approvalsRes.count;
 
   // Moderation
+  const moderationSeries = await fetchTimeseries("moderation_cases");
   const moderationRes = await safeCount("moderation_cases");
   const moderationQueue = moderationRes.count;
-  if (moderationRes.missing) { partial = true; missingTables.push("moderation_cases"); }
 
-  // Revenue
-  // Safe check if payments table exists by counting it
-  const paymentsCheck = await safeCount("payments");
-  const totalRevenue = 0;
-  const monthlyRevenue = 0;
-  if (paymentsCheck.missing) {
-    partial = true;
-    missingTables.push("payments/transactions");
-  } else {
-    // If table exists, we would query the sum. For now, if count is 0, we can say 0.
-    // Assuming a safe fallback for revenue
+  // Revenue - Explicitly mark missing until finance tables are ready
+  missingTables.push("payments_or_transactions");
+  partial = true;
+
+  // Calculate Highs/Lows strictly from non-empty series
+  function calcHighLow(series: AnalyticsPoint[]): { high: AnalyticsHighLow | null, low: AnalyticsHighLow | null } {
+    if (!series || series.length === 0) return { high: null, low: null };
+    
+    let maxObj = series[0];
+    let minObj = series[0];
+    
+    series.forEach(point => {
+      if (point.value > maxObj.value) maxObj = point;
+      if (point.value < minObj.value) minObj = point;
+    });
+
+    return {
+      high: { date: maxObj.date, value: maxObj.value },
+      low: { date: minObj.date, value: minObj.value }
+    };
   }
+
+  const usersHL = calcHighLow(usersSeries);
+  const campaignsHL = calcHighLow(campaignsSeries);
 
   return NextResponse.json({
     success: true,
@@ -98,30 +146,32 @@ export async function GET(request: Request) {
         totalBrands,
         activeCampaigns,
         pendingApprovals,
-        totalRevenue,
-        monthlyRevenue,
+        totalRevenue: 0,
+        monthlyRevenue: 0,
         moderationQueue,
       },
       timeseries: {
-        users: emptySeries,
-        creators: emptySeries,
-        brands: emptySeries,
-        campaigns: emptySeries,
-        revenue: emptySeries,
-        approvals: emptySeries,
-        moderation: emptySeries,
+        users: usersSeries,
+        creators: creatorsSeries,
+        brands: brandsSeries,
+        campaigns: campaignsSeries,
+        revenue: [], // No fake data
+        approvals: approvalsSeries,
+        moderation: moderationSeries,
       },
       highsLows: {
         revenueHigh: null,
         revenueLow: null,
-        usersHigh: null,
-        usersLow: null,
-        campaignsHigh: null,
-        campaignsLow: null,
+        usersHigh: usersHL.high,
+        usersLow: usersHL.low,
+        campaignsHigh: campaignsHL.high,
+        campaignsLow: campaignsHL.low,
       },
       meta: {
         partial,
         missingTables,
+        missingColumns,
+        emptySources,
         generatedAt: new Date().toISOString(),
         rangeDays: days,
       },

@@ -22,11 +22,16 @@ export async function safeCount(
   const { count, error } = await query;
 
   if (error) {
-    if (error.code === "PGRST205" || error.code === "42P01") {
+    if (
+      error.code === "PGRST205" || 
+      error.code === "42P01" || 
+      error.message?.includes("does not exist") || 
+      (!error.code && !error.message)
+    ) {
       return { count: 0, missing: true };
     }
     console.error(`[safeCount] Error counting ${table}:`, error);
-    return { count: 0, missing: false, error: error.message };
+    return { count: 0, missing: false, error: error.message || "Unknown error" };
   }
 
   return { count: count ?? 0, missing: false };

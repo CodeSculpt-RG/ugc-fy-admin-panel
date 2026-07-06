@@ -1,32 +1,21 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { 
   Users, 
   Building2, 
   ShieldCheck, 
-  ShieldAlert,
-  ArrowRight,
   RefreshCw,
-  Clock,
   Database,
   Activity,
-  Settings,
-  Server,
-  Lock,
-  MessageSquare,
-  AlertTriangle,
   Info
 } from "lucide-react";
 import { CommandHeader } from "@/app/components/shared/CommandHeader";
 import { MetricTile } from "@/app/components/shared/MetricTile";
-import { GlassPanel } from "@/app/components/shared/GlassPanel";
 import { StatusPill } from "@/app/components/shared/StatusPill";
 import { SectionHeader } from "@/app/components/shared/SectionHeader";
-import { DataSurface } from "@/app/components/shared/DataSurface";
-import { EmptyState } from "@/app/components/shared/EmptyState";
 import { ErrorState } from "@/app/components/shared/ErrorState";
 import { useToast } from "@/app/hooks/useToast";
 import { isAbortError } from "@/app/services/adminApiClient";
@@ -41,21 +30,7 @@ import { RangeSelector } from "@/app/components/dashboard/RangeSelector";
 
 type RangeOption = "7d" | "30d" | "90d";
 
-const WorkflowRow = ({ label, count, onClick }: { label: string, count: number, onClick?: () => void }) => (
-  <div 
-    onClick={onClick}
-    className={`flex items-center justify-between py-2 border-b border-black/5 last:border-0 ${onClick ? "cursor-pointer hover:bg-black/5 rounded px-2 -mx-2 transition-colors" : ""}`}
-  >
-    <span className="text-sm font-medium text-foreground/80">{label}</span>
-    <span className="text-sm font-semibold text-foreground">
-      {count > 0 ? (
-        <span className="bg-orange-500/10 text-orange-700 px-2 py-0.5 rounded-full">{count}</span>
-      ) : (
-        <span className="text-muted-foreground">0</span>
-      )}
-    </span>
-  </div>
-);
+
 
 type AnalyticsData = {
   summary: Record<string, number>;
@@ -78,7 +53,6 @@ export default function DashboardPage() {
   const [isError, setIsError] = useState(false);
 
   const { showToast } = useToast();
-  const router = useRouter();
   const realtimeRefreshRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadDashboard = useCallback(async (silent = false, signal?: AbortSignal) => {
@@ -267,22 +241,20 @@ export default function DashboardPage() {
                     data={analyticsData?.timeseries?.users || []} 
                     dataKeys={["value"]} 
                     colors={["#3b82f6"]} 
+                    emptyTitle="No Platform Growth Data"
+                    emptyDescription="User growth will appear once profiles are created."
                   />
                 </div>
 
                 <div>
                   <SectionHeader title="Revenue / Income" description="Platform transactions over time" />
-                  {analyticsData?.meta?.missingTables?.includes("payments/transactions") ? (
-                    <div className="flex items-center justify-center h-[280px] bg-white/40 rounded-[22px] border border-black/5 mt-4">
-                      <span className="text-sm font-medium text-text-secondary">Revenue data will appear once verified payment records are available.</span>
-                    </div>
-                  ) : (
-                    <AnalyticsBarChart 
-                      data={analyticsData?.timeseries?.revenue || []} 
-                      dataKeys={["value"]} 
-                      colors={["#10b981"]} 
-                    />
-                  )}
+                  <AnalyticsBarChart 
+                    data={analyticsData?.timeseries?.revenue || []} 
+                    dataKeys={["value"]} 
+                    colors={["#10b981"]} 
+                    emptyTitle="No Revenue Data"
+                    emptyDescription="Revenue data will appear once verified payment records are available."
+                  />
                 </div>
 
                 <div>
@@ -291,6 +263,8 @@ export default function DashboardPage() {
                     data={analyticsData?.timeseries?.campaigns || []} 
                     dataKeys={["value"]} 
                     colors={["#f97316"]} 
+                    emptyTitle="No Campaign Data"
+                    emptyDescription="Campaign activity will appear once campaigns are created."
                   />
                 </div>
 
@@ -300,6 +274,8 @@ export default function DashboardPage() {
                     data={analyticsData?.timeseries?.approvals || []} 
                     dataKeys={["value"]} 
                     colors={["#8b5cf6"]} 
+                    emptyTitle="No Approval Data"
+                    emptyDescription="Approval trends will appear once verification records are available."
                   />
                 </div>
               </div>

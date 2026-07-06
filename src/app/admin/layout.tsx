@@ -18,6 +18,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   e.stopImmediatePropagation();
                 }
               });
+              window.addEventListener('unhandledrejection', function(e) {
+                if (e.reason && (e.reason.message === 'ResizeObserver loop limit exceeded' || e.reason.message === 'ResizeObserver loop completed with undelivered notifications.')) {
+                  e.preventDefault();
+                }
+              });
             `,
           }}
         />
