@@ -11,6 +11,7 @@ import { approvalService } from "@/app/services/approvalService";
 import { LoadingState, ErrorState, EmptyState } from "../ui/shared-states";
 import { StatusBadge } from "../ui/core";
 import { cn } from "@/app/lib/utils";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { useToast } from "@/app/hooks/useToast";
 
@@ -120,7 +121,7 @@ export function KycReviewModal({ isOpen, onClose, userId, onUpdate }: KycReviewM
 
   const formatDate = (d?: unknown) => {
     if (!d || typeof d !== "string") return "N/A";
-    try { return new Date(d).toLocaleString(); } catch { return String(d); }
+    try { return formatDateStable(d); } catch { return String(d); }
   };
 
   const canApprove = hasPermission("kyc.approve") || hasPermission("users.approve");

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart as RechartsLineChart, Line } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart as RechartsLineChart, Line } from "recharts";
+import { SafeResponsiveContainer } from "@/app/components/ui/admin-charts";
 import { ChartCard } from "./chart-card";
 
 const responsiveChartProps = {
@@ -90,7 +91,7 @@ export function AdminDonutChart({ data, height = 240 }: { data: { name: string; 
   return (
     <div className="flex flex-col items-center justify-center w-full">
       <div className="relative w-full min-w-0" style={{ height: `${height}px`, minHeight: `${height}px` }}>
-        <ResponsiveContainer {...responsiveChartProps}>
+        <SafeResponsiveContainer {...responsiveChartProps}>
           <PieChart>
             <Pie
               data={data}
@@ -108,7 +109,7 @@ export function AdminDonutChart({ data, height = 240 }: { data: { name: string; 
             </Pie>
             <Tooltip content={<CustomChartTooltip />} />
           </PieChart>
-        </ResponsiveContainer>
+        </SafeResponsiveContainer>
         {/* Inner Label for Donut */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-3xl font-black text-foreground tracking-tighter">{total}</span>
@@ -146,7 +147,7 @@ export function AdminBarChart({ data, xKey, yKey, color = "#ff6a00", height = 24
 
   return (
     <div className="w-full min-w-0" style={{ height: `${height}px`, minHeight: `${height}px` }}>
-      <ResponsiveContainer {...responsiveChartProps}>
+      <SafeResponsiveContainer {...responsiveChartProps}>
         <RechartsBarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis 
@@ -166,7 +167,7 @@ export function AdminBarChart({ data, xKey, yKey, color = "#ff6a00", height = 24
           <Tooltip cursor={{ fill: "var(--bg-surface-elevated)" }} />
           <Bar dataKey={yKey} fill={color} radius={[6, 6, 0, 0]} isAnimationActive={false} />
         </RechartsBarChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 }
@@ -197,7 +198,7 @@ export function AdminLineChart({ data, xKey, yKey, color = "#ff6a00", height = 2
 
   return (
     <div className="w-full min-w-0" style={{ height: `${height}px`, minHeight: `${height}px` }}>
-      <ResponsiveContainer {...responsiveChartProps}>
+      <SafeResponsiveContainer {...responsiveChartProps}>
         <RechartsLineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis 
@@ -225,7 +226,7 @@ export function AdminLineChart({ data, xKey, yKey, color = "#ff6a00", height = 2
             isAnimationActive={false}
           />
         </RechartsLineChart>
-      </ResponsiveContainer>
+      </SafeResponsiveContainer>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { EmptyState } from "@/app/components/shared/EmptyState";
 import { PageHeader } from "@/app/components/ui/core";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { 
   Search, 
   RefreshCw, 
@@ -726,11 +727,7 @@ export default function EscalationsPage() {
                               </span>
                             </td>
                             <td className="px-8 py-5 text-text-secondary text-[11px] font-medium">
-                              {new Date(esc.created_at).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric"
-                              })}
+                              {formatDateStable(esc.created_at)}
                             </td>
                             <td className="px-8 py-5 text-right">
                               <button className="px-3.5 py-1.5 bg-surface-elevated border border-border hover:border-primary/40 rounded-xl transition-all font-bold text-[10px] uppercase tracking-wider text-text-secondary hover:text-foreground active:scale-95">

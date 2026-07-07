@@ -2,17 +2,24 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle, Loader2, Mail, Shield } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, Mail, Shield, KeyRound, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function ForgotPasswordPage() {
+  const router = useRouter();
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetToken, setResetToken] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!email || !email.includes("@")) {
       setError("Please enter a valid admin email.");
       return;
@@ -23,20 +30,99 @@ export default function ForgotPasswordPage() {
     setSuccessMessage(null);
 
     try {
-      const response = await fetch("/api/admin/auth/forgot-password", {
+      const response = await fetch("/api/admin/auth/forgot-password/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
       const data = await response.json();
-
       if (!response.ok || !data.success) {
         setError(data.message || "Failed to submit request.");
         return;
       }
 
-      setSuccessMessage(data.message || "If this email is approved, a reset link has been sent.");
+      setSuccessMessage(data.message || "If this email is approved, an OTP has been sent.");
+      setStep(2);
+    } catch (err) {
+      console.error(err);
+      setError("A connection error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp || otp.length < 6) {
+      setError("Please enter a valid OTP.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/auth/forgot-password/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), token: otp }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setError(data.message || "Failed to verify OTP.");
+        return;
+      }
+
+      setResetToken(data.resetToken);
+      setSuccessMessage(null);
+      setStep(3);
+    } catch (err) {
+      console.error(err);
+      setError("A connection error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await fetch("/api/admin/auth/forgot-password/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: email.trim().toLowerCase(), 
+          resetToken, 
+          newPassword 
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setError(data.message || "Failed to set new password.");
+        return;
+      }
+
+      setSuccessMessage("Password reset successfully. Redirecting to login...");
+      setTimeout(() => {
+        router.push("/admin/login");
+      }, 2000);
     } catch (err) {
       console.error(err);
       setError("A connection error occurred. Please try again.");
@@ -64,10 +150,14 @@ export default function ForgotPasswordPage() {
 
           <div className="mb-8">
             <h1 className="text-3xl font-black tracking-tight text-zinc-950">
-              Forgot Password
+              {step === 1 ? "Forgot Password" : step === 2 ? "Verify OTP" : "Set New Password"}
             </h1>
             <p className="mt-3 text-sm leading-6 text-zinc-500">
-              Enter your verified admin email address, and we&apos;ll trigger a password reset link if it is registered in our platform ledger.
+              {step === 1 
+                ? "Enter your verified admin email address, and we'll send a 6-digit OTP if it is registered."
+                : step === 2
+                ? "Enter the 6-digit OTP sent to your email address."
+                : "Enter a strong new password for your admin account."}
             </p>
           </div>
 
@@ -85,8 +175,8 @@ export default function ForgotPasswordPage() {
             </div>
           )}
 
-          {!successMessage && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+          {step === 1 && (
+            <form onSubmit={handleSendOtp} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="admin-email" className="text-sm font-bold text-zinc-800">
                   Admin Email
@@ -110,11 +200,85 @@ export default function ForgotPasswordPage() {
                 disabled={loading}
                 className="flex h-12 w-full items-center justify-center rounded-2xl bg-zinc-950 text-sm font-bold text-white shadow-lg transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  "Send Reset Link"
-                )}
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send OTP"}
+              </button>
+            </form>
+          )}
+
+          {step === 2 && (
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="otp-code" className="text-sm font-bold text-zinc-800">
+                  OTP Code
+                </label>
+                <div className="relative">
+                  <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    id="otp-code"
+                    type="text"
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="123456"
+                    className="h-12 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-zinc-950 text-sm font-bold text-white shadow-lg transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify OTP"}
+              </button>
+            </form>
+          )}
+
+          {step === 3 && (
+            <form onSubmit={handleSetPassword} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="new-password" className="text-sm font-bold text-zinc-800">
+                  New Password
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    id="new-password"
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    className="h-12 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="confirm-password" className="text-sm font-bold text-zinc-800">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    id="confirm-password"
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat your password"
+                    className="h-12 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm outline-none transition focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-zinc-950 text-sm font-bold text-white shadow-lg transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Set Password"}
               </button>
             </form>
           )}

@@ -5,6 +5,7 @@ import { MetricTile } from "@/app/components/shared/MetricTile";
 import { SectionHeader } from "@/app/components/shared/SectionHeader";
 import { AnalyticsLineChart } from "@/app/components/dashboard/AnalyticsLineChart";
 import { getCampaignAnalytics } from "@/app/services/analyticsService";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import Link from "next/link";
 import { Activity, ArrowLeft, ArrowUpRight, ArrowDownRight, FileText } from "lucide-react";
 
@@ -126,7 +127,7 @@ export default async function CampaignsAnalyticsPage() {
                         <td className="px-6 py-4 font-medium">{campaign.title || "Untitled"}</td>
                         <td className="px-6 py-4 capitalize">{campaign.status || "Draft"}</td>
                         <td className="px-6 py-4">{campaign.budget ? `₹${campaign.budget.toLocaleString()}` : "Unspecified"}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{new Date(campaign.created_at).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 text-muted-foreground">{formatDateStable(campaign.created_at)}</td>
                       </tr>
                     ))}
                     {recentCampaigns.length === 0 && (

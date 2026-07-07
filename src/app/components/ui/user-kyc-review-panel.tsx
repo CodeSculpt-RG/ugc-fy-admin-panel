@@ -12,6 +12,7 @@ import { userService, UserDetailsData } from "@/app/services/userService";
 import { LoadingState, ErrorState, EmptyState } from "./shared-states";
 import { StatusBadge } from "./core";
 import { cn } from "@/app/lib/utils";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { useToast } from "@/app/hooks/useToast";
 
@@ -179,7 +180,7 @@ export function UserKycReviewPanel({ isOpen, onClose, userId, onUpdate }: UserKy
 
   const formatDate = (d?: unknown) => {
     if (!d || typeof d !== "string") return "N/A";
-    try { return new Date(d).toLocaleString(); } catch { return String(d); }
+    try { return formatDateStable(d); } catch { return String(d); }
   };
 
   const safeArray = (val: unknown): unknown[] => {

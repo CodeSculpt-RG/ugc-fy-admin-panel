@@ -5,6 +5,7 @@ import { MessageSquare, AlertTriangle } from "lucide-react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { useRef } from "react";
 import { adminFetch, getAdminAuthHeaders, isAdminSessionExpiredError } from "@/app/services/adminApiClient";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import {
   createAdminMonitoringSocket,
   disconnectAdminMonitoringSocket,
@@ -181,7 +182,7 @@ export default function ChatMonitoringPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-xs text-foreground/40">
-                      {new Date(conv.updated_at).toLocaleDateString()}
+                      {formatDateStable(conv.updated_at)}
                     </span>
                   </div>
                 </div>

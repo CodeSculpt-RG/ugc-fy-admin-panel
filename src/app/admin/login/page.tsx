@@ -465,7 +465,7 @@ function AdminLoginForm() {
   };
 
   return (
-    <div suppressHydrationWarning className="min-h-screen bg-white text-zinc-950 lg:grid lg:grid-cols-[40%_60%]">
+    <div className="min-h-screen bg-white text-zinc-950 lg:grid lg:grid-cols-[40%_60%]">
       <section className="flex min-h-screen w-full flex-col items-center justify-center px-5 py-8 sm:px-8 lg:px-10 xl:px-14">
         <div className="w-full max-w-[430px]">
           <div className="mb-10 flex items-center gap-3">
@@ -786,7 +786,7 @@ export default function AdminLoginPage() {
   return (
     <Suspense
       fallback={
-        <div suppressHydrationWarning className="flex min-h-screen items-center justify-center bg-white text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
+        <div className="flex min-h-screen items-center justify-center bg-white text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
           Loading admin authorization...
         </div>
       }

@@ -16,11 +16,12 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
-import { notificationService, AdminNotification } from "@/app/services/notificationService";
+import { notificationService, AdminNotification, getAllowedNotificationCategories } from "@/app/services/notificationService";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
 import { useToast } from "@/app/hooks/useToast";
 import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
 import { isAdminSessionExpiredError } from "@/app/services/adminApiClient";
+import { formatTimeStable } from "@/lib/utils/formatDate";
 
 const COPY = {
   intelFeed: "Intel Feed",
@@ -44,7 +45,16 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   const loadNotifications = useCallback(async (signal?: AbortSignal) => {
-    if (!auth?.session?.access_token) {
+    if (!auth?.session?.access_token || !auth.hasPermission) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const categories = getAllowedNotificationCategories(auth.hasPermission);
+    if (categories.length === 0) {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
@@ -55,18 +65,31 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await notificationService.getNotifications(signal);
-      setNotifications(res.data);
-      setUnreadCount(res.unreadCount);
+      const res = await notificationService.getNotifications(categories, signal);
+      if (res.ok) {
+        setNotifications(res.data);
+        setUnreadCount(res.unreadCount);
+      } else if (res.status === 403) {
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[Notifications] Skipped unauthorized notification source");
+        }
+        setNotifications([]);
+        setUnreadCount(0);
+      } else {
+        setError(res.message);
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       if (isAdminSessionExpiredError(err)) return;
       const msg = err instanceof Error ? err.message : "Failed to load notifications.";
+      if (process.env.NODE_ENV === "development") {
+         console.warn("[NotificationPanel] Error loading notifications", err);
+      }
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, [auth?.session?.access_token]);
+  }, [auth]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -93,7 +116,11 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
 
   const handleMarkAsRead = async (id: string, href?: string | null) => {
     try {
-      await notificationService.markAsRead(id);
+      const res = await notificationService.markAsRead(id);
+      if (!res.ok) {
+        showToast(res.message || "Failed to update notification.", "error");
+        return;
+      }
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
       );
@@ -203,7 +230,7 @@ export function NotificationPanel({ onClose }: { onClose?: () => void }) {
                     {notification.type}
                   </span>
                   <span className="text-[9px] font-semibold text-foreground/30">
-                    {new Date(notification.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {formatTimeStable(notification.created_at)}
                   </span>
                 </div>
                 <p className={cn("text-xs font-black tracking-tight leading-snug truncate", !notification.is_read && "text-foreground")}>

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useAdminActivity, ActivityFilter, ActivityLog } from "@/app/hooks/useAdminActivity";
 import { Loader2, History, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/app/lib/utils";
+import { formatDateTimeStable } from "@/lib/utils/formatDate";
 
 export default function ActivityTab() {
   const [filter, setLocalFilter] = useState<ActivityFilter>({
@@ -179,7 +180,7 @@ export default function ActivityTab() {
                     <div className="flex items-center gap-3 mt-4 text-[11px] font-black uppercase tracking-widest text-text-secondary/70">
                       <span>By: {log.actor_admin_id.slice(0, 8)}...</span>
                       <span>•</span>
-                      <span>{new Date(log.created_at).toLocaleString()}</span>
+                      <span>{formatDateTimeStable(log.created_at)}</span>
                     </div>
                   </div>
                   {/* Metadata Summary (optional) */}
@@ -228,7 +229,7 @@ export default function ActivityTab() {
                 </div>
                 <div>
                   <p className="text-[10px] uppercase font-black text-text-secondary tracking-wider">Timestamp</p>
-                  <p className="font-mono text-xs text-foreground mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
+                  <p className="font-mono text-xs text-foreground mt-1">{formatDateTimeStable(selectedLog.created_at)}</p>
                 </div>
               </div>
 

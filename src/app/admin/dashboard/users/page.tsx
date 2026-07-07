@@ -1,5 +1,6 @@
 import React from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { CommandHeader } from "@/app/components/shared/CommandHeader";
 import { MetricTile } from "@/app/components/shared/MetricTile";
 import { SectionHeader } from "@/app/components/shared/SectionHeader";
@@ -126,7 +127,7 @@ export default async function UsersAnalyticsPage() {
                         <td className="px-6 py-4 font-medium">{user.full_name || "Unknown"}</td>
                         <td className="px-6 py-4 capitalize">{user.role || "User"}</td>
                         <td className="px-6 py-4 capitalize">{user.status || "Active"}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{new Date(user.created_at).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 text-muted-foreground">{formatDateStable(user.created_at)}</td>
                       </tr>
                     ))}
                     {recentUsers.length === 0 && (

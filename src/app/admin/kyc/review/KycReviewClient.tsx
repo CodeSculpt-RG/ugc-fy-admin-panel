@@ -7,6 +7,7 @@ import { approvalService, PendingUser } from "@/app/services/approvalService";
 import { KycReviewModal } from "@/app/components/dashboard/KycReviewModal";
 import { StatusBadge } from "@/app/components/ui/core";
 import { cn } from "@/app/lib/utils";
+import { formatDateStable } from "@/lib/utils/formatDate";
 
 interface KycReviewClientProps {
   initialApprovals: PendingUser[];
@@ -210,7 +211,7 @@ export function KycReviewClient({ initialApprovals }: KycReviewClientProps) {
                           variant={user.approval_status === 'approved' ? 'success' : user.approval_status === 'rejected' || user.approval_status === 'blocked' ? 'error' : 'warning'}
                         />
                       </td>
-                      <td className="px-6 py-4 text-foreground/60 text-xs">{createdAt.toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-foreground/60 text-xs">{formatDateStable(user.created_at)}</td>
                       <td className="px-6 py-4">
                         <span className={cn(
                           "inline-flex items-center px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider",

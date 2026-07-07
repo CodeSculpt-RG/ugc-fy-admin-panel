@@ -1,5 +1,6 @@
 import React from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { CommandHeader } from "@/app/components/shared/CommandHeader";
 import { MetricTile } from "@/app/components/shared/MetricTile";
 import { SectionHeader } from "@/app/components/shared/SectionHeader";
@@ -73,8 +74,8 @@ export default async function BrandsAnalyticsPage() {
                       {approvedBrands.map((brand) => {
                         const name = (brand.brand_profile?.company_name as string) || (brand.brand_profile?.brand_name as string) || (brand.brand_profile?.contact_name as string) || brand.full_name || "Unnamed Brand";
                         const email = brand.email || "No Email";
-                        const joined = brand.created_at ? new Date(brand.created_at).toLocaleDateString() : "Unknown";
-                        const approved = brand.kyc_approved_at ? new Date(brand.kyc_approved_at).toLocaleDateString() : "Not provided";
+                        const joined = brand.created_at ? formatDateStable(brand.created_at) : "Unknown";
+                        const approved = brand.kyc_approved_at ? formatDateStable(brand.kyc_approved_at) : "Not provided";
 
                         return (
                           <tr key={brand.id} className="hover:bg-white/50 transition-colors">

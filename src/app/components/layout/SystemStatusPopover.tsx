@@ -10,6 +10,7 @@ import {
 import { cn } from "@/app/lib/utils";
 import { adminFetch, isAbortError, isAdminSessionExpiredError } from "@/app/services/adminApiClient";
 import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
+import { formatTimeStable } from "@/lib/utils/formatDate";
 
 const COPY = {
   systemHealth: "System Health",
@@ -135,7 +136,7 @@ export default function SystemStatusPopover() {
         <div className="mt-6 pt-4 border-t border-border flex justify-center items-center">
           <Activity className="w-3 h-3 text-foreground/20 mr-1.5" />
           <span className="text-[9px] font-black text-foreground/30 uppercase tracking-[0.2em]">
-            {COPY.sync} {healthData?.timestamp ? new Date(healthData.timestamp).toLocaleTimeString() : 'N/A'}
+            {COPY.sync} {healthData?.timestamp ? formatTimeStable(healthData.timestamp) : 'N/A'}
           </span>
         </div>
       </DropdownMenuContent>

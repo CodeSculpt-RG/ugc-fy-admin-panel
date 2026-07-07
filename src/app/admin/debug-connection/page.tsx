@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { PageHeader, StatusBadge } from "@/app/components/ui/core";
 import { supabase } from "@/lib/supabase/client";
+import { formatTimeStable } from "@/lib/utils/formatDate";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { ShieldCheck, Fingerprint, Lock, Server } from "lucide-react";
 
@@ -198,7 +199,7 @@ export default function DebugConnectionPage() {
             <div className="bg-card-bg border border-border rounded-[32px] p-10 shadow-premium space-y-8">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-black text-white tracking-tighter">Production Database Table Audit</h3>
-                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/20">Checked: {health?.data?.checkedAt ? new Date(health.data.checkedAt).toLocaleTimeString() : "Live"}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/20">Checked: {health?.data?.checkedAt ? formatTimeStable(health.data.checkedAt) : "Live"}</span>
               </div>
 
               {tables.length === 0 ? (

@@ -11,6 +11,7 @@ import React, {
 import { supabase } from "@/lib/supabase/client";
 import { setCookie, deleteCookie } from "cookies-next";
 import type { AdminPermission } from "@/lib/api/adminPermissions";
+import { hasPermission as checkPermission } from "@/lib/api/adminPermissions";
 import type { AdminUser } from "@/lib/auth/admin-types";
 import { useAuthStore } from "@/app/store/authStore";
 import type { Session } from "@supabase/supabase-js";
@@ -177,7 +178,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         role: verifiedAdmin.role.toUpperCase(),
         name: verifiedAdmin.full_name || verifiedAdmin.email.split("@")[0],
         full_name: verifiedAdmin.full_name,
-        permissions: [] as string[],
+        permissions: verifiedAdmin.permissions || [],
         isActive: verifiedAdmin.status === "active",
       };
       
@@ -244,22 +245,12 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, [safeSetAdmin, safeSetStatus]);
 
   const hasPermission = useCallback(
-    (permission: AdminPermission): boolean => {
+    (permission: string): boolean => {
       if (!admin) return false;
       const roleStr = admin.role.toLowerCase();
       if (roleStr === "owner" || roleStr === "super_admin") return true;
       
-      const permissionsMap: Record<string, AdminPermission[]> = {
-        admin: ["dashboard.read", "users.read", "creators.read", "brands.read", "campaigns.read", "moderation.read", "payments.read", "escrow.read", "disputes.read", "support.read", "analytics.read", "reports.read", "settings.read", "profile.read", "profile.update"],
-        kyc_manager: ["dashboard.read", "users.read", "creators.read", "kyc.read" as AdminPermission, "kyc.review" as AdminPermission, "kyc.approve" as AdminPermission, "kyc.reject" as AdminPermission],
-        campaign_manager: ["dashboard.read", "campaigns.read", "campaigns.write", "campaigns.moderate"],
-        moderator: ["dashboard.read", "users.read", "creators.read", "brands.read", "moderation.read", "moderation.write"],
-        support: ["dashboard.read", "support.read", "support.write", "disputes.read", "disputes.write"],
-        finance: ["dashboard.read", "payments.read", "payments.write", "escrow.read", "escrow.write", "refunds.read", "refunds.write"],
-      };
-
-      const userPermissions = permissionsMap[roleStr] || [];
-      return userPermissions.includes(permission);
+      return checkPermission((admin.permissions as AdminPermission[]) || [], permission);
     },
     [admin]
   );

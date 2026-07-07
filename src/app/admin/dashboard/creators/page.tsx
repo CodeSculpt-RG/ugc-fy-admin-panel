@@ -1,5 +1,6 @@
 import React from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { CommandHeader } from "@/app/components/shared/CommandHeader";
 import { MetricTile } from "@/app/components/shared/MetricTile";
 import { SectionHeader } from "@/app/components/shared/SectionHeader";
@@ -73,8 +74,8 @@ export default async function CreatorsAnalyticsPage() {
                       {approvedCreators.map((creator) => {
                         const name = (creator.creator_profile?.full_name as string) || (creator.creator_profile?.username as string) || creator.full_name || "Unnamed";
                         const email = creator.email || "No Email";
-                        const joined = creator.created_at ? new Date(creator.created_at).toLocaleDateString() : "Unknown";
-                        const approved = creator.kyc_approved_at ? new Date(creator.kyc_approved_at).toLocaleDateString() : "Not provided";
+                        const joined = creator.created_at ? formatDateStable(creator.created_at) : "Unknown";
+                        const approved = creator.kyc_approved_at ? formatDateStable(creator.kyc_approved_at) : "Not provided";
 
                         return (
                           <tr key={creator.id} className="hover:bg-white/50 transition-colors">

@@ -48,13 +48,10 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
   // 1. Initial stable render during SSR or active initialization
   if (!mounted || status === "initializing") {
     return (
-      <main 
-        suppressHydrationWarning
-        className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden"
-      >
-        <section suppressHydrationWarning className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(37,99,235,0.08),transparent_50%)] animate-pulse" />
-        <article suppressHydrationWarning className="relative z-10 flex flex-col items-center">
-          <span suppressHydrationWarning className="w-16 h-16 bg-primary/10 rounded-2xl border border-primary/20 flex items-center justify-center mb-6 shadow-glow animate-pulse block">
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        <section className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(37,99,235,0.08),transparent_50%)] animate-pulse" />
+        <article className="relative z-10 flex flex-col items-center">
+          <span className="w-16 h-16 bg-primary/10 rounded-2xl border border-primary/20 flex items-center justify-center mb-6 shadow-glow animate-pulse block">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
           </span>
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-foreground/40 animate-pulse">

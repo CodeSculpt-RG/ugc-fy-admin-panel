@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { NotificationPanel } from "./NotificationPanel";
-import { notificationService } from "@/app/services/notificationService";
+import { notificationService, getAllowedNotificationCategories } from "@/app/services/notificationService";
 import { useAdminAuthOptional } from "@/app/context/AdminAuthContext";
 import { isAdminSessionExpiredError } from "@/app/services/adminApiClient";
 import { useSupabaseRealtime } from "@/hooks/useSupabaseRealtime";
@@ -19,20 +19,35 @@ export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const checkUnread = useCallback(async (signal?: AbortSignal) => {
-    if (!auth?.session?.access_token) {
+    if (!auth?.session?.access_token || !auth.hasPermission) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const categories = getAllowedNotificationCategories(auth.hasPermission);
+    if (categories.length === 0) {
       setUnreadCount(0);
       return;
     }
 
     try {
-      const res = await notificationService.getNotifications(signal);
-      setUnreadCount(res.unreadCount);
+      const res = await notificationService.getNotifications(categories, signal);
+      if (res.ok) {
+        setUnreadCount(res.unreadCount);
+      } else if (res.status === 403) {
+        if (process.env.NODE_ENV === "development") {
+          console.debug("[Notifications] Skipped unauthorized notification source");
+        }
+        setUnreadCount(0);
+      }
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       if (isAdminSessionExpiredError(e)) return;
-      console.error("[NotificationDropdown] Failed unread check", e);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[NotificationDropdown] Failed unread check", e);
+      }
     }
-  }, [auth?.session?.access_token]);
+  }, [auth]);
 
   useEffect(() => {
     const controller = new AbortController();

@@ -13,7 +13,6 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
   BarChart,
   Bar,
   LineChart,
@@ -22,6 +21,7 @@ import {
   Pie,
   Cell
 } from "recharts";
+import { SafeResponsiveContainer } from "@/app/components/ui/admin-charts";
 import { Download, Filter, RefreshCw } from "lucide-react";
 export interface AnalyticsPayload {
   userGrowthData: any[];
@@ -177,7 +177,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
               <ChartCard title="Entity Acquisition" subtitle="Entity growth lifecycle analysis (Creators vs Corporate)">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
-                  <ResponsiveContainer {...responsiveChartProps}>
+                  <SafeResponsiveContainer {...responsiveChartProps}>
                     <AreaChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorCreators" x1="0" y1="0" x2="0" y2="1">
@@ -209,13 +209,13 @@ export default function AnalyticsPage() {
                       <Area type="monotone" dataKey="creators" stroke="#2563EB" strokeWidth={4} fillOpacity={1} fill="url(#colorCreators)" />
                       <Area type="monotone" dataKey="brands" stroke="#F97316" strokeWidth={4} fillOpacity={1} fill="url(#colorBrands)" />
                     </AreaChart>
-                  </ResponsiveContainer>
+                  </SafeResponsiveContainer>
                 </div>
               </ChartCard>
 
               <ChartCard title="Revenue Yield (GMV)" subtitle="Weekly transaction volume and platform yield metrics">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
-                  <ResponsiveContainer {...responsiveChartProps}>
+                  <SafeResponsiveContainer {...responsiveChartProps}>
                     <BarChart data={revData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} dy={15} />
@@ -235,7 +235,7 @@ export default function AnalyticsPage() {
                       />
                       <Bar dataKey="value" fill="#2563EB" radius={[12, 12, 0, 0]} barSize={40} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </SafeResponsiveContainer>
                 </div>
               </ChartCard>
             </div>
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <ChartCard title="Sector Distribution" subtitle="Ecosystem segmentation by industry vector" className="lg:col-span-1">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
-                  <ResponsiveContainer {...responsiveChartProps}>
+                  <SafeResponsiveContainer {...responsiveChartProps}>
                     <PieChart>
                       <Pie
                         data={sectors}
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
                         itemStyle={{ color: '#F0F0FB' }}
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </SafeResponsiveContainer>
                   <div className="mt-8 grid grid-cols-2 gap-4">
                     {sectors.map((sector: any, i: number) => (
                       <div key={sector.name} className="flex items-center justify-between p-3 rounded-2xl bg-surface-elevated border border-border shadow-sm truncate">
@@ -286,7 +286,7 @@ export default function AnalyticsPage() {
 
               <ChartCard title="Retention Dynamics" subtitle="Temporal user behavior and active engagement analysis" className="lg:col-span-2">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-8">
-                  <ResponsiveContainer {...responsiveChartProps}>
+                  <SafeResponsiveContainer {...responsiveChartProps}>
                     <LineChart data={growthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(240, 240, 251, 0.25)', fontSize: 10, fontWeight: 900 }} dy={15} />
@@ -306,7 +306,7 @@ export default function AnalyticsPage() {
                       <Line type="monotone" dataKey="creators" stroke="#2563EB" strokeWidth={5} dot={{ r: 6, fill: '#2563EB', strokeWidth: 3, stroke: '#111827' }} activeDot={{ r: 8, strokeWidth: 0 }} />
                       <Line type="monotone" dataKey="brands" stroke="#F97316" strokeWidth={5} dot={{ r: 6, fill: '#F97316', strokeWidth: 3, stroke: '#111827' }} activeDot={{ r: 8, strokeWidth: 0 }} />
                     </LineChart>
-                  </ResponsiveContainer>
+                  </SafeResponsiveContainer>
                 </div>
               </ChartCard>
             </div>

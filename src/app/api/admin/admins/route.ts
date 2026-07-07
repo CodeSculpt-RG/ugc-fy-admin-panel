@@ -166,23 +166,6 @@ export async function POST(request: Request) {
     }
     logTiming("duplicate profile check", tProfile);
 
-    // 4. Find auth user by email (only if no admin_profile exists)
-    const tAuthCheck = Date.now();
-    const { data: usersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers();
-    if (listUsersError) throw listUsersError;
-
-    const existingAuthUser = usersData.users.find(
-      (user) => user.email?.toLowerCase() === normalizedEmail
-    );
-
-    if (existingAuthUser) {
-      return NextResponse.json(
-        { ok: false, error: { code: "AUTH_USER_ALREADY_EXISTS", message: "A Supabase Auth user already exists for this email. Link this user as an admin or use a different email." } },
-        { status: 409 }
-      );
-    }
-    logTiming("duplicate auth/user handling", tAuthCheck);
-
     // 4. Send Supabase invite email
     const tInvite = Date.now();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -221,7 +204,72 @@ export async function POST(request: Request) {
     
     if (inviteError) {
       const msg = inviteError.message?.toLowerCase() || "";
-      if (msg.includes("rate limit") || msg.includes("rate_limit")) {
+      
+      if (msg.includes("user already registered") || msg.includes("already exists")) {
+        // They exist in auth.users. Retrieve their user_id from the profiles table.
+        const { data: existingProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("id, user_id")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+
+        if (existingProfile?.user_id) {
+          const authUserId = existingProfile.user_id;
+
+          // Link them into admin_users
+          const now = new Date().toISOString();
+          const { error: profileError } = await supabaseAdmin
+            .from("admin_users")
+            .upsert({
+              user_id: authUserId,
+              email: normalizedEmail,
+              full_name: normalizedFullName,
+              role: resolvedRole,
+              status: "active",
+              password_enabled: true, // They already have an account
+              invited_by: check.admin.id,
+              invited_at: now,
+              updated_at: now,
+            }, { onConflict: "email" });
+
+          if (profileError) {
+            return NextResponse.json(
+              { ok: false, error: { code: "ADMIN_PROFILE_CREATE_FAILED", message: profileError.message } },
+              { status: 500 }
+            );
+          }
+
+          void writeAuditLog({
+            actorAdminId: check.admin.id,
+            actorRole: check.admin.role,
+            action: "admin.linked_existing_auth_user",
+            targetType: "admin",
+            targetId: authUserId,
+            metadata: { email: normalizedEmail, role: resolvedRole },
+          });
+
+          return NextResponse.json({
+            ok: true,
+            admin: {
+              id: authUserId,
+              email: normalizedEmail,
+              full_name: normalizedFullName,
+              role: resolvedRole,
+              status: "active",
+            },
+            email: {
+              sent: false,
+              provider: "none",
+            },
+            message: "Admin access was granted, but no invite email was sent because this user already exists."
+          });
+        } else {
+          return NextResponse.json(
+            { ok: false, error: { code: "AUTH_USER_ALREADY_EXISTS", message: "A Supabase Auth user already exists but has no profile. Cannot link." } },
+            { status: 409 }
+          );
+        }
+      } else if (msg.includes("rate limit") || msg.includes("rate_limit")) {
         mappedErrorCode = "SUPABASE_EMAIL_RATE_LIMITED";
         mappedErrorMessage = "Supabase email rate limit was reached. Wait before retrying or configure custom SMTP in Supabase Auth.";
       } else if (msg.includes("redirect url") || msg.includes("not allowed")) {

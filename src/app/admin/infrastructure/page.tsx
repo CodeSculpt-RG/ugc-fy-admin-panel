@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { infrastructureService, InfrastructurePayload } from "@/app/services/infrastructureService";
 import { useToast } from "@/app/hooks/useToast";
+import { formatTimeStable } from "@/lib/utils/formatDate";
 
 export default function InfrastructurePage() {
   const { showToast } = useToast();
@@ -104,7 +105,7 @@ export default function InfrastructurePage() {
                   </div>
                   <div className="flex items-center justify-between py-3">
                     <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Last Telemetry Sync</span>
-                    <span className="text-[10px] font-mono text-primary">{new Date(data.lastVerifiedAt).toLocaleTimeString()}</span>
+                    <span className="text-[10px] font-mono text-primary">{formatTimeStable(data.lastVerifiedAt)}</span>
                   </div>
                 </div>
               </div>

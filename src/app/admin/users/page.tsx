@@ -22,6 +22,7 @@ import { ProtectedRoute } from "@/app/components/auth/ProtectedRoute";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 
 import { useToast } from "@/app/hooks/useToast";
+import { formatDateStable } from "@/lib/utils/formatDate";
 import { userService } from "@/app/services/userService";
 import { approvalService } from "@/app/services/approvalService";
 import { User } from "@/app/types";
@@ -259,7 +260,7 @@ export default function UsersPage() {
         const dateStr = row.original.createdAt || row.original.created_at || row.original.lastActive;
         return (
           <span className="text-[14px] text-[#4B5563] dark:text-white">
-            {dateStr ? new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "—"}
+            {dateStr ? formatDateStable(dateStr) : "—"}
           </span>
         );
       }

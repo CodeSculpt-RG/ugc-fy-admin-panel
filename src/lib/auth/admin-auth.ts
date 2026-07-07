@@ -301,9 +301,10 @@ export async function requirePermission(
   permission: import("./admin-permissions").AdminPermission
 ): Promise<AdminUser> {
   const admin = await requireAdmin(request);
-  const { hasPermission } = await import("./admin-permissions");
+  const { hasPermission, ROLE_PERMISSIONS } = await import("./admin-permissions");
 
-  if (!hasPermission(admin.role, permission)) {
+  const permissions = ROLE_PERMISSIONS[admin.role] || [];
+  if (!hasPermission(permissions, permission)) {
     throw new Error("ADMIN_PERMISSION_DENIED");
   }
 

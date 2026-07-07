@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserPlus, X, ShieldAlert, Check, AlertCircle, CheckCircle2 } from "lucide-react";
+import { UserPlus, X, ShieldAlert, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import { cn } from "@/app/lib/utils";
+
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { adminManagementService } from "@/app/services/adminManagementService";
 import { useToast } from "@/app/hooks/useToast";
@@ -51,6 +51,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showLinkOption, setShowLinkOption] = useState(false);
 
   const [resendTargetId, setResendTargetId] = useState<string | null>(null);
@@ -210,7 +211,8 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
       }
 
       setIsSuccess(true);
-      showToast("Admin access created successfully. Invitation email has been sent.", "success");
+      setSuccessMessage(response.message || "Admin access created successfully. Invitation email has been sent.");
+      showToast(response.message || "Admin access created successfully. Invitation email has been sent.", "success");
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       setErrorMessage(message);
@@ -260,11 +262,10 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
               /* Success Redirection Information View */
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar space-y-6">
                 <div className="flex flex-col items-center text-center space-y-4 border-b border-border pb-6">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/10 mb-2">
-                    <CheckCircle2 className="w-8 h-8" />
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mb-2">
+                    <CheckCircle2 className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-black text-foreground tracking-tight uppercase">Invitation Dispatched</h3>
-                  <p className="text-xs text-foreground/40 font-medium">Administrator access granted successfully.</p>
+                  <h3 className="text-xl font-bold text-foreground">Admin invited successfully.</h3>
                 </div>
 
                 <div className="space-y-4 font-medium text-sm">
@@ -275,26 +276,15 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em] block mb-1">Assigned Vector</span>
-                      <span className="inline-block px-2.5 py-1 rounded-lg bg-primary/15 border border-primary/20 text-xs font-black uppercase text-primary tracking-wider">
+                      <span className="text-xs font-semibold text-foreground/60 block mb-1">Assigned Role</span>
+                      <span className="inline-block px-2.5 py-1 rounded-md bg-zinc-100 border border-zinc-200 text-xs font-medium text-zinc-800 capitalize">
                         {role.replaceAll("_", " ")}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.2em] block mb-1">Status</span>
-                      <p className="text-xs text-foreground/60 leading-relaxed font-semibold">
-                        A Supabase invitation email has been sent automatically. The new admin will complete setup using the invite link.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-accent-orange/5 border border-accent-orange/10 flex items-start gap-3">
-                    <ShieldAlert className="w-4.5 h-4.5 text-accent-orange shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-[10px] font-black text-accent-orange uppercase tracking-wider block">Security Protocol</span>
-                      <p className="text-[11px] text-foreground/60 mt-1 leading-relaxed">
-                        The newly appointed admin must complete setup using the invite link and must finish password setup before accessing the dashboard.
+                      <p className="text-sm text-foreground/80 leading-relaxed">
+                        {successMessage || "An invitation email will be sent to this admin. They can sign in after accepting the invite or using the admin login flow."}
                       </p>
                     </div>
                   </div>
@@ -314,12 +304,12 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
               /* Provision Form View */
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar space-y-6">
                 <div className="flex items-center space-x-4 border-b border-border pb-6">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-sm shadow-primary/10">
-                    <UserPlus className="w-6 h-6 text-primary" />
+                  <div className="w-12 h-12 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center flex-shrink-0">
+                    <UserPlus className="w-5 h-5 text-zinc-700" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-foreground tracking-tight uppercase">Provision Administrator</h3>
-                    <p className="text-xs text-foreground/40 font-medium mt-1">Configure security role and access vector for a new network operator.</p>
+                    <h3 className="text-lg font-bold text-foreground">Add Admin</h3>
+                    <p className="text-sm text-foreground/60 mt-1">Invite a team member and assign their admin role.</p>
                   </div>
                 </div>
 
@@ -332,41 +322,41 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
 
                 <div className="space-y-4 font-medium text-sm">
                   <div>
-                    <label className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.3em] px-2 block mb-2">Network Email Address *</label>
+                    <label className="text-sm font-semibold text-zinc-800 block mb-1.5">Email address *</label>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="operator@ugc-fy.in"
-                      className="w-full h-13 rounded-2xl bg-surface-elevated border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-foreground/20"
+                      placeholder="admin@example.com"
+                      className="w-full h-11 rounded-xl bg-white border border-zinc-200 px-3 text-sm text-zinc-900 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-all placeholder:text-zinc-400 shadow-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.3em] px-2 block mb-2">Operator Full Name</label>
+                    <label className="text-sm font-semibold text-zinc-800 block mb-1.5">Full name</label>
                     <input
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Jane Doe"
-                      className="w-full h-13 rounded-2xl bg-surface-elevated border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-foreground/20"
+                      className="w-full h-11 rounded-xl bg-white border border-zinc-200 px-3 text-sm text-zinc-900 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-all placeholder:text-zinc-400 shadow-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-black text-foreground/30 uppercase tracking-[0.3em] px-2 block mb-2">Access Role Vector *</label>
+                    <label className="text-sm font-semibold text-zinc-800 block mb-1.5">Role *</label>
                     <select
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      className="w-full h-13 rounded-2xl bg-surface border border-border px-4 text-sm text-foreground focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-semibold uppercase tracking-wider text-xs"
+                      className="w-full h-11 rounded-xl bg-white border border-zinc-200 px-3 text-sm text-zinc-900 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-all shadow-sm cursor-pointer"
                     >
-                      <option value="owner" disabled={admin?.role !== "owner"}>Owner (Root Access)</option>
-                      <option value="super_admin">Super Admin (All Vectors)</option>
-                      <option value="moderation_admin">Moderation Admin (Content & Safety)</option>
-                      <option value="finance_admin">Finance Admin (Treasury & Payouts)</option>
-                      <option value="support_admin">Support Admin (Disputes & Tickets)</option>
-                      <option value="analyst">Analyst (Metrics & Intelligence)</option>
+                      <option value="owner" disabled={admin?.role !== "owner"}>Owner</option>
+                      <option value="super_admin">Super Admin</option>
+                      <option value="moderation_admin">Moderation Admin</option>
+                      <option value="finance_admin">Finance Admin</option>
+                      <option value="support_admin">Support Admin</option>
+                      <option value="analyst">Analyst</option>
                     </select>
                     {role === "owner" && admin?.role !== "owner" && (
                       <p className="text-[11px] text-accent-orange font-semibold mt-2 px-2 flex items-center space-x-1.5">
@@ -377,35 +367,18 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                   </div>
 
                   <div className="pt-2">
-                    <div className="mb-4 p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-start space-x-3 text-primary text-xs font-semibold">
-                      <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <span>A Supabase invitation email will be sent automatically. The new admin will complete setup using the invite link and must finish password setup before accessing the dashboard.</span>
+                    <div className="mb-4 p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start space-x-3 text-blue-800 text-sm">
+                      <span>An invitation email will be sent to this admin. They can sign in after accepting the invite or using the admin login flow.</span>
                     </div>
-
-                    <label className="flex items-center space-x-3 cursor-pointer group p-3 rounded-2xl bg-white/[0.01] hover:bg-surface-elevated border border-border transition-colors">
-                      <div className={cn("w-5 h-5 rounded-lg border flex items-center justify-center transition-all", isActive ? "bg-success-green border-success-green text-primary-foreground" : "border-border bg-transparent")}>
-                        {isActive && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={isActive}
-                        onChange={(e) => setIsActive(e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div>
-                        <span className="text-xs font-black uppercase tracking-wider text-foreground">Active Operational State</span>
-                        <p className="text-[10px] text-foreground/40">Instantly grant administrative token access upon provision completion.</p>
-                      </div>
-                    </label>
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-border w-full">
+                <div className="flex flex-col sm:flex-row gap-3 pt-6 w-full">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={onClose}
-                    className="flex-1 h-14 bg-transparent border-border text-foreground/60 hover:text-foreground hover:bg-surface-elevated hover:bg-foreground/5 rounded-[20px] font-black uppercase tracking-[0.2em] text-[11px]"
+                    className="flex-1 h-11 bg-white border-zinc-200 text-zinc-700 hover:bg-zinc-50 rounded-xl font-semibold text-sm"
                   >
                     Cancel
                   </Button>
@@ -415,26 +388,26 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                       type="button"
                       onClick={handleResendInvite}
                       disabled={loading}
-                      className="flex-1 h-14 rounded-[20px] bg-accent-orange hover:bg-accent-orange/90 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-accent-orange/20"
+                      className="flex-1 h-11 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-sm transition-all shadow-sm"
                     >
-                      {loading ? "RESENDING..." : "RESEND INVITE"}
+                      {loading ? "Resending..." : "Resend Invite"}
                     </Button>
                   ) : showLinkOption ? (
                     <Button
                       type="button"
                       onClick={handleLinkExistingUser}
                       disabled={loading}
-                      className="flex-1 h-14 rounded-[20px] bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-emerald-500/20"
+                      className="flex-1 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all shadow-sm"
                     >
-                      {loading ? "LINKING..." : "LINK EXISTING USER"}
+                      {loading ? "Linking..." : "Link Existing User"}
                     </Button>
                   ) : (
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 h-14 rounded-[20px] bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] text-[11px] transition-all active:scale-[0.98] shadow-xl shadow-primary/20"
+                      className="flex-1 h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm transition-all shadow-sm"
                     >
-                      {loading ? "PROVISIONING..." : "PROVISION ADMIN"}
+                      {loading ? "Sending..." : "Send Invite"}
                     </Button>
                   )}
                 </div>

@@ -61,7 +61,11 @@ export type AdminRole =
   | "campaign_manager"
   | "moderator"
   | "support"
-  | "finance";
+  | "finance"
+  | "moderation_admin"
+  | "finance_admin"
+  | "support_admin"
+  | "analyst";
 
 export type AdminStatus =
   | "invited"

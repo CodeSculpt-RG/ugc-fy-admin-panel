@@ -11,6 +11,7 @@ import { AddAdminModal } from "@/app/components/modals/AddAdminModal";
 import { Button } from "@/app/components/ui/button";
 import { UserPlus } from "lucide-react";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import { formatDateStable, formatDateTimeStable } from "@/lib/utils/formatDate";
 
 type AdminRecord = {
   id: string;
@@ -86,7 +87,7 @@ export default function AdminsPage() {
         header: "Last Login",
         cell: ({ row }) => (
           <span className="text-xs">
-            {row.original.last_login_at ? new Date(row.original.last_login_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Never"}
+            {row.original.last_login_at ? formatDateTimeStable(row.original.last_login_at) : "Never"}
           </span>
         ),
       },
@@ -95,7 +96,7 @@ export default function AdminsPage() {
         header: "Created",
         cell: ({ row }) => (
           <span className="text-xs">
-            {row.original.created_at ? new Date(row.original.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "N/A"}
+            {row.original.created_at ? formatDateStable(row.original.created_at) : "N/A"}
           </span>
         ),
       },
