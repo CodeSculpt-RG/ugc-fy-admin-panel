@@ -199,36 +199,46 @@ export default function DashboardPage() {
                     value={analyticsData?.summary?.totalUsers?.toLocaleString() || "0"} 
                     icon={<Users />} 
                     status={<StatusPill label="Live" variant="live" dot={false} />}
+                    href="/admin/dashboard/users"
                   />
                   <MetricTile 
                     label="Creators" 
                     value={analyticsData?.summary?.totalCreators?.toLocaleString() || "0"} 
                     icon={<Users />} 
-                    status={<StatusPill label="Live" variant="live" dot={false} />}
+                    status={<StatusPill label="Approved" variant="success" dot={false} />}
+                    href="/admin/dashboard/creators"
                   />
                   <MetricTile 
                     label="Brands" 
                     value={analyticsData?.summary?.totalBrands?.toLocaleString() || "0"} 
                     icon={<Building2 />} 
-                    status={<StatusPill label="Live" variant="live" dot={false} />}
+                    status={<StatusPill label="Approved" variant="success" dot={false} />}
+                    href="/admin/dashboard/brands"
                   />
                   <MetricTile 
                     label="Active Campaigns" 
                     value={analyticsData?.summary?.activeCampaigns?.toLocaleString() || "0"} 
                     icon={<Activity />} 
-                    status={<StatusPill label="Queue" variant="queue" dot={false} />}
+                    status={<StatusPill label="Active" variant="live" dot={false} />}
+                    href="/admin/dashboard/campaigns"
                   />
                   <MetricTile 
                     label="Pending Approvals" 
                     value={analyticsData?.summary?.pendingApprovals?.toLocaleString() || "0"} 
                     icon={<ShieldCheck />} 
-                    status={<StatusPill label="Secure" variant="success" dot={false} />}
+                    status={<StatusPill label="KYC Review" variant="queue" dot={false} />}
+                    href="/admin/kyc/review?status=pending"
                   />
                   <MetricTile 
                     label="Revenue" 
-                    value={`₹${analyticsData?.summary?.totalRevenue?.toLocaleString() || "0"}`} 
+                    value={
+                      analyticsData?.summary?.revenueRestricted 
+                        ? "Restricted"
+                        : `₹${analyticsData?.summary?.totalRevenue?.toLocaleString() || "0"}`
+                    } 
                     icon={<Database />} 
-                    status={<StatusPill label="Restricted" variant="danger" dot={false} />}
+                    status={<StatusPill label={analyticsData?.summary?.revenueRestricted ? "Restricted" : "Active"} variant={analyticsData?.summary?.revenueRestricted ? "danger" : "live"} dot={false} />}
+                    href="/admin/dashboard/revenue"
                   />
                 </div>
               </div>
@@ -291,6 +301,7 @@ export default function DashboardPage() {
                     lowValue={analyticsData?.highsLows?.revenueLow?.value || null} 
                     lowDate={analyticsData?.highsLows?.revenueLow?.date || null} 
                     formatValue={(val) => `₹${val.toLocaleString()}`}
+                    href="/admin/dashboard/revenue"
                   />
                   <HighLowCard 
                     title="User Growth" 
@@ -298,6 +309,7 @@ export default function DashboardPage() {
                     highDate={analyticsData?.highsLows?.usersHigh?.date || null} 
                     lowValue={analyticsData?.highsLows?.usersLow?.value || null} 
                     lowDate={analyticsData?.highsLows?.usersLow?.date || null} 
+                    href="/admin/dashboard/users"
                   />
                   <HighLowCard 
                     title="Campaigns" 
@@ -305,6 +317,7 @@ export default function DashboardPage() {
                     highDate={analyticsData?.highsLows?.campaignsHigh?.date || null} 
                     lowValue={analyticsData?.highsLows?.campaignsLow?.value || null} 
                     lowDate={analyticsData?.highsLows?.campaignsLow?.date || null} 
+                    href="/admin/dashboard/campaigns"
                   />
                 </div>
               </div>

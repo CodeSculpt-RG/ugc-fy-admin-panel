@@ -144,18 +144,43 @@ function AdminLoginForm() {
     }
   };
 
+
+  function normalizeLoginError(error: unknown): string {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return "The login request timed out. Please try again.";
+    }
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      return "Unable to reach the admin session endpoint. Please check your connection and try again.";
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return "Unable to complete admin login. Please try again.";
+  }
+
   const completeAdminSession = async (accessToken: string): Promise<boolean> => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 10000);
+
     let meResponse: Response;
     try {
       meResponse = await fetch("/api/admin/me", {
         method: "GET",
         credentials: "include",
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+        cache: "no-store",
+        signal: controller.signal,
       });
     } catch (fetchErr: unknown) {
-      console.error("completeAdminSession network error:", fetchErr);
-      setError("Unable to complete authentication due to a network issue. Please check your connection and try again.");
+      window.clearTimeout(timeoutId);
+      const message = normalizeLoginError(fetchErr);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[AdminLogin] completeAdminSession fetch error:", message);
+      }
+      setError(message);
       return false;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
 
     const meData = (await meResponse.json().catch(() => ({}))) as AdminMeResponse;
@@ -189,6 +214,7 @@ function AdminLoginForm() {
       }
       return false;
     }
+
 
     setCookie("admin-token", accessToken, {
       maxAge: 60 * 60 * 12,

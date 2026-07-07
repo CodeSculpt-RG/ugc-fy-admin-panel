@@ -4,6 +4,10 @@ import { safeCount } from "@/lib/api/safe-count";
 import { isMissingOptionalTableError } from "@/lib/api/safe-query";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { AnalyticsPoint, AnalyticsHighLow } from "@/app/lib/types/analytics";
+import { getDashboardMetrics } from "@/lib/api/metrics";
+import { normalizeApprovalState, ApprovalStatusInput } from "@/app/services/adminUserStatus";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const admin = await verifyAdmin(request);
@@ -34,9 +38,11 @@ export async function GET(request: Request) {
   async function fetchTimeseries(
     tableName: string, 
     filterBuilder?: (q: SupabaseQueryBuilder) => SupabaseQueryBuilder,
-    dateColumn = 'created_at'
+    dateColumn = 'created_at',
+    jsFilter?: (row: Record<string, unknown>) => boolean,
+    selectColumns = dateColumn
   ): Promise<AnalyticsPoint[]> {
-    let query = supabaseAdmin.from(tableName).select(dateColumn).gte(dateColumn, fromDateStr);
+    let query = supabaseAdmin.from(tableName).select(selectColumns).gte(dateColumn, fromDateStr);
     if (filterBuilder) query = filterBuilder(query);
 
     const { data, error } = await query;
@@ -64,7 +70,10 @@ export async function GET(request: Request) {
     // Aggregate by day
     const aggregated: Record<string, number> = {};
     const rows = data as unknown as Record<string, unknown>[];
+    
     rows.forEach((row) => {
+      if (jsFilter && !jsFilter(row)) return;
+
       const val = row[dateColumn] as string | null | undefined;
       if (!val) return;
       const date = val.split("T")[0];
@@ -82,32 +91,43 @@ export async function GET(request: Request) {
     return series;
   }
 
-  // Users
+  // Shared metrics
+  const metrics = await getDashboardMetrics();
+
+  // Users timeseries
   const usersSeries = await fetchTimeseries("profiles");
-  const usersRes = await safeCount("profiles");
-  const totalUsers = usersRes.count;
   
-  // Creators
-  const creatorsSeries = await fetchTimeseries("creator_profiles");
-  const creatorsRes = await safeCount("creator_profiles");
-  const totalCreators = creatorsRes.count;
+  // Creators timeseries
+  const creatorsSeries = await fetchTimeseries(
+    "profiles", 
+    q => q.eq("role", "creator"), 
+    "created_at",
+    row => normalizeApprovalState(row as unknown as ApprovalStatusInput) === "approved",
+    "id, role, approval_status, kyc_status, created_at"
+  );
 
-  // Brands
-  const brandsSeries = await fetchTimeseries("brand_profiles");
-  const brandsRes = await safeCount("brand_profiles");
-  const totalBrands = brandsRes.count;
+  // Brands timeseries
+  const brandsSeries = await fetchTimeseries(
+    "profiles", 
+    q => q.eq("role", "brand"), 
+    "created_at",
+    row => normalizeApprovalState(row as unknown as ApprovalStatusInput) === "approved",
+    "id, role, approval_status, kyc_status, created_at"
+  );
 
-  // Campaigns
+  // Campaigns timeseries
   const campaignsSeries = await fetchTimeseries("campaigns");
-  const campaignsRes = await safeCount("campaigns");
-  const activeCampaigns = campaignsRes.count;
 
-  // Approvals
-  const approvalsSeries = await fetchTimeseries("profiles", q => q.eq("status", "pending"));
-  const approvalsRes = await safeCount("profiles", q => q.eq("status", "pending"));
-  const pendingApprovals = approvalsRes.count;
+  // Approvals timeseries
+  const approvalsSeries = await fetchTimeseries(
+    "profiles", 
+    q => q.in("role", ["creator", "brand"]), 
+    "created_at",
+    row => normalizeApprovalState(row as unknown as ApprovalStatusInput) === "pending",
+    "id, role, approval_status, kyc_status, created_at"
+  );
 
-  // Moderation
+  // Moderation timeseries
   const moderationSeries = await fetchTimeseries("moderation_cases");
   const moderationRes = await safeCount("moderation_cases");
   const moderationQueue = moderationRes.count;
@@ -141,12 +161,13 @@ export async function GET(request: Request) {
     success: true,
     data: {
       summary: {
-        totalUsers,
-        totalCreators,
-        totalBrands,
-        activeCampaigns,
-        pendingApprovals,
-        totalRevenue: 0,
+        totalUsers: metrics.totalUsers,
+        totalCreators: metrics.approvedCreators,
+        totalBrands: metrics.approvedBrands,
+        activeCampaigns: metrics.activeCampaigns,
+        pendingApprovals: metrics.pendingApprovals,
+        totalRevenue: metrics.revenue.value || 0,
+        revenueRestricted: metrics.revenue.restricted,
         monthlyRevenue: 0,
         moderationQueue,
       },
@@ -178,3 +199,4 @@ export async function GET(request: Request) {
     },
   });
 }
+

@@ -3,10 +3,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { CommandHeader } from "@/app/components/shared/CommandHeader";
-import { DataSurface } from "@/app/components/shared/DataSurface";
-import { StatusPill } from "@/app/components/shared/StatusPill";
-import { GlassPanel } from "@/app/components/shared/GlassPanel";
-import { PageHeader } from "@/app/components/ui/core";
 import { LoadingState, ErrorState, MissingTableState } from "@/app/components/ui/shared-states";
 import {
   Globe,

@@ -40,6 +40,7 @@ export async function GET(
     let creator_profile = null;
     let brand_profile = null;
     let audit_logs: unknown[] = [];
+    let kyc_submission = null;
 
     // Parallelize role profile fetch and audit logs fetch
     const roleFetchPromise = async () => {
@@ -66,14 +67,27 @@ export async function GET(
       return data || [];
     };
 
-    const [roleResult, logsResult] = await Promise.all([
+    const kycFetchPromise = async () => {
+      const { data } = await supabaseAdmin
+        .from("kyc_submissions")
+        .select("*")
+        .eq("user_id", id)
+        .order("submitted_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    };
+
+    const [roleResult, logsResult, kycResult] = await Promise.all([
       roleFetchPromise().catch(() => null),
-      auditFetchPromise().catch(() => [])
+      auditFetchPromise().catch(() => []),
+      kycFetchPromise().catch(() => null)
     ]);
 
     if (roleResult?.type === 'creator') creator_profile = roleResult.data;
     if (roleResult?.type === 'brand') brand_profile = roleResult.data;
     if (logsResult) audit_logs = logsResult as unknown[];
+    if (kycResult) kyc_submission = kycResult;
 
     return NextResponse.json({
       success: true,
@@ -82,6 +96,7 @@ export async function GET(
         profile,
         creator_profile,
         brand_profile,
+        kyc_submission,
         audit_logs,
       },
     });

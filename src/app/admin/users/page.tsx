@@ -3,10 +3,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import DashboardShell from "@/app/components/layout/DashboardShell";
 import { CommandHeader } from "@/app/components/shared/CommandHeader";
-import { DataSurface } from "@/app/components/shared/DataSurface";
 import { StatusPill } from "@/app/components/shared/StatusPill";
-import { GlassPanel } from "@/app/components/shared/GlassPanel";
-import { PageHeader, StatusBadge } from "@/app/components/ui/core";
 import { DataTable } from "@/app/components/ui/data-table";
 import { ConfirmModal } from "@/app/components/ui/confirm-modal";
 import { LoadingState, ErrorState } from "@/app/components/ui/shared-states";

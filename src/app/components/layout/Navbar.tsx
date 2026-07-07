@@ -7,7 +7,6 @@ import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import NotificationDropdown from "./NotificationDropdown";
 import NewActionMenu from "./NewActionMenu";
 import SystemStatusPopover from "./SystemStatusPopover";
-import ThemeToggle from "./ThemeToggle";
 import { cn } from "@/app/lib/utils";
 
 export default function Navbar() {
@@ -89,7 +88,6 @@ export default function Navbar() {
         <div className="hidden sm:block h-6 w-px bg-black/10 mx-1" />
 
         <NewActionMenu />
-        <ThemeToggle />
         <NotificationDropdown />
         <SystemStatusPopover />
       </div>

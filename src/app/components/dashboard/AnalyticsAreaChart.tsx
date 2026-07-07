@@ -51,8 +51,8 @@ export function AnalyticsAreaChart({
 
   return (
     <div className="rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-      <div className="h-[280px] w-full mt-4 min-h-[280px]">
-        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+      <div className="h-72 min-h-[280px] min-w-[100px] w-full mt-4">
+        <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               {dataKeys.map((key, index) => (

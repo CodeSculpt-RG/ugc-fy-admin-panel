@@ -3,6 +3,10 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeError } from "@/lib/api/normalizeError";
 import { requirePermission } from "@/lib/auth/admin-auth";
 import { safeCount } from "@/lib/api/safe-count";
+import { getDashboardMetrics } from "@/lib/api/metrics";
+import { normalizeApprovalState, ApprovalStatusInput } from "@/app/services/adminUserStatus";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -31,51 +35,64 @@ export async function GET(request: Request) {
       return data || [];
     };
 
+    // Get core shared metrics
+    const coreMetrics = await getDashboardMetrics();
+
     const [
-      totalCreators,
-      totalBrands,
       totalAdmins,
-      totalUsers,
-      pendingCreators,
-      pendingBrands,
-      pendingUsersCount,
-      approvedUsers,
-      rejectedUsers,
-      blockedUsers,
+      allProfiles,
       recentUsersData,
-      pendingQueueData,
     ] = await Promise.all([
-      safeCountTrack("users", q => q.eq("role", "creator")),
-      safeCountTrack("users", q => q.eq("role", "brand")),
-      safeCountTrack("users", q => q.eq("role", "admin")),
-      safeCountTrack("users"),
-      
-      safeCountTrack("users", q => q.eq("role", "creator").eq("approval_status", "pending_review")),
-      safeCountTrack("users", q => q.eq("role", "brand").eq("approval_status", "pending_review")),
-      safeCountTrack("users", q => q.eq("approval_status", "pending_review")),
-      
-      safeCountTrack("users", q => q.eq("approval_status", "approved")),
-      safeCountTrack("users", q => q.eq("is_active", false)),
-      safeCountTrack("users", q => q.eq("is_active", false)),
-      
-      safeFetch("users", q => q.select("id, email, role, approval_status, created_at").order("created_at", { ascending: false }).limit(5)),
-      safeFetch("users", q => q.select("id, email, role, approval_status, created_at").eq("approval_status", "pending_review").order("created_at", { ascending: false }).limit(5)),
+      safeCountTrack("profiles", q => q.eq("role", "admin")),
+      safeFetch("profiles", q => q.select("id, email, role, approval_status, kyc_status, created_at").in("role", ["creator", "brand"])),
+      safeFetch("profiles", q => q.select("id, email, role, approval_status, kyc_status, created_at").order("created_at", { ascending: false }).limit(5)),
     ]);
+
+    let pendingCreators = 0;
+    let pendingBrands = 0;
+    let approvedUsers = 0;
+    let rejectedUsers = 0;
+    let blockedUsers = 0;
+    const pendingQueueData: Record<string, unknown>[] = [];
+
+    allProfiles.forEach((p: Record<string, unknown>) => {
+      const state = normalizeApprovalState(p as unknown as ApprovalStatusInput);
+      
+      if (state === "approved") {
+        approvedUsers++;
+      } else if (state === "rejected") {
+        rejectedUsers++;
+      } else if (state === "blocked") {
+        blockedUsers++;
+      } else if (state === "pending") {
+        if (p.role === "creator") pendingCreators++;
+        if (p.role === "brand") pendingBrands++;
+        pendingQueueData.push(p);
+      }
+    });
+
+    // Sort pendingQueueData by created_at desc and take top 5
+    pendingQueueData.sort((a, b) => {
+      const da = a.created_at ? new Date(a.created_at as string).getTime() : 0;
+      const db = b.created_at ? new Date(b.created_at as string).getTime() : 0;
+      return db - da;
+    });
+    const recentPendingQueue = pendingQueueData.slice(0, 5);
 
     const isPartial = missingTables.size > 0;
 
     const stats = {
-      totalUsers,
-      totalCreators,
-      totalBrands,
+      totalUsers: coreMetrics.totalUsers,
+      totalCreators: coreMetrics.approvedCreators,
+      totalBrands: coreMetrics.approvedBrands,
       
-      pendingUsers: pendingUsersCount,
+      pendingUsers: pendingCreators + pendingBrands,
       pendingCreators,
       pendingBrands,
       
       approvedUsers,
-      approvedCreators: 0, 
-      approvedBrands: 0, 
+      approvedCreators: coreMetrics.approvedCreators, 
+      approvedBrands: coreMetrics.approvedBrands, 
       
       rejectedUsers,
       blockedUsers,
@@ -83,28 +100,26 @@ export async function GET(request: Request) {
       completedProfiles: 0, 
       incompleteProfiles: 0, 
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      recentUsers: recentUsersData.map((u: any) => ({
+      recentUsers: recentUsersData.map((u: Record<string, unknown>) => ({
         ...u,
-        approval_status: u.approval_status || "pending_review",
+        approval_status: normalizeApprovalState(u as unknown as ApprovalStatusInput),
         email: u.email || "Confidential"
       })),
       
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      pendingApprovalQueue: pendingQueueData.map((u: any) => ({
+      pendingApprovalQueue: recentPendingQueue.map((u: Record<string, unknown>) => ({
         ...u,
-        approval_status: u.approval_status || "pending_review",
+        approval_status: "pending",
         email: u.email || "Confidential"
       })),
       
       roleBreakdown: {
-        creators: totalCreators,
-        brands: totalBrands,
+        creators: coreMetrics.approvedCreators,
+        brands: coreMetrics.approvedBrands,
         admins: totalAdmins,
       },
       
       approvalBreakdown: {
-        pending: pendingUsersCount,
+        pending: pendingCreators + pendingBrands,
         approved: approvedUsers,
         rejected: rejectedUsers,
         blocked: blockedUsers,
@@ -129,10 +144,13 @@ export async function GET(request: Request) {
     });
   } catch (error: unknown) {
     const normalizedError = normalizeError(error);
-    console.error("[GET /api/admin/dashboard/stats]", normalizedError);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[GET /api/admin/dashboard/stats]", normalizedError);
+    }
     return NextResponse.json(
       { success: false, source: "real_supabase_database", error: normalizedError },
       { status: 500 }
     );
   }
 }
+

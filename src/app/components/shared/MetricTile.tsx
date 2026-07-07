@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { cn } from "@/app/lib/utils";
 
 export interface MetricTileProps {
@@ -8,6 +9,7 @@ export interface MetricTileProps {
   status?: React.ReactNode;
   description?: string;
   className?: string;
+  href?: string;
 }
 
 export function MetricTile({
@@ -17,11 +19,13 @@ export function MetricTile({
   status,
   description,
   className,
+  href,
 }: MetricTileProps) {
-  return (
+  const content = (
     <div
       className={cn(
-        "rounded-[20px] p-4 bg-white/70 border border-white/80 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-md flex flex-col gap-2 relative overflow-hidden interactive-card group",
+        "rounded-[20px] p-4 bg-white/70 border border-white/80 shadow-[0_8px_30px_rgba(15,23,42,0.04)] backdrop-blur-md flex flex-col gap-2 relative overflow-hidden interactive-card group h-full",
+        href && "transition-all hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(15,23,42,0.08)] cursor-pointer",
         className
       )}
     >
@@ -50,4 +54,10 @@ export function MetricTile({
       )}
     </div>
   );
+
+  if (href) {
+    return <Link href={href} className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 rounded-[20px]">{content}</Link>;
+  }
+
+  return content;
 }

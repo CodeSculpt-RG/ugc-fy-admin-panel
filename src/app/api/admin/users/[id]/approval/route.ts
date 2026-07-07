@@ -29,20 +29,12 @@ export async function PATCH(
 
     const updatePayload: Record<string, unknown> = {
       approval_status: status,
-      kyc_status: status,
       updated_at: new Date().toISOString(),
     };
 
-    if (status === "approved") {
-      updatePayload.approved_at = new Date().toISOString();
-      updatePayload.approved_by = check.admin.id;
-      updatePayload.rejection_reason = null;
-    } else if (status === "rejected") {
-      updatePayload.rejection_reason = reason ?? null;
-      updatePayload.approved_at = null;
-    } else if (status === "blocked") {
-      updatePayload.rejection_reason = reason ?? "Blocked by admin";
-      updatePayload.approved_at = null;
+    // Only set kyc_status to approved or rejected if it's one of those
+    if (status === "approved" || status === "rejected") {
+      updatePayload.kyc_status = status;
     }
 
     const { data: updatedUser, error: updateError } = await supabaseAdmin
@@ -56,9 +48,12 @@ export async function PATCH(
 
     if (updatedUser?.role === "brand") {
       const brandPayload: Record<string, unknown> = {
-        kyc_status: status,
+        approval_status: status,
         updated_at: new Date().toISOString(),
       };
+      if (status === "approved" || status === "rejected") {
+        brandPayload.kyc_status = status;
+      }
       if (status === "approved") {
         brandPayload.onboarding_completed = true;
       }
@@ -66,8 +61,23 @@ export async function PATCH(
         .from("brand_profiles")
         .update(brandPayload)
         .eq("user_id", id);
-      if (brandError) {
+      if (brandError && brandError.code !== "PGRST204" && brandError.code !== "PGRST200") {
         console.error("[Approval] failed to sync brand_profile", brandError);
+      }
+    } else if (updatedUser?.role === "creator") {
+      const creatorPayload: Record<string, unknown> = {
+        approval_status: status,
+        updated_at: new Date().toISOString(),
+      };
+      if (status === "approved" || status === "rejected") {
+        creatorPayload.kyc_status = status;
+      }
+      const { error: creatorError } = await supabaseAdmin
+        .from("creator_profiles")
+        .update(creatorPayload)
+        .eq("user_id", id);
+      if (creatorError && creatorError.code !== "PGRST204" && creatorError.code !== "PGRST200") {
+        console.error("[Approval] failed to sync creator_profile", creatorError);
       }
     }
 

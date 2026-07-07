@@ -32,7 +32,7 @@ const menuGroups = [
     group: "Primary", items: [
       { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
       { name: "Users", href: "/admin/users", icon: Users },
-      { name: "KYC", href: "/admin/kyc", icon: ClipboardCheck },
+      { name: "KYC Review", href: "/admin/kyc/review", icon: ClipboardCheck },
       { name: "Campaigns", href: "/admin/campaigns", icon: Megaphone },
       { name: "Moderation", href: "/admin/moderation", icon: ShieldCheck },
     ]
@@ -81,8 +81,9 @@ function SidebarFlyoutLabel({
       className={cn(
         "pointer-events-none absolute left-[calc(100%+14px)] top-1/2 z-[100]",
         "flex -translate-y-1/2 translate-x-2 items-center gap-2 whitespace-nowrap",
-        "rounded-2xl border px-3.5 py-2 text-xs font-semibold shadow-[0_18px_45px_rgba(0,0,0,0.22)]",
-        "opacity-0 backdrop-blur-xl transition-all duration-200 ease-out",
+        "rounded-2xl border px-3.5 py-2 text-xs font-semibold",
+        "opacity-0 shadow-[0_18px_45px_rgba(0,0,0,0.22)] backdrop-blur-xl",
+        "transition-all duration-200 ease-out",
         "group-hover:translate-x-0 group-hover:opacity-100",
         "group-focus-visible:translate-x-0 group-focus-visible:opacity-100",
         danger
@@ -134,7 +135,7 @@ export default function Sidebar() {
   const adminInitials = admin?.full_name?.slice(0, 2)?.toUpperCase() || admin?.name?.slice(0, 2)?.toUpperCase() || "UG";
 
   const DesktopSidebar = (
-    <aside className="hidden shrink-0 px-4 py-4 lg:block">
+    <aside className="hidden shrink-0 px-4 py-4 lg:block overflow-visible">
       <nav className="sticky top-4 flex h-[calc(100vh-32px)] w-[88px] flex-col items-center rounded-[34px] border border-white/75 bg-white/75 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl overflow-visible">
         
         {/* Logo */}
@@ -150,9 +151,9 @@ export default function Sidebar() {
         </div>
 
         {/* Nav Items */}
-        <div className="flex-1 w-full overflow-y-auto overflow-x-visible scrollbar-hide flex flex-col items-center gap-6 pb-4">
+        <div className="flex-1 w-full flex flex-col items-center gap-6 pb-4 overflow-visible">
           {filteredMenuGroups.map((group, groupIdx) => (
-            <div key={group.group} className="flex flex-col items-center gap-2 relative w-full">
+            <div key={group.group} className="flex flex-col items-center gap-2 overflow-visible relative w-full">
               {groupIdx > 0 && <div className="absolute -top-3 h-px w-8 bg-black/5" />}
               {group.items.map((item) => {
                 const isActive = isRouteActive(pathname, item.href);
@@ -161,7 +162,6 @@ export default function Sidebar() {
                     key={item.name}
                     href={item.href}
                     aria-label={item.name}
-                    title={item.name}
                     className={cn(
                       "group relative flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2",
                       isActive
@@ -186,7 +186,6 @@ export default function Sidebar() {
           <Link
             href="/admin/profile"
             aria-label="Owner admin profile"
-            title="Owner admin profile"
             className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-xs font-bold text-orange-600 ring-1 ring-orange-100 transition hover:bg-orange-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2"
           >
             {adminInitials}
@@ -198,7 +197,6 @@ export default function Sidebar() {
             type="button"
             onClick={logout}
             aria-label="Logout"
-            title="Logout"
             className="group relative flex h-10 w-10 items-center justify-center rounded-xl text-neutral-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
           >
             <LogOut className="h-4 w-4" />

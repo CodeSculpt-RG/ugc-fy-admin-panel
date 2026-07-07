@@ -42,7 +42,7 @@ $1`);
   
   // Replace StatusBadge with StatusPill
   content = content.replace(/<StatusBadge/g, '<StatusPill');
-  content = content.replace(/status=\{([^}]+)\}/g, (match, p1) => {
+  content = content.replace(/status=\{([^}]+)\}/g, (match) => {
     // wait, if there's status={...} inside StatusBadge/StatusPill we replace with label={...}
     // But other components might use status={...}
     return match;

@@ -8,7 +8,7 @@ async function refreshAdmin() {
         return;
       }
     }
-  } catch (err) {
+  } catch {
     console.log("outer catch");
   } finally {
     console.log("outer finally");

@@ -48,8 +48,8 @@ export async function POST(
     }
 
     const { data: profile, error: profileError } = await supabaseAdmin
-      .from("admin_profiles")
-      .select("id, email, full_name, role, invite_status, last_invite_attempt_at, invite_attempt_count")
+      .from("admin_users")
+      .select("id, email, full_name, role, status")
       .eq("id", adminId)
       .single();
 
@@ -60,29 +60,18 @@ export async function POST(
       );
     }
 
-    if (profile.invite_status === "accepted") {
+    if (profile.status === "active") {
       return NextResponse.json(
         { ok: false, error: { code: "INVALID_STATE", message: "Admin has already accepted their invite." } },
         { status: 400 }
       );
     }
 
-    if (profile.invite_status === "revoked") {
+    if (profile.status === "revoked") {
       return NextResponse.json(
         { ok: false, error: { code: "INVALID_STATE", message: "Admin invite is revoked. Use reactivation instead." } },
         { status: 400 }
       );
-    }
-
-    const lastAttempt = profile.last_invite_attempt_at;
-    if (lastAttempt) {
-      const timeSince = Date.now() - new Date(lastAttempt).getTime();
-      if (timeSince < 60000) {
-        return NextResponse.json(
-          { ok: false, error: { code: "INVITE_RESEND_COOLDOWN", message: "An invite was sent recently. Please wait before trying again.", details: { retry_after_seconds: Math.ceil((60000 - timeSince) / 1000) } } },
-          { status: 429 }
-        );
-      }
     }
 
     // Call Supabase inviteUserByEmail
@@ -136,38 +125,20 @@ export async function POST(
       }
     }
 
-    const now = new Date().toISOString();
-    const currentCount = profile.invite_attempt_count || 0;
-
     if (inviteError) {
-      await supabaseAdmin
-        .from("admin_profiles")
-        .update({
-          last_invite_attempt_at: now,
-          invite_attempt_count: currentCount + 1,
-          last_invite_error_code: mappedErrorCode,
-          last_invite_error_message: mappedErrorMessage,
-        })
-        .eq("id", adminId);
-
       return NextResponse.json(
         { ok: false, error: { code: mappedErrorCode, message: mappedErrorMessage } },
         { status: mappedErrorCode === "SUPABASE_INVITE_NOT_SENT_EXISTING_USER" ? 400 : 502 }
       );
     }
 
+    const now = new Date().toISOString();
     const { error: updateError } = await supabaseAdmin
-      .from("admin_profiles")
+      .from("admin_users")
       .update({
-        invite_status: "pending",
-        is_active: true,
-        must_change_password: true,
+        status: "invited",
         invited_at: now,
         updated_at: now,
-        last_invite_attempt_at: now,
-        invite_attempt_count: currentCount + 1,
-        last_invite_error_code: null,
-        last_invite_error_message: null
       })
       .eq("id", adminId);
 

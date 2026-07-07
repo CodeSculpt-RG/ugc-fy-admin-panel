@@ -10,9 +10,8 @@ export async function GET(request: Request) {
     if (!check.ok) return check.response;
 
     const { data: admins, error, count } = await supabaseAdmin
-      .from("profiles")
+      .from("admin_users")
       .select("*", { count: "exact" })
-      .eq('role', 'admin')
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -125,44 +124,32 @@ export async function POST(request: Request) {
     }
     logTiming("parse payload", tParse);
 
-    // 3. Check existing admin_profiles
+    // 3. Check existing admin_users
     const tProfile = Date.now();
     const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
-      .from("admin_profiles")
-      .select("id, is_active, invite_status, last_invite_attempt_at")
+      .from("admin_users")
+      .select("id, status")
       .eq("email", normalizedEmail)
       .maybeSingle();
 
     if (profileCheckError) throw profileCheckError;
 
     if (existingProfile) {
-      const status = existingProfile.invite_status;
-      const isActive = existingProfile.is_active;
-      const lastAttempt = existingProfile.last_invite_attempt_at;
+      const status = existingProfile.status;
 
-      if ((status === "pending" || status === "failed") && lastAttempt) {
-        const timeSince = Date.now() - new Date(lastAttempt).getTime();
-        if (timeSince < 60000) {
-          return NextResponse.json(
-            { ok: false, error: { code: "INVITE_RESEND_COOLDOWN", message: "An invite was sent recently. Please wait before trying again.", details: { retry_after_seconds: Math.ceil((60000 - timeSince) / 1000) } } },
-            { status: 429 }
-          );
-        }
-      }
-
-      if (isActive && status === "accepted") {
+      if (status === "active") {
         return NextResponse.json(
           { ok: false, error: { code: "ADMIN_ALREADY_EXISTS", message: "This email is already an active admin.", details: { adminId: existingProfile.id } } },
           { status: 409 }
         );
-      } else if (status === "pending") {
+      } else if (status === "invited") {
         return NextResponse.json(
           { ok: false, error: { code: "ADMIN_INVITE_ALREADY_PENDING", message: "An invite is already pending for this email.", details: { adminId: existingProfile.id } } },
           { status: 409 }
         );
-      } else if (status === "failed") {
+      } else if (status === "suspended") {
         return NextResponse.json(
-          { ok: false, error: { code: "ADMIN_INVITE_FAILED_RETRY_AVAILABLE", message: "Previous invite failed. You can retry.", details: { adminId: existingProfile.id } } },
+          { ok: false, error: { code: "ADMIN_SUSPENDED", message: "This admin is suspended.", details: { adminId: existingProfile.id } } },
           { status: 409 }
         );
       } else if (status === "revoked") {
@@ -171,7 +158,6 @@ export async function POST(request: Request) {
           { status: 409 }
         );
       } else {
-        // Fallback for weird states
         return NextResponse.json(
           { ok: false, error: { code: "ADMIN_ALREADY_EXISTS", message: "This email is already registered as an admin.", details: { adminId: existingProfile.id } } },
           { status: 409 }
@@ -267,27 +253,22 @@ export async function POST(request: Request) {
     
     const authUserId: string = authData.user.id;
 
-    // 5. Insert admin_profiles
+    // 5. Insert admin_users
     const tUpsert = Date.now();
     const now = new Date().toISOString();
     const { data: adminProfile, error: profileError } = await supabaseAdmin
-      .from("admin_profiles")
+      .from("admin_users")
       .upsert({
-        id: authUserId,
+        user_id: authUserId,
         email: normalizedEmail,
         full_name: normalizedFullName,
         role: resolvedRole,
-        is_active: true,
-        invite_status: "pending",
-        must_change_password: true,
-        invited_by_admin_id: check.admin.id,
+        status: "invited",
+        password_enabled: false,
+        invited_by: check.admin.id,
         invited_at: now,
         updated_at: now,
-        last_invite_attempt_at: now,
-        invite_attempt_count: 1,
-        last_invite_error_code: null,
-        last_invite_error_message: null
-      }, { onConflict: "id" })
+      }, { onConflict: "email" })
       .select("*")
       .single();
 
@@ -334,8 +315,7 @@ export async function POST(request: Request) {
         email: adminProfile.email,
         full_name: adminProfile.full_name,
         role: adminProfile.role,
-        invite_status: adminProfile.invite_status,
-        must_change_password: adminProfile.must_change_password,
+        status: adminProfile.status,
       },
       email: {
         sent: true,

@@ -56,9 +56,8 @@ const COLORS = ["#2563EB", "#10B981", "#F97316", "#EC4899", "#8B5CF6", "#14B8A6"
 const responsiveChartProps = {
   width: "100%",
   height: "100%",
-  minWidth: 1,
-  minHeight: 1,
-  initialDimension: { width: 1, height: 1 },
+  minWidth: 100,
+  minHeight: 100,
 } as const;
 
 export const AdminChartEmptyState = ({ message = "No data available." }: { message?: string }) => (
@@ -129,7 +128,7 @@ export const AdminDonutChart = ({ data, emptyMessage = "No user data available y
   return (
     <ChartErrorBoundary>
       <div className="flex flex-col h-full w-full">
-        <div className="h-[320px] min-h-[320px] w-full min-w-0">
+        <div className="h-72 min-h-[280px] min-w-[100px] w-full pt-4">
           <SafeResponsiveContainer {...responsiveChartProps}>
           <PieChart>
             <Pie
@@ -187,7 +186,7 @@ export const AdminBarChart = ({ data, emptyMessage = "No data available." }: { d
 
   return (
     <ChartErrorBoundary>
-    <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
+    <div className="h-72 min-h-[280px] min-w-[100px] w-full pt-4">
       <SafeResponsiveContainer {...responsiveChartProps}>
         <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />
@@ -235,7 +234,7 @@ export const AdminLineChart = ({ data, lines, emptyMessage = "No data available.
 
   return (
     <ChartErrorBoundary>
-    <div className="h-[320px] min-h-[320px] w-full min-w-0 pt-4">
+    <div className="h-72 min-h-[280px] min-w-[100px] w-full pt-4">
       <SafeResponsiveContainer {...responsiveChartProps}>
         <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="var(--border)" />

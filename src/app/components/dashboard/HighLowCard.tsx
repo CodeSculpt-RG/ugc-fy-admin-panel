@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react";
+import { cn } from "@/app/lib/utils";
 
 type HighLowCardProps = {
   title: string;
@@ -10,15 +12,24 @@ type HighLowCardProps = {
   lowValue: number | null;
   lowDate: string | null;
   formatValue?: (val: number) => string;
+  href?: string;
 };
 
-export function HighLowCard({ title, highValue, highDate, lowValue, lowDate, formatValue }: HighLowCardProps) {
+export function HighLowCard({ title, highValue, highDate, lowValue, lowDate, formatValue, href }: HighLowCardProps) {
   const displayHigh = highValue !== null ? (formatValue ? formatValue(highValue) : highValue.toLocaleString()) : "No data yet";
   const displayLow = lowValue !== null ? (formatValue ? formatValue(lowValue) : lowValue.toLocaleString()) : "No data yet";
 
-  return (
-    <div className="rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl flex flex-col justify-between">
-      <h4 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">{title}</h4>
+  const content = (
+    <div className={cn(
+      "rounded-[28px] border border-white/70 bg-white/70 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl flex flex-col justify-between h-full group",
+      href && "transition-all hover:-translate-y-1 hover:shadow-[0_25px_80px_rgba(15,23,42,0.12)] cursor-pointer relative"
+    )}>
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">{title}</h4>
+        {href && (
+          <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
+      </div>
       
       <div className="mt-4 space-y-4">
         <div className="flex items-center justify-between">
@@ -51,4 +62,10 @@ export function HighLowCard({ title, highValue, highDate, lowValue, lowDate, for
       </div>
     </div>
   );
+
+  if (href) {
+    return <Link href={href} className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 rounded-[28px]">{content}</Link>;
+  }
+
+  return content;
 }

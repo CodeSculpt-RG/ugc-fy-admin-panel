@@ -86,6 +86,7 @@ export function DataTable<TData, TValue>({
     setColumnVisibility(prev => ({ ...prev, ...initialVisibility }));
   }, [initialVisibility]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table intentionally returns functions that React Compiler cannot memoize safely.
   const table = useReactTable({
     data,
     columns,

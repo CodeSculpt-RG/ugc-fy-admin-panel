@@ -7,9 +7,8 @@ import { ChartCard } from "./chart-card";
 const responsiveChartProps = {
   width: "100%",
   height: "100%",
-  minWidth: 1,
-  minHeight: 1,
-  initialDimension: { width: 1, height: 1 },
+  minWidth: 100,
+  minHeight: 100,
 } as const;
 
 // Re-export AdminChartCard as an alias for ChartCard or customized version
